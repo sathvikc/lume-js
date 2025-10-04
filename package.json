@@ -1,0 +1,16 @@
+{
+  "name": "lume-js",
+  "version": "0.0.1",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite examples",
+    "build": "echo 'No build step yet, zero-runtime already!'"
+  },
+  "files": [
+    "src"
+  ],
+  "devDependencies": {
+    "vite": "^7.1.9"
+  }
+}
