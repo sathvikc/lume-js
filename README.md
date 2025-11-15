@@ -413,6 +413,39 @@ document.addEventListener('click', () => store.clicks++);
 
 ---
 
+## Testing
+
+Lume.js uses [Vitest](https://vitest.dev) with a jsdom environment. The test suite mirrors the source tree: files under `tests/core/**` map to `src/core/**`, and `tests/addons/**` map to `src/addons/**`.
+
+```bash
+# Run tests
+npm test
+
+# Watch mode
+npm run test:watch
+
+# Coverage with HTML report in ./coverage
+npm run coverage
+```
+
+**Import alias:** Tests use an alias so you can import from `src/...` without relative `../../` paths.
+
+```js
+// vitest.config.js
+resolve: {
+  alias: {
+    src: fileURLToPath(new URL('./src', import.meta.url))
+  }
+}
+```
+
+**Current coverage:**
+- 100% statements, functions, and lines
+- 100% branches (including edge-case paths)
+- 37 tests covering core behavior, addons, inputs (text/checkbox/radio/number/range/select/textarea), nested state, and cleanup semantics
+
+---
+
 ## Contributing
 
 We welcome contributions! Please:
