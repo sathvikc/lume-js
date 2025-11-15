@@ -2,18 +2,27 @@ import { state, bindDom } from "lume-js";
 import { computed } from "lume-js/addons";
 
 const store = state({ count: 0 });
-bindDom(document.body, store);
+const cleanup = bindDom(document.body, store);
 
+// Create computed value
 const doubleCount = computed(() => store.count * 2);
 
-const unsubscribe = doubleCount.subscribe(val => {
+// Subscribe to computed changes
+const unsubComputed = doubleCount.subscribe(val => {
   document.querySelector("#double").textContent = val;
 });
 
-store.subscribe("count", () => doubleCount.recompute());
-document.getElementById("inc").addEventListener("click", () => store.count++);
+// Trigger recomputation when store.count changes
+const unsubCount = store.$subscribe("count", () => {
+  doubleCount.recompute();
+});
 
-// later, if needed
-// unsubscribe();
+document.getElementById("inc").addEventListener("click", () => {
+  store.count++;
+});
 
-
+window.addEventListener('beforeunload', () => {
+  cleanup();
+  unsubComputed();
+  unsubCount();
+});
