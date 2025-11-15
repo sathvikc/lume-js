@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lume.js - Todo App</title>
+  <style>
+    :root {
+      --bg: #fff;
+      --fg: #222;
+      --muted: #666;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      max-width: 760px;
+      margin: 40px auto;
+      padding: 0 16px;
+      line-height: 1.6;
+    }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+      background: #fff;
+    }
+    h1 { font-size: 28px; margin: 0 0 8px; }
+    .sub { color: var(--muted); margin-bottom: 16px; }
+
+    .row { display: flex; gap: 8px; }
+    input[type="text"] {
+      flex: 1;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    button {
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: var(--accent-hover); }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    button.ghost { background: transparent; color: var(--fg); border: 1px solid var(--border); }
+    button.ghost:hover { background: #f9fafb; }
+    button.danger { background: var(--danger); color: #fff; }
+    button.danger:hover { background: #dc2626; }
+
+    .toolbar { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+    .pill {
+      padding: 6px 10px; border: 1px solid var(--border); border-radius: 999px;
+      background: #fafafa; cursor: pointer; font-size: 13px;
+    }
+    .pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .pill.active { border-color: var(--accent); color: var(--accent); background: #eff6ff; }
+
+    ul.todos { list-style: none; padding: 0; margin: 16px 0 0; }
+    .todo {
+      display: flex; gap: 10px; align-items: center;
+      padding: 10px 6px; border-bottom: 1px solid var(--border);
+    }
+    .todo:last-child { border-bottom: 0; }
+    .todo label { flex: 1; display: flex; align-items: center; gap: 10px; }
+    .todo input[type="checkbox"] { width: 18px; height: 18px; }
+    .todo .title.done { color: var(--muted); text-decoration: line-through; }
+    .right { display: flex; gap: 6px; }
+    .empty { color: var(--muted); padding: 16px 6px; text-align: center; }
+
+    .footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Todo</h1>
+    <div class="sub">Minimal, standards-only todos with <strong>Lume.js</strong></div>
+    
+    <details style="margin-bottom: 16px; padding: 12px; background: #f9fafb; border-radius: 8px; border: 1px solid var(--border);">
+      <summary style="cursor: pointer; font-weight: 600; color: var(--accent);">💡 Features & Implementation</summary>
+      <ul style="margin: 8px 0 0; padding-left: 20px; font-size: 14px; line-height: 1.8;">
+        <li><strong>Full CRUD:</strong> Add, toggle, delete todos</li>
+        <li><strong>Smart filters:</strong> View all/active/completed items</li>
+        <li><strong>Live counts:</strong> Derived state using <code>computed()</code></li>
+        <li><strong>Persistence:</strong> Auto-save to localStorage</li>
+        <li><strong>Accessible:</strong> Keyboard navigation (Tab, Enter, Space)</li>
+        <li><strong>Standards-only:</strong> No custom syntax, just <code>data-bind</code> and plain JS</li>
+        <li><strong>Memory-safe:</strong> Proper cleanup on page unload</li>
+      </ul>
+    </details>
+
+    <form id="new-todo-form" class="row" autocomplete="off">
+      <input id="new-todo" type="text" placeholder="What needs to be done?" data-bind="newTodoTitle" />
+      <button type="submit">Add</button>
+    </form>
+
+    <div class="toolbar">
+      <div class="pill" data-filter="all" tabindex="0" role="button" aria-label="Show all todos">All</div>
+      <div class="pill" data-filter="active" tabindex="0" role="button" aria-label="Show active todos">Active</div>
+      <div class="pill" data-filter="completed" tabindex="0" role="button" aria-label="Show completed todos">Completed</div>
+      <button id="clear-completed" class="ghost">Clear Completed</button>
+    </div>
+
+    <ul id="todo-list" class="todos"></ul>
+
+    <div class="footer">
+      <div><span data-bind="remaining"></span> items left</div>
+      <div><span data-bind="completed"></span> completed</div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
