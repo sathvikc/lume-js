@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lume.js - Tic-Tac-Toe</title>
+  <style>
+    :root {
+      --bg: #fff;
+      --fg: #222;
+      --muted: #666;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --cell-bg: #f9fafb;
+      --cell-hover: #f3f4f6;
+      --x-color: #ef4444;
+      --o-color: #3b82f6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 16px;
+      line-height: 1.6;
+    }
+    .container { display: flex; gap: 24px; flex-wrap: wrap; }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+      background: #fff;
+    }
+    .main { flex: 1; min-width: 300px; }
+    .sidebar { flex: 0 0 280px; }
+
+    h1 { font-size: 28px; margin: 0 0 8px; }
+    .sub { color: var(--muted); margin-bottom: 16px; }
+
+    details {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #f9fafb;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    details ul {
+      margin: 8px 0 0;
+      padding-left: 20px;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .status {
+      padding: 12px;
+      margin-bottom: 16px;
+      border-radius: 8px;
+      background: var(--cell-bg);
+      text-align: center;
+      font-weight: 600;
+      font-size: 18px;
+    }
+    .status.winner { background: #d1fae5; color: #065f46; }
+    .status.draw { background: #fef3c7; color: #92400e; }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 0 auto 16px;
+      max-width: 360px;
+      position: relative;
+    }
+    .cell {
+      aspect-ratio: 1;
+      background: var(--cell-bg);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 36px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .cell:hover:not(.filled) {
+      background: var(--cell-hover);
+      border-color: var(--accent);
+    }
+    .cell.filled { cursor: default; }
+    .cell.x { color: var(--x-color); }
+    .cell.o { color: var(--o-color); }
+    .cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .winner-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      z-index: 10;
+      animation: fadeIn 0.3s;
+    }
+    .winner-overlay.winner-x { background: rgba(239, 68, 68, 0.15); }
+    .winner-overlay.winner-o { background: rgba(59, 130, 246, 0.15); }
+    .winner-overlay.draw { background: rgba(251, 191, 36, 0.15); }
+    .winner-text {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .winner-text.x { color: var(--x-color); }
+    .winner-text.o { color: var(--o-color); }
+    .winner-subtext {
+      font-size: 16px;
+      color: var(--muted);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    button {
+      width: 100%;
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover { background: var(--accent-hover); }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .history {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    #history-list {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 200px;
+      padding: 5px 0;
+    }
+    .history h3 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      color: var(--muted);
+    }
+    .history-item {
+      padding: 8px 12px;
+      margin: 0 4px 6px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--cell-bg);
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.1s;
+    }
+    .history-item:hover {
+      background: var(--cell-hover);
+      border-color: var(--accent);
+    }
+    .history-item.current {
+      background: #eff6ff;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    .history-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .empty-history {
+      text-align: center;
+      color: var(--muted);
+      padding: 20px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="main card">
+      <h1>Tic-Tac-Toe</h1>
+      <div class="sub">Classic game with time travel — built with <strong>Lume.js</strong></div>
+      
+      <details>
+        <summary>💡 Features & Implementation</summary>
+        <ul>
+          <li><strong>Game logic:</strong> Winner detection, draw detection</li>
+          <li><strong>Time travel:</strong> Jump to any previous move (React tutorial feature!)</li>
+          <li><strong>Immutable history:</strong> Each move creates a snapshot</li>
+          <li><strong>Computed state:</strong> Winner and status derived automatically</li>
+          <li><strong>Keyboard accessible:</strong> Tab through cells, Enter/Space to play</li>
+          <li><strong>Standards-only:</strong> No JSX, just <code>data-bind</code> and plain JS</li>
+        </ul>
+      </details>
+
+      <div class="board" id="board">
+        <!-- Winner overlay will be injected here -->
+      </div>
+
+      <button id="reset">New Game</button>
+    </div>
+
+    <div class="sidebar card">
+      <div class="history" id="history">
+        <h3>Move History</h3>
+        <div id="history-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
