@@ -37,7 +37,7 @@ export function bindDom(root, store) {
     }
 
     // Subscribe once
-    target.$subscribe(lastKey, val => {
+    target.subscribe(lastKey, val => {
       if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") el.value = val;
       else el.textContent = val;
     });

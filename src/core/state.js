@@ -6,12 +6,12 @@
  * Features:
  * - Lightweight and Go-style
  * - Explicit nested states
- * - $subscribe for listening to key changes
+ * - subscribe for listening to key changes
  *
  * Usage:
  *   import { state } from "lume-js";
  *   const store = state({ count: 0 });
- *   store.$subscribe("count", val => console.log(val));
+ *   store.subscribe("count", val => console.log(val));
  */
 
 
@@ -19,7 +19,7 @@
  * Creates a reactive state object.
  * 
  * @param {Object} obj - Initial state object
- * @returns {Proxy} Reactive proxy with $subscribe method
+ * @returns {Proxy} Reactive proxy with subscribe method
  */
 export function state(obj) {
   const listeners = {};
@@ -47,7 +47,7 @@ export function state(obj) {
    * @param {string} key 
    * @param {function} fn 
    */
-  proxy.$subscribe = (key, fn) => {
+  proxy.subscribe = (key, fn) => {
     if (!listeners[key]) listeners[key] = [];
     listeners[key].push(fn);
     fn(proxy[key]); // initialize

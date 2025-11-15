@@ -1,17 +1,32 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>Lume-JS Bind Example</title>
-  </head>
-  <body>
-    <h2>Counter Example</h2>
-    <p>Count: <span data-bind="count"></span></p>
-    <p>User Name: <span data-bind="user.name"></span></p>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lume.js Examples</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    h1 { margin-bottom: 1rem; }
+    ul { list-style: none; padding: 0; }
+    li { margin: 0.5rem 0; }
+    a { text-decoration: none; color: #0070f3; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>Lume.js Examples</h1>
+  <ul id="examples-list"></ul>
 
-    <button id="inc">Increment</button>
-    <button id="changeName">Change Name</button>
+  <script type="module">
+    const response = await fetch("/__examples.json");
+    const examples = await response.json();
 
-    <script type="module" src="./main.js"></script>
-  </body>
+    const list = document.getElementById("examples-list");
+    examples.forEach(name => {
+      const li = document.createElement("li");
+      li.innerHTML = `<a href="/examples/${name}/">${name}</a>`;
+      list.appendChild(li);
+    });
+  </script>
+</body>
 </html>

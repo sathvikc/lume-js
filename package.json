@@ -4,7 +4,7 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "dev": "vite examples",
+    "dev": "vite",
     "build": "echo 'No build step yet, zero-runtime already!'"
   },
   "files": [
