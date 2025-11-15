@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { state } from '../../src/core/state.js';
+import { state } from 'src/core/state.js';
 
 describe('state', () => {
   it('throws for non-object inputs', () => {

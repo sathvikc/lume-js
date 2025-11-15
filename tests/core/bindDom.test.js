@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { state } from '../../src/core/state.js';
-import { bindDom } from '../../src/core/bindDom.js';
+import { state } from 'src/core/state.js';
+import { bindDom } from 'src/core/bindDom.js';
 
 function setupDOM(html) {
   document.body.innerHTML = html;

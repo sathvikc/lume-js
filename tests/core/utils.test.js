@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolvePath } from '../../src/core/utils.js';
+import { resolvePath } from 'src/core/utils.js';
 
 describe('resolvePath', () => {
   it('returns the object when path is empty', () => {

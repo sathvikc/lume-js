@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import * as addons from '../../src/addons/index.js';
+import * as addons from 'src/addons/index.js';
 
 describe('addons public API', () => {
   it('exposes computed and watch', () => {

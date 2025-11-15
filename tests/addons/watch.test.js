@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { state } from '../../src/core/state.js';
-import { watch } from '../../src/addons/watch.js';
+import { state } from 'src/core/state.js';
+import { watch } from 'src/addons/watch.js';
 
 describe('watch', () => {
   it('delegates to $subscribe and returns unsubscribe', () => {

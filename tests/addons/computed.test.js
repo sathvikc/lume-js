@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { state } from '../../src/core/state.js';
-import { computed } from '../../src/addons/computed.js';
+import { state } from 'src/core/state.js';
+import { computed } from 'src/addons/computed.js';
 
 describe('computed', () => {
   it('computes a derived value lazily', () => {
