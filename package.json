@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "vite",
     "build": "echo 'No build step needed - zero-runtime library!'",
-    "preview": "vite preview"
+    "size": "node scripts/check-size.js"
   },
   "files": [
     "src",
