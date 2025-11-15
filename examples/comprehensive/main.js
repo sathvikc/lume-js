@@ -1,4 +1,4 @@
-import { state, bindDom } from '../src/index.js';
+import { state, bindDom } from 'lume-js';
 
 // Create reactive state
 const store = state({
