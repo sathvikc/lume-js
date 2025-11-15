@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lume.js - Comprehensive Example</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+      line-height: 1.6;
+    }
+    .example {
+      margin: 30px 0;
+      padding: 20px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+    }
+    .example h3 {
+      margin-top: 0;
+      color: #333;
+    }
+    input, select, textarea {
+      padding: 8px;
+      margin: 5px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    button {
+      padding: 8px 16px;
+      margin: 5px 5px 5px 0;
+      border: none;
+      border-radius: 4px;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    button:active {
+      background: #004085;
+    }
+    .output {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+    .note {
+      background: #fff3cd;
+      padding: 10px;
+      border-left: 4px solid #ffc107;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌟 Lume.js - Comprehensive Example</h1>
+  <p>All features demonstrated with <strong>standards-only</strong> HTML and JavaScript.</p>
+
+  <!-- Example 1: Basic Counter -->
+  <div class="example">
+    <h3>1. Basic Counter</h3>
+    <div class="output">Count: <span data-bind="count"></span></div>
+    <button id="increment">Increment</button>
+    <button id="decrement">Decrement</button>
+    <button id="reset">Reset</button>
+  </div>
+
+  <!-- Example 2: Two-way Binding -->
+  <div class="example">
+    <h3>2. Two-way Binding</h3>
+    <label>
+      Name: <input data-bind="user.name" placeholder="Enter your name">
+    </label>
+    <div class="output">Hello, <span data-bind="user.name"></span>!</div>
+  </div>
+
+  <!-- Example 3: Form Inputs -->
+  <div class="example">
+    <h3>3. Various Form Inputs</h3>
+    
+    <label>
+      Email: <input type="email" data-bind="form.email" placeholder="you@example.com">
+    </label><br>
+    
+    <label>
+      Age: <input type="number" data-bind="form.age" min="0" max="120">
+    </label><br>
+    
+    <label>
+      Bio: <textarea data-bind="form.bio" rows="3" placeholder="Tell us about yourself"></textarea>
+    </label><br>
+    
+    <label>
+      Theme: 
+      <select data-bind="form.theme">
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+        <option value="auto">Auto</option>
+      </select>
+    </label>
+    
+    <div class="output">
+      Email: <span data-bind="form.email"></span><br>
+      Age: <span data-bind="form.age"></span><br>
+      Bio: <span data-bind="form.bio"></span><br>
+      Theme: <span data-bind="form.theme"></span>
+    </div>
+  </div>
+
+  <!-- Example 4: Checkbox -->
+  <div class="example">
+    <h3>4. Checkbox Binding</h3>
+    <label>
+      <input type="checkbox" data-bind="settings.notifications">
+      Enable notifications
+    </label>
+    <div class="output">
+      Notifications: <span data-bind="settings.notifications"></span>
+    </div>
+  </div>
+
+  <!-- Example 5: Manual Subscriptions -->
+  <div class="example">
+    <h3>5. Manual Subscriptions ($subscribe)</h3>
+    <button id="trigger">Trigger Event</button>
+    <div class="output" id="log">Events will appear here...</div>
+    <div class="note">
+      <strong>Note:</strong> Using $subscribe() for custom logic when state changes
+    </div>
+  </div>
+
+  <!-- Example 6: Cleanup -->
+  <div class="example">
+    <h3>6. Cleanup Demo</h3>
+    <button id="startUpdates">Start Updates</button>
+    <button id="stopUpdates">Stop Updates</button>
+    <div class="output">
+      Timer: <span id="timerDisplay">0</span>
+    </div>
+    <div class="note">
+      <strong>Note:</strong> Always cleanup subscriptions to prevent memory leaks
+    </div>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
