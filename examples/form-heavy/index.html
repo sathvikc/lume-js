@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lume.js Multi-Step Registration Form</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2em;
+    }
+    .container {
+      max-width: 520px;
+      width: 100%;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      padding: 1.5em;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 0.3em;
+      font-size: 1.6em;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 1.2em;
+      font-size: 0.9em;
+    }
+    
+    /* Stepper */
+    .stepper {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 1em;
+    }
+    .step {
+      flex: 1;
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      transition: background 0.3s ease;
+    }
+    .step.active {
+      background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+    .step-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.8em;
+      font-size: 0.85em;
+      color: #888;
+    }
+    .step-labels span {
+      transition: color 0.3s ease, font-weight 0.3s ease;
+    }
+    .step-labels span.active {
+      color: #667eea;
+      font-weight: 600;
+    }
+    
+    /* Progress */
+    .progress {
+      height: 6px;
+      background: #f0f0f0;
+      border-radius: 3px;
+      margin-bottom: 1.2em;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      border-radius: 3px;
+      transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 0%;
+    }
+    
+    /* Form Content */
+    #stepContent {
+      position: relative;
+    }
+    .step-container {
+      animation: fadeIn 0.4s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Field Groups */
+    .field-group {
+      margin-bottom: 1em;
+      position: relative;
+    }
+    .field-group label {
+      display: block;
+      margin-bottom: 0.5em;
+      font-weight: 500;
+      color: #333;
+      font-size: 0.95em;
+    }
+    .field-group input,
+    .field-group select,
+    .field-group textarea {
+      width: 100%;
+      padding: 0.75em;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 1em;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .field-group input:focus,
+    .field-group select:focus,
+    .field-group textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .field-group input.error-field,
+    .field-group select.error-field {
+      border-color: #ef4444;
+    }
+    .field-group input.input-success {
+      border-color: #10b981;
+      padding-right: 2.5em;
+    }
+    
+    /* Input wrapper for icons/buttons */
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-wrapper input {
+      flex: 1;
+    }
+    .input-icon {
+      position: absolute;
+      right: 0.75em;
+      pointer-events: none;
+      font-size: 1.2em;
+    }
+    .input-success ~ .input-icon::after {
+      content: '✓';
+      color: #10b981;
+    }
+    .toggle-password {
+      position: absolute;
+      right: 0.5em;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0.25em 0.5em;
+      font-size: 1.2em;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+      flex: none;
+    }
+    .toggle-password:hover {
+      opacity: 1;
+    }
+    
+    /* Errors */
+    .error {
+      color: #ef4444;
+      font-size: 0.85em;
+      margin-top: 0.4em;
+      display: block;
+      /* min-height: 1.2em; */
+    }
+    
+    /* Username status */
+    .username-status {
+      font-size: 0.85em;
+      margin-top: 0.4em;
+      display: block;
+    }
+    .username-status.loading {
+      color: #667eea;
+    }
+    .username-status.loading::after {
+      content: '...';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+    .username-status.available {
+      color: #10b981;
+      font-weight: 500;
+    }
+    
+    /* Tooltips */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      margin-left: 0.3em;
+      cursor: help;
+    }
+    .tooltip-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      background: #667eea;
+      color: white;
+      border-radius: 50%;
+      font-size: 0.75em;
+      font-weight: bold;
+    }
+    .tooltip-text {
+      visibility: hidden;
+      opacity: 0;
+      position: absolute;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: white;
+      padding: 0.5em 0.75em;
+      border-radius: 6px;
+      font-size: 0.85em;
+      white-space: nowrap;
+      z-index: 10;
+      transition: opacity 0.3s ease;
+    }
+    .tooltip-text::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: #333;
+    }
+    .tooltip:hover .tooltip-text,
+    .tooltip:focus .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+    
+    /* Password Strength */
+    .password-strength {
+      margin-top: 0.5em;
+      font-size: 0.85em;
+    }
+    .strength-bar {
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      margin-top: 0.3em;
+      overflow: hidden;
+    }
+    .strength-fill {
+      height: 100%;
+      transition: width 0.3s ease, background 0.3s ease;
+      border-radius: 2px;
+    }
+    .strength-fill.weak { width: 33%; background: #ef4444; }
+    .strength-fill.medium { width: 66%; background: #f59e0b; }
+    .strength-fill.strong { width: 100%; background: #10b981; }
+    
+    /* Loading */
+    .loading {
+      font-size: 0.85em;
+      color: #667eea;
+      margin-top: 0.3em;
+    }
+    .loading::after {
+      content: '...';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
+    }
+    
+    /* Radio/Checkbox */
+    .radio-group,
+    .checkbox-group {
+      display: flex;
+      gap: 1.5em;
+      flex-wrap: wrap;
+    }
+    .radio-group label,
+    .checkbox-group label {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0;
+      font-weight: normal;
+      cursor: pointer;
+    }
+    .radio-group input,
+    .checkbox-group input {
+      width: auto;
+      margin-right: 0.5em;
+    }
+    
+    /* Review */
+    .review-list {
+      background: #f9fafb;
+      padding: 1.5em;
+      border-radius: 8px;
+      margin-bottom: 1em;
+    }
+    .review-list h3 {
+      margin-bottom: 1em;
+      color: #333;
+      font-size: 1.1em;
+    }
+    .review-list ul {
+      list-style: none;
+    }
+    .review-list li {
+      padding: 0.5em 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .review-list li:last-child {
+      border-bottom: none;
+    }
+    .review-list strong {
+      color: #667eea;
+      margin-right: 0.5em;
+    }
+    
+    /* Actions */
+    .actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 1em;
+      margin-top: 1.2em;
+    }
+    button {
+      flex: 1;
+      padding: 0.9em 1.5em;
+      border: none;
+      border-radius: 6px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #prevBtn {
+      background: #e0e0e0;
+      color: #333;
+    }
+    #prevBtn:hover:not(:disabled) {
+      background: #d0d0d0;
+    }
+    #nextBtn,
+    #submitBtn {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+    }
+    #nextBtn:hover:not(:disabled),
+    #submitBtn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    /* Utility */
+    .hidden { display: none !important; }
+    .success-message {
+      background: #10b981;
+      color: white;
+      padding: 1em;
+      border-radius: 6px;
+      text-align: center;
+      animation: fadeIn 0.4s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Create Your Account</h1>
+    <p class="subtitle">Fill out the form below to get started</p>
+    
+    <div class="stepper" id="stepper"></div>
+    <div class="step-labels" id="stepLabels">
+      <span>Personal</span>
+      <span>Account</span>
+      <span>Preferences</span>
+      <span>Review</span>
+    </div>
+    
+    <form id="multiForm" autocomplete="off">
+      <div id="stepContent"></div>
+      <div class="actions">
+        <button type="button" id="prevBtn">Previous</button>
+        <button type="button" id="nextBtn">Next</button>
+        <button type="submit" id="submitBtn" class="hidden">Submit</button>
+      </div>
+    </form>
+  </div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
