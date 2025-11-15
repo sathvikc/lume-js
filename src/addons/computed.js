@@ -1,7 +1,21 @@
 /**
  * computed - creates a derived value based on state
+ * 
+ * NOTE: This is a basic implementation. For production use,
+ * consider more robust solutions with automatic dependency tracking.
+ * 
  * @param {Function} fn - function that computes value from state
- * @returns {Object} - { get: () => value, recompute: () => void, subscribe: (cb) => unsubscribe }
+ * @returns {Object} - { value, recompute, subscribe }
+ * 
+ * @example
+ * const store = state({ count: 0 });
+ * const doubled = computed(() => store.count * 2);
+ * 
+ * // Subscribe to changes
+ * doubled.subscribe(val => console.log('Doubled:', val));
+ * 
+ * // Manually trigger recomputation after state changes
+ * store.$subscribe('count', () => doubled.recompute());
  */
 export function computed(fn) {
   let value;
@@ -20,7 +34,7 @@ export function computed(fn) {
   };
 
   return {
-    get: () => {
+    get value() {
       if (dirty) recalc();
       return value;
     },
@@ -32,6 +46,7 @@ export function computed(fn) {
       subscribers.add(cb);
       // Immediately notify subscriber with current value
       if (!dirty) cb(value);
+      else recalc(); // Compute first time
       return () => subscribers.delete(cb); // unsubscribe function
     },
   };

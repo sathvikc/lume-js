@@ -3,10 +3,11 @@
  * @param {Object} store - reactive store created with state()
  * @param {string} key - key in store to watch
  * @param {Function} callback - called with new value
+ * @returns {Function} unsubscribe function
  */
 export function watch(store, key, callback) {
-  if (!store.subscribe) {
+  if (!store.$subscribe) {
     throw new Error("store must be created with state()");
   }
-  store.subscribe(key, callback);
+  return store.$subscribe(key, callback);
 }
