@@ -1,16 +1,53 @@
 {
   "name": "lume-js",
   "version": "0.2.1",
+  "description": "Minimal reactive state management using only standard JavaScript and HTML - no custom syntax, no build step required",
   "main": "src/index.js",
+  "types": "src/index.d.ts",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "echo 'No build step yet, zero-runtime already!'"
+    "build": "echo 'No build step needed - zero-runtime library!'",
+    "preview": "vite preview"
   },
   "files": [
-    "src"
+    "src",
+    "README.md",
+    "LICENSE"
   ],
+  "keywords": [
+    "reactive",
+    "state",
+    "dom",
+    "binding",
+    "standards",
+    "minimal",
+    "no-build",
+    "vanilla-js",
+    "data-bind",
+    "proxy",
+    "knockout",
+    "html-first",
+    "framework-agnostic",
+    "minimal-runtime",
+    "no-vdom",
+    "web-standards",
+    "lightweight"   
+  ],
+  "author": "Sathvik C",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sathvikc/lume-js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sathvikc/lume-js/issues"
+  },
+  "homepage": "https://github.com/sathvikc/lume-js#readme",
   "devDependencies": {
     "vite": "^7.1.9"
+  },
+  "engines": {
+    "node": ">=20.19.0"
   }
 }
