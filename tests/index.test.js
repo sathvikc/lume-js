@@ -2,11 +2,13 @@ import { describe, it, expect } from 'vitest';
 import * as api from 'src/index.js';
 
 describe('public API', () => {
-  it('exposes state and bindDom', () => {
+  it('exposes state, bindDom, and effect', () => {
     expect(api).toHaveProperty('state');
     expect(typeof api.state).toBe('function');
     expect(api).toHaveProperty('bindDom');
     expect(typeof api.bindDom).toBe('function');
+    expect(api).toHaveProperty('effect');
+    expect(typeof api.effect).toBe('function');
   });
 
   it('handles automatic microtask batching', async () => {

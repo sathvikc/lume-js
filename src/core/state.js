@@ -1,9 +1,9 @@
-// src/core/state.js
 /**
  * Lume-JS Reactive State Core
  *
  * Provides minimal reactive state with standard JavaScript.
  * Features automatic microtask batching for performance.
+ * Supports automatic dependency tracking for effects.
  * 
  * Features:
  * - Lightweight and Go-style
@@ -11,6 +11,7 @@
  * - $subscribe for listening to key changes
  * - Cleanup with unsubscribe
  * - Automatic microtask batching for all subscribers
+ * - Effect dependency tracking support
  *
  * Usage:
  *   import { state } from "lume-js";
@@ -55,8 +56,44 @@ export function state(obj) {
 
   const proxy = new Proxy(obj, {
     get(target, key) {
+      // Support effect tracking
+      // Check if we're inside an effect context
+      if (typeof globalThis.__LUME_CURRENT_EFFECT__ !== 'undefined') {
+        const currentEffect = globalThis.__LUME_CURRENT_EFFECT__;
+        
+        if (currentEffect && !currentEffect.tracking[key]) {
+          // Mark as tracked
+          currentEffect.tracking[key] = true;
+          
+          // Subscribe to changes for this key (skip initial call for effects)
+          const unsubscribe = (() => {
+            if (!listeners[key]) listeners[key] = [];
+            
+            const effectFn = () => {
+              // Use microtask to batch effect re-runs
+              queueMicrotask(() => {
+                currentEffect.execute();
+              });
+            };
+            
+            listeners[key].push(effectFn);
+            
+            // Return unsubscribe function (no initial call for effects)
+            return () => {
+              if (listeners[key]) {
+                listeners[key] = listeners[key].filter(subscriber => subscriber !== effectFn);
+              }
+            };
+          })();
+          
+          // Store cleanup function
+          currentEffect.cleanups.push(unsubscribe);
+        }
+      }
+      
       return target[key];
     },
+    
     set(target, key, value) {
       const oldValue = target[key];
       if (oldValue === value) return true;

@@ -86,3 +86,30 @@ export function bindDom(
   root: HTMLElement,
   store: ReactiveState<any>
 ): Unsubscribe;
+
+/**
+ * Create an effect that automatically tracks dependencies
+ * 
+ * The effect runs immediately and re-runs when any accessed state properties change.
+ * Only tracks properties that are actually accessed during execution.
+ * 
+ * @param fn - Function to run reactively
+ * @returns Cleanup function to stop the effect
+ * @throws {Error} If fn is not a function
+ * 
+ * @example
+ * ```typescript
+ * const store = state({ count: 0, name: 'Alice' });
+ * 
+ * const cleanup = effect(() => {
+ *   // Only tracks 'count' (name not accessed)
+ *   console.log(`Count: ${store.count}`);
+ * });
+ * 
+ * store.count = 5;    // Effect re-runs
+ * store.name = 'Bob'; // Effect does NOT re-run
+ * 
+ * cleanup(); // Stop the effect
+ * ```
+ */
+export function effect(fn: () => void): Unsubscribe;
