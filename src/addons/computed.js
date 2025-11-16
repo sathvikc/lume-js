@@ -1,53 +1,136 @@
 /**
- * computed - creates a derived value based on state
+ * Lume-JS Computed Addon
  * 
- * NOTE: This is a basic implementation. For production use,
- * consider more robust solutions with automatic dependency tracking.
+ * Creates computed values that automatically update when dependencies change.
+ * Uses core effect() for automatic dependency tracking.
  * 
- * @param {Function} fn - function that computes value from state
- * @returns {Object} - { value, recompute, subscribe }
+ * Usage:
+ *   import { computed } from "lume-js/addons/computed";
+ *   
+ *   const doubled = computed(() => store.count * 2);
+ *   console.log(doubled.value); // Auto-updates when store.count changes
+ * 
+ * Features:
+ * - Automatic dependency tracking (no manual recompute)
+ * - Cached values (only recomputes when dependencies change)
+ * - Subscribe to changes
+ * - Cleanup with dispose()
+ * 
+ * @module addons/computed
+ */
+
+import { effect } from '../core/effect.js';
+
+/**
+ * Creates a computed value with automatic dependency tracking
+ * 
+ * The computation function runs immediately and tracks which state
+ * properties are accessed. When any dependency changes, the value
+ * is automatically recomputed.
+ * 
+ * @param {function} fn - Function that computes the value
+ * @returns {object} Object with .value property and methods
  * 
  * @example
- * const store = state({ count: 0 });
+ * const store = state({ count: 5 });
+ * 
  * const doubled = computed(() => store.count * 2);
+ * console.log(doubled.value); // 10
  * 
+ * store.count = 10;
+ * // After microtask:
+ * console.log(doubled.value); // 20 (auto-updated)
+ * 
+ * @example
  * // Subscribe to changes
- * doubled.subscribe(val => console.log('Doubled:', val));
+ * const unsub = doubled.subscribe(value => {
+ *   console.log('Doubled changed to:', value);
+ * });
  * 
- * // Manually trigger recomputation after state changes
- * store.$subscribe('count', () => doubled.recompute());
+ * @example
+ * // Cleanup
+ * doubled.dispose();
  */
 export function computed(fn) {
-  let value;
-  let dirty = true;
-  const subscribers = new Set();
+  if (typeof fn !== 'function') {
+    throw new Error('computed() requires a function');
+  }
 
-  const recalc = () => {
+  let cachedValue;
+  let isInitialized = false;
+  const subscribers = [];
+  
+  // Use effect to automatically track dependencies
+  const cleanupEffect = effect(() => {
     try {
-      value = fn();
-    } catch (err) {
-      console.error("[computed] Error computing value:", err);
-      value = undefined;
+      const newValue = fn();
+      
+      // Check if value actually changed
+      if (!isInitialized || newValue !== cachedValue) {
+        cachedValue = newValue;
+        isInitialized = true;
+        
+        // Notify all subscribers
+        subscribers.forEach(callback => callback(cachedValue));
+      }
+    } catch (error) {
+      console.error('[Lume.js computed] Error in computation:', error);
+      // Set to undefined on error, mark as initialized
+      if (!isInitialized || cachedValue !== undefined) {
+        cachedValue = undefined;
+        isInitialized = true;
+        
+        // Notify subscribers of error state
+        subscribers.forEach(callback => callback(cachedValue));
+      }
     }
-    dirty = false;
-    subscribers.forEach(cb => cb(value));
-  };
-
+  });
+  
   return {
+    /**
+     * Get the current computed value
+     */
     get value() {
-      if (dirty) recalc();
-      return value;
+      if (!isInitialized) {
+        throw new Error('Computed value accessed before initialization');
+      }
+      return cachedValue;
     },
-    recompute: () => {
-      dirty = true;
-      recalc();
+    
+    /**
+     * Subscribe to changes in computed value
+     * 
+     * @param {function} callback - Called when value changes
+     * @returns {function} Unsubscribe function
+     */
+    subscribe(callback) {
+      if (typeof callback !== 'function') {
+        throw new Error('subscribe() requires a function');
+      }
+      
+      subscribers.push(callback);
+      
+      // Call immediately with current value
+      if (isInitialized) {
+        callback(cachedValue);
+      }
+      
+      // Return unsubscribe function
+      return () => {
+        const index = subscribers.indexOf(callback);
+        if (index > -1) {
+          subscribers.splice(index, 1);
+        }
+      };
     },
-    subscribe: cb => {
-      subscribers.add(cb);
-      // Immediately notify subscriber with current value
-      if (!dirty) cb(value);
-      else recalc(); // Compute first time
-      return () => subscribers.delete(cb); // unsubscribe function
-    },
+    
+    /**
+     * Clean up computed value and stop tracking
+     */
+    dispose() {
+      cleanupEffect();
+      subscribers.length = 0;
+      isInitialized = false;
+    }
   };
 }
