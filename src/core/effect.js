@@ -19,7 +19,7 @@
  * - Automatic dependency collection
  * - Dynamic dependencies (tracks what you actually access)
  * - Returns cleanup function
- * - Works with batching (one effect run per batch)
+ * - Plays nicely with per-state batching (no global scheduler)
  *
  */
 
@@ -56,6 +56,10 @@ export function effect(fn) {
   
   /**
    * Execute the effect function and collect dependencies
+   *
+   * The execution re-tracks accessed keys on every run. Subscriptions
+   * are cleaned up and re-established so the effect always reflects
+   * current dependencies.
    */
   const execute = () => {
     if (isRunning) return; // Prevent re-entry
@@ -68,7 +72,7 @@ export function effect(fn) {
     const effectContext = {
       fn,
       cleanups,
-      execute,
+      execute, // Reference to this execute function
       tracking: {} // Map of tracked keys
     };
     

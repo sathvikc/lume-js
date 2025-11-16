@@ -10,8 +10,8 @@
  * - Explicit nested states
  * - $subscribe for listening to key changes
  * - Cleanup with unsubscribe
- * - Automatic microtask batching for all subscribers
- * - Effect dependency tracking support
+ * - Per-state microtask batching for writes
+ * - Effect dependency tracking support (deduped per state flush)
  *
  * Usage:
  *   import { state } from "lume-js";
@@ -20,25 +20,8 @@
  *   unsub(); // cleanup
  */
 
-const pendingNotifications = new Map();
-let flushScheduled = false;
-
-function scheduleFlush(listeners) {
-  if (flushScheduled) return;
-  
-  flushScheduled = true;
-  queueMicrotask(() => {
-    flushScheduled = false;
-    
-    for (const [key, value] of pendingNotifications) {
-      if (listeners[key]) {
-        listeners[key].forEach(fn => fn(value));
-      }
-    }
-    
-    pendingNotifications.clear();
-  });
-}
+// Per-state batching – each state object maintains its own microtask flush.
+// This keeps effects simple and aligned with Lume's minimal philosophy.
 
 /**
  * Creates a reactive state object.
@@ -53,6 +36,43 @@ export function state(obj) {
   }
 
   const listeners = {};
+  const pendingNotifications = new Map(); // Per-state pending changes
+  const pendingEffects = new Set(); // Dedupe effects per state
+  let flushScheduled = false;
+
+  /**
+   * Schedule a single microtask flush for this state object.
+   *
+   * Flush order per state:
+   * 1) Notify subscribers for changed keys (key → subscribers)
+   * 2) Run each queued effect exactly once (Set-based dedupe)
+   *
+   * Notes:
+   * - Batching is per state; effects that depend on multiple states
+   *   may run once per state that changed (by design).
+   */
+  function scheduleFlush() {
+    if (flushScheduled) return;
+    
+    flushScheduled = true;
+    queueMicrotask(() => {
+      flushScheduled = false;
+      
+      // Notify all subscribers of changed keys
+      for (const [key, value] of pendingNotifications) {
+        if (listeners[key]) {
+          listeners[key].forEach(fn => fn(value));
+        }
+      }
+      
+      pendingNotifications.clear();
+      
+      // Run each effect exactly once (Set deduplicates)
+      const effects = Array.from(pendingEffects);
+      pendingEffects.clear();
+      effects.forEach(effect => effect());
+    });
+  }
 
   const proxy = new Proxy(obj, {
     get(target, key) {
@@ -70,10 +90,9 @@ export function state(obj) {
             if (!listeners[key]) listeners[key] = [];
             
             const effectFn = () => {
-              // Use microtask to batch effect re-runs
-              queueMicrotask(() => {
-                currentEffect.execute();
-              });
+              // Queue effect in this state's pending set
+              // Set deduplicates - effect runs once even if multiple keys change
+              pendingEffects.add(currentEffect.execute);
             };
             
             listeners[key].push(effectFn);
@@ -100,9 +119,9 @@ export function state(obj) {
       
       target[key] = value;
       
-      // Batch notifications at the state level
+      // Batch notifications at the state level (per-state, not global)
       pendingNotifications.set(key, value);
-      scheduleFlush(listeners);
+      scheduleFlush();
       
       return true;
     }
