@@ -35,7 +35,7 @@ export function bindDom(root, store) {
   }
 
   const nodes = root.querySelectorAll("[data-bind]");
-  const unsubscribers = [];
+  const cleanups = [];
 
   nodes.forEach(el => {
     const bindPath = el.getAttribute("data-bind");
@@ -61,24 +61,24 @@ export function bindDom(root, store) {
       return;
     }
 
-    // Subscribe to changes
-    const unsub = target.$subscribe(lastKey, val => {
+    // Subscribe to changes - receives already-batched notifications
+    const unsubscribe = target.$subscribe(lastKey, val => {
       updateElement(el, val);
     });
-
-    unsubscribers.push(unsub);
+    cleanups.push(unsubscribe);
 
     // Two-way binding for form inputs
     if (isFormInput(el)) {
-      el.addEventListener("input", e => {
+      const handler = e => {
         target[lastKey] = getInputValue(e.target);
-      });
+      };
+      el.addEventListener("input", handler);
+      cleanups.push(() => el.removeEventListener("input", handler));
     }
   });
 
-  // Return cleanup function
   return () => {
-    unsubscribers.forEach(unsub => unsub());
+    cleanups.forEach(cleanup => cleanup());
   };
 }
 

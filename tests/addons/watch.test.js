@@ -3,7 +3,7 @@ import { state } from 'src/core/state.js';
 import { watch } from 'src/addons/watch.js';
 
 describe('watch', () => {
-  it('delegates to $subscribe and returns unsubscribe', () => {
+  it('delegates to $subscribe and returns unsubscribe', async () => {
     const store = state({ msg: 'a' });
     const spy = vi.fn();
 
@@ -13,11 +13,13 @@ describe('watch', () => {
 
     spy.mockClear();
     store.msg = 'b';
+    await Promise.resolve(); // Wait for microtask batch
     expect(spy).toHaveBeenCalledWith('b');
 
     spy.mockClear();
     unwatch();
     store.msg = 'c';
+    await Promise.resolve(); // Wait for microtask batch
     expect(spy).not.toHaveBeenCalled();
   });
 

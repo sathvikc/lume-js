@@ -3,12 +3,14 @@
  * Lume-JS Reactive State Core
  *
  * Provides minimal reactive state with standard JavaScript.
+ * Features automatic microtask batching for performance.
  * 
  * Features:
  * - Lightweight and Go-style
  * - Explicit nested states
  * - $subscribe for listening to key changes
  * - Cleanup with unsubscribe
+ * - Automatic microtask batching for all subscribers
  *
  * Usage:
  *   import { state } from "lume-js";
@@ -16,6 +18,26 @@
  *   const unsub = store.$subscribe("count", val => console.log(val));
  *   unsub(); // cleanup
  */
+
+const pendingNotifications = new Map();
+let flushScheduled = false;
+
+function scheduleFlush(listeners) {
+  if (flushScheduled) return;
+  
+  flushScheduled = true;
+  queueMicrotask(() => {
+    flushScheduled = false;
+    
+    for (const [key, value] of pendingNotifications) {
+      if (listeners[key]) {
+        listeners[key].forEach(fn => fn(value));
+      }
+    }
+    
+    pendingNotifications.clear();
+  });
+}
 
 /**
  * Creates a reactive state object.
@@ -31,25 +53,20 @@ export function state(obj) {
 
   const listeners = {};
 
-  // Notify subscribers of a key
-  function notify(key, val) {
-    if (listeners[key]) {
-      listeners[key].forEach(fn => fn(val));
-    }
-  }
-
   const proxy = new Proxy(obj, {
     get(target, key) {
       return target[key];
     },
     set(target, key, value) {
       const oldValue = target[key];
+      if (oldValue === value) return true;
+      
       target[key] = value;
       
-      // Only notify if value actually changed
-      if (oldValue !== value) {
-        notify(key, value);
-      }
+      // Batch notifications at the state level
+      pendingNotifications.set(key, value);
+      scheduleFlush(listeners);
+      
       return true;
     }
   });
@@ -71,7 +88,7 @@ export function state(obj) {
     if (!listeners[key]) listeners[key] = [];
     listeners[key].push(fn);
     
-    // Call immediately with current value
+    // Call immediately with current value (NOT batched)
     fn(proxy[key]);
 
     // Return unsubscribe function

@@ -8,7 +8,7 @@ function setupDOM(html) {
 }
 
 describe('bindDom', () => {
-  it('binds text content for non-input elements', () => {
+  it('binds text content for non-input elements', async () => {
     const root = setupDOM(`<div><span data-bind="count"></span></div>`);
     const store = state({ count: 1 });
 
@@ -16,12 +16,13 @@ describe('bindDom', () => {
     expect(root.querySelector('span').textContent).toBe('1');
 
     store.count = 2;
+    await Promise.resolve(); // Wait for microtask batch
     expect(root.querySelector('span').textContent).toBe('2');
 
     cleanup();
   });
 
-  it('supports two-way binding for input value', () => {
+  it('supports two-way binding for input value', async () => {
     const root = setupDOM(`<div><input data-bind="name" /></div>`);
     const store = state({ name: 'Alice' });
 
@@ -33,12 +34,15 @@ describe('bindDom', () => {
 
     // programmatic state change updates input
     store.name = 'Bob';
+    await Promise.resolve(); // Wait for microtask batch
     expect(input.value).toBe('Bob');
 
     // nullish values map to empty string via ??
     store.name = null;
+    await Promise.resolve(); // Wait for microtask batch
     expect(input.value).toBe('');
     store.name = undefined;
+    await Promise.resolve(); // Wait for microtask batch
     expect(input.value).toBe('');
 
     // user typing updates state
@@ -49,7 +53,7 @@ describe('bindDom', () => {
     cleanup();
   });
 
-  it('handles checkbox binding', () => {
+  it('handles checkbox binding', async () => {
     const root = setupDOM(`<div><input type="checkbox" data-bind="done" /></div>`);
     const store = state({ done: false });
 
@@ -58,6 +62,7 @@ describe('bindDom', () => {
 
     expect(input.checked).toBe(false);
     store.done = true;
+    await Promise.resolve(); // Wait for microtask batch
     expect(input.checked).toBe(true);
 
     input.checked = false;
@@ -79,7 +84,7 @@ describe('bindDom', () => {
     warnSpy.mockRestore();
   });
 
-  it('binds select dropdown value', () => {
+  it('binds select dropdown value', async () => {
     const root = setupDOM(`
       <div>
         <select data-bind="theme">
@@ -96,10 +101,12 @@ describe('bindDom', () => {
     expect(select.value).toBe('dark');
 
     store.theme = 'light';
+    await Promise.resolve(); // Wait for microtask batch
     expect(select.value).toBe('light');
 
     // nullish selects become empty string via ??
     store.theme = undefined;
+    await Promise.resolve(); // Wait for microtask batch
     expect(select.value).toBe('');
 
     select.value = 'dark';
@@ -109,7 +116,7 @@ describe('bindDom', () => {
     cleanup();
   });
 
-  it('binds radio buttons', () => {
+  it('binds radio buttons', async () => {
     const root = setupDOM(`
       <div>
         <input type="radio" name="size" value="small" data-bind="size" />
@@ -125,13 +132,14 @@ describe('bindDom', () => {
     expect(radios[1].checked).toBe(true);
 
     store.size = 'small';
+    await Promise.resolve(); // Wait for microtask batch
     expect(radios[0].checked).toBe(true);
     expect(radios[1].checked).toBe(false);
 
     cleanup();
   });
 
-  it('binds number inputs with valueAsNumber', () => {
+  it('binds number inputs with valueAsNumber', async () => {
     const root = setupDOM(`<div><input type="number" data-bind="age" /></div>`);
     const store = state({ age: 25 });
 
@@ -141,6 +149,7 @@ describe('bindDom', () => {
     expect(input.value).toBe('25');
 
     store.age = 30;
+    await Promise.resolve(); // Wait for microtask batch
     expect(input.value).toBe('30');
 
     input.value = '35';
@@ -150,7 +159,7 @@ describe('bindDom', () => {
     cleanup();
   });
 
-  it('binds textarea elements', () => {
+  it('binds textarea elements', async () => {
     const root = setupDOM(`<div><textarea data-bind="bio"></textarea></div>`);
     const store = state({ bio: 'Hello world' });
 
@@ -160,12 +169,15 @@ describe('bindDom', () => {
     expect(textarea.value).toBe('Hello world');
 
     store.bio = 'Updated bio';
+    await Promise.resolve(); // Wait for microtask batch
     expect(textarea.value).toBe('Updated bio');
 
     // nullish values map to empty string via ??
     store.bio = null;
+    await Promise.resolve(); // Wait for microtask batch
     expect(textarea.value).toBe('');
     store.bio = undefined;
+    await Promise.resolve(); // Wait for microtask batch
     expect(textarea.value).toBe('');
 
     textarea.value = 'User typed';
@@ -175,7 +187,7 @@ describe('bindDom', () => {
     cleanup();
   });
 
-  it('handles nested state paths', () => {
+  it('handles nested state paths', async () => {
     const root = setupDOM(`<div><span data-bind="user.name"></span></div>`);
     const userStore = state({ name: 'Alice' });
     const store = state({ user: userStore });
@@ -186,12 +198,13 @@ describe('bindDom', () => {
     expect(span.textContent).toBe('Alice');
 
     userStore.name = 'Bob';
+    await Promise.resolve(); // Wait for microtask batch
     expect(span.textContent).toBe('Bob');
 
     cleanup();
   });
 
-  it('handles empty or null values gracefully', () => {
+  it('handles empty or null values gracefully', async () => {
     const root = setupDOM(`<div><span data-bind="value"></span></div>`);
     const store = state({ value: null });
 
@@ -201,9 +214,11 @@ describe('bindDom', () => {
     expect(span.textContent).toBe('');
 
     store.value = undefined;
+    await Promise.resolve(); // Wait for microtask batch
     expect(span.textContent).toBe('');
 
     store.value = 'text';
+    await Promise.resolve(); // Wait for microtask batch
     expect(span.textContent).toBe('text');
 
     cleanup();
@@ -243,7 +258,7 @@ describe('bindDom', () => {
     warnSpy.mockRestore();
   });
 
-  it('updates multiple nodes bound to the same key', () => {
+  it('updates multiple nodes bound to the same key', async () => {
     const root = setupDOM(`
       <div>
         <span data-bind="count"></span>
@@ -262,6 +277,7 @@ describe('bindDom', () => {
     expect(input.value).toBe('1');
 
     store.count = 5;
+    await Promise.resolve(); // Wait for microtask batch
     expect(spans[0].textContent).toBe('5');
     expect(spans[1].textContent).toBe('5');
     expect(input.value).toBe('5');
@@ -269,6 +285,7 @@ describe('bindDom', () => {
     input.value = '6';
     input.dispatchEvent(new Event('input', { bubbles: true }));
     expect(store.count).toBe('6');
+    await Promise.resolve(); // Wait for microtask batch
     expect(spans[0].textContent).toBe('6');
     expect(spans[1].textContent).toBe('6');
 
@@ -311,7 +328,7 @@ describe('bindDom', () => {
     cleanup();
   });
 
-  it('range input uses valueAsNumber (right side of OR)', () => {
+  it('range input uses valueAsNumber (right side of OR)', async () => {
     const root = setupDOM(`<div><input type="range" min="0" max="10" data-bind="level" /></div>`);
     const store = state({ level: 0 });
 
@@ -320,6 +337,7 @@ describe('bindDom', () => {
 
     // programmatic state updates UI
     store.level = 7;
+    await Promise.resolve(); // Wait for microtask batch
     expect(input.value).toBe('7');
 
     // user input updates state via valueAsNumber (right-hand branch)
