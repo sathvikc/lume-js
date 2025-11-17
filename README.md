@@ -5,7 +5,7 @@
 Minimal reactive state management using only standard JavaScript and HTML - no custom syntax, no build step required, no framework lock-in.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.2.1-green.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-0.3.0-green.svg)](package.json)
 
 ## Why Lume.js?
 
@@ -43,13 +43,26 @@ npm install lume-js
 
 ```html
 <script type="module">
-  import { state, bindDom } from 'https://cdn.jsdelivr.net/npm/lume-js/src/index.js';
+  import { state, bindDom, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/src/index.js';
+  
+  // For addons:
+  import { computed, watch } from 'https://cdn.jsdelivr.net/npm/lume-js/src/addons/index.js';
 </script>
 ```
 
 ---
 
 ## Quick Start
+
+### Examples
+
+Run the live examples (including the new Todo app) with Vite:
+
+```bash
+npm run dev
+```
+
+Then open the Examples index (Vite will auto-open): `http://localhost:5173/examples/`
 
 **HTML:**
 ```html
@@ -64,7 +77,7 @@ npm install lume-js
 
 **JavaScript:**
 ```javascript
-import { state, bindDom } from 'lume-js';
+import { state, bindDom, effect } from 'lume-js';
 
 // Create reactive state
 const store = state({
@@ -72,8 +85,13 @@ const store = state({
   name: 'World'
 });
 
-// Bind to DOM
+// Bind to DOM (updates on state changes)
 const cleanup = bindDom(document.body, store);
+
+// Auto-update document title when name changes
+const effectCleanup = effect(() => {
+  document.title = `Hello, ${store.name}!`;
+});
 
 // Update state with standard JavaScript
 document.getElementById('increment').addEventListener('click', () => {
@@ -81,7 +99,10 @@ document.getElementById('increment').addEventListener('click', () => {
 });
 
 // Cleanup when done (important!)
-window.addEventListener('beforeunload', () => cleanup());
+window.addEventListener('beforeunload', () => {
+  cleanup();
+  effectCleanup();
+});
 ```
 
 That's it! No build step, no custom syntax, just HTML and JavaScript.
@@ -92,7 +113,7 @@ That's it! No build step, no custom syntax, just HTML and JavaScript.
 
 ### `state(object)`
 
-Creates a reactive state object using Proxy.
+Creates a reactive state object using Proxy with automatic dependency tracking.
 
 ```javascript
 const store = state({
@@ -109,9 +130,39 @@ store.user.name = 'Bob';
 ```
 
 **Features:**
+- ✅ Automatic dependency tracking for effects
+- ✅ Per-state microtask batching for performance
 - ✅ Validates input (must be plain object)
 - ✅ Only triggers updates when value actually changes
 - ✅ Returns cleanup function from `$subscribe`
+- ✅ Deduplicates effect runs per flush cycle
+
+### `effect(fn)`
+
+Creates an effect that automatically tracks dependencies and re-runs when they change.
+
+```javascript
+const store = state({ count: 0, name: 'Alice' });
+
+const cleanup = effect(() => {
+  // Only tracks 'count' (name is not accessed)
+  console.log(`Count: ${store.count}`);
+});
+
+store.count = 5;    // Effect re-runs
+store.name = 'Bob'; // Effect does NOT re-run
+
+cleanup(); // Stop the effect
+```
+
+**Features:**
+- ✅ Automatic dependency collection (tracks what you actually access)
+- ✅ Dynamic dependencies (re-tracks on every execution)
+- ✅ Returns cleanup function
+- ✅ Prevents infinite recursion
+- ✅ Integrates with per-state batching (no global scheduler)
+
+**How it works:** Effects use `globalThis.__LUME_CURRENT_EFFECT__` to track which state properties are accessed during execution. When any tracked property changes, the effect is queued in that state's pending effects set and runs once in the next microtask.
 
 ### `bindDom(root, store)`
 
@@ -134,14 +185,15 @@ cleanup();
 - ✅ Radio buttons: `<input type="radio" data-bind="choice">`
 - ✅ Nested paths: `<span data-bind="user.name"></span>`
 
-**NEW in v0.3.0:**
-- Returns cleanup function
-- Better error messages with `[Lume.js]` prefix
-- Handles edge cases (empty bindings, invalid paths)
+**Features:**
+- ✅ Returns cleanup function
+- ✅ Better error messages with `[Lume.js]` prefix
+- ✅ Handles edge cases (empty bindings, invalid paths)
+- ✅ Two-way binding for form inputs
 
 ### `$subscribe(key, callback)`
 
-Manually subscribe to state changes. Returns unsubscribe function.
+Manually subscribe to state changes. Calls callback immediately with current value, then on every change.
 
 ```javascript
 const unsubscribe = store.$subscribe('count', (value) => {
@@ -157,10 +209,71 @@ const unsubscribe = store.$subscribe('count', (value) => {
 unsubscribe();
 ```
 
-**NEW in v0.3.0:**
-- Returns unsubscribe function (was missing in v0.2.x)
-- Validates callback is a function
-- Only notifies on actual value changes
+**Features:**
+- ✅ Returns unsubscribe function
+- ✅ Validates callback is a function
+- ✅ Calls immediately with current value (not batched)
+- ✅ Only notifies on actual value changes (via batching)
+
+---
+
+## Addons
+
+Lume.js provides optional addons for advanced reactivity patterns. Import from `lume-js/addons`.
+
+### `computed(fn)`
+
+Creates a computed value that automatically updates when its dependencies change.
+
+```javascript
+import { state, effect } from 'lume-js';
+import { computed } from 'lume-js/addons';
+
+const store = state({ count: 5 });
+
+const doubled = computed(() => store.count * 2);
+console.log(doubled.value); // 10
+
+store.count = 10;
+// After microtask:
+console.log(doubled.value); // 20 (auto-updated)
+
+// Subscribe to changes
+const unsub = doubled.subscribe(value => {
+  console.log('Doubled:', value);
+});
+
+// Cleanup
+doubled.dispose();
+unsub();
+```
+
+**Features:**
+- ✅ Automatic dependency tracking using `effect()`
+- ✅ Cached values (only recomputes when dependencies change)
+- ✅ Subscribe to changes with `.subscribe(callback)`
+- ✅ Cleanup with `.dispose()`
+- ✅ Error handling (sets to undefined on error)
+
+### `watch(store, key, callback)`
+
+Alias for `$subscribe` - observes changes to a specific state key.
+
+```javascript
+import { state } from 'lume-js';
+import { watch } from 'lume-js/addons';
+
+const store = state({ count: 0 });
+
+const unwatch = watch(store, 'count', (value) => {
+  console.log('Count is now:', value);
+});
+
+// Cleanup
+unwatch();
+```
+
+**Note:** `watch()` is just a convenience wrapper around `store.$subscribe()`. Use whichever feels more natural.
 
 ---
 
@@ -262,14 +375,65 @@ window.addEventListener('beforeunload', () => {
 <input type="checkbox" data-bind="user.settings.notifications">
 ```
 
+### Using Effects for Auto-Updates
+
+```javascript
+import { state, effect } from 'lume-js';
+
+const store = state({ 
+  firstName: 'Alice', 
+  lastName: 'Smith' 
+});
+
+// Auto-update title when name changes
+effect(() => {
+  document.title = `${store.firstName} ${store.lastName}`;
+});
+
+store.firstName = 'Bob'; 
+// Title automatically updates to "Bob Smith" in next microtask
+```
+
+### Computed Values
+
+```javascript
+import { state } from 'lume-js';
+import { computed } from 'lume-js/addons';
+
+const cart = state({
+  items: state([
+    state({ price: 10, quantity: 2 }),
+    state({ price: 15, quantity: 1 })
+  ])
+});
+
+const total = computed(() => {
+  return cart.items.reduce((sum, item) => 
+    sum + (item.price * item.quantity), 0
+  );
+});
+
+console.log(total.value); // 35
+
+cart.items[0].quantity = 3;
+// After microtask:
+console.log(total.value); // 45
+```
+
 ### Integration with GSAP
 
 ```javascript
 import gsap from 'gsap';
-import { state } from 'lume-js';
+import { state, effect } from 'lume-js';
 
 const ui = state({ x: 0, y: 0 });
 
+// Use effect for automatic animation updates
+effect(() => {
+  gsap.to('.box', { x: ui.x, y: ui.y, duration: 0.5 });
+});
+
+// Or use $subscribe
 const unsubX = ui.$subscribe('x', (value) => {
   gsap.to('.box', { x: value, duration: 0.5 });
 });
@@ -283,17 +447,28 @@ window.addEventListener('beforeunload', () => unsubX());
 ### Cleanup Pattern (Important!)
 
 ```javascript
+import { state, effect, bindDom } from 'lume-js';
+import { computed } from 'lume-js/addons';
+
 const store = state({ data: [] });
 const cleanup = bindDom(root, store);
 
 const unsub1 = store.$subscribe('data', handleData);
 const unsub2 = store.$subscribe('status', handleStatus);
 
+const effectCleanup = effect(() => {
+  console.log('Data length:', store.data.length);
+});
+
+const total = computed(() => store.data.length * 2);
+
 // Cleanup when component unmounts
 function destroy() {
-  cleanup();      // Remove DOM bindings
-  unsub1();       // Remove subscription 1
-  unsub2();       // Remove subscription 2
+  cleanup();           // Remove DOM bindings
+  unsub1();            // Remove subscription 1
+  unsub2();            // Remove subscription 2
+  effectCleanup();     // Stop effect
+  total.dispose();     // Stop computed
 }
 
 // For SPA frameworks
@@ -380,25 +555,27 @@ document.addEventListener('click', () => store.clicks++);
 
 ---
 
-## What's New in v0.3.0?
+## What's New
 
-### Breaking Changes
-- ✅ `subscribe` → `$subscribe` (restored from v0.1.0)
-- ✅ `$subscribe` now returns unsubscribe function
+### Core Features
+- ✅ **Automatic dependency tracking** - `effect()` automatically tracks which state properties are accessed
+- ✅ **Per-state batching** - Each state object maintains its own microtask flush for optimal performance
+- ✅ **Effect deduplication** - Effects only run once per flush cycle, even if multiple dependencies change
+- ✅ **TypeScript support** - Full type definitions in `index.d.ts`
+- ✅ **Cleanup functions** - All reactive APIs return cleanup/unsubscribe functions
 
-### New Features
-- ✅ TypeScript definitions (`index.d.ts`)
-- ✅ `bindDom()` returns cleanup function
+### Addons
+- ✅ **`computed()`** - Memoized computed values with automatic dependency tracking
+- ✅ **`watch()`** - Convenience alias for `$subscribe`
+
+### API Design
+- ✅ `state()` - Create reactive state with automatic tracking support
+- ✅ `effect()` - Core reactivity primitive (automatic dependency collection)
+- ✅ `bindDom()` - DOM binding with two-way sync for form inputs
+- ✅ `$subscribe()` - Manual subscriptions (calls immediately with current value)
+- ✅ All functions return cleanup/unsubscribe functions
 - ✅ Better error handling with `[Lume.js]` prefix
-- ✅ Input validation (only plain objects)
-- ✅ Only triggers on actual value changes
-- ✅ Support for checkboxes, radio buttons, number inputs
-- ✅ Comprehensive example in `/examples/comprehensive/`
-
-### Bug Fixes
-- ✅ Fixed memory leaks (no cleanup in v0.2.x)
-- ✅ Fixed addon examples (used wrong API)
-- ✅ Better path resolution with detailed errors
+- ✅ Input validation on all public APIs
 
 ---
 
