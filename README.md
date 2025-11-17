@@ -5,7 +5,7 @@
 Minimal reactive state management using only standard JavaScript and HTML - no custom syntax, no build step required, no framework lock-in.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.3.0-green.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-0.4.0-green.svg)](package.json)
 
 ## Why Lume.js?
 
