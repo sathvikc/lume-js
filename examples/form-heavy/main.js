@@ -1,7 +1,23 @@
-import { state, bindDom } from 'lume-js';
+import { state, effect } from 'lume-js';
 import { computed } from 'lume-js/addons';
 
-// --- State ---
+/**
+ * Multi-Step Registration Form - Best Practice Example
+ * 
+ * Demonstrates:
+ * ✅ Computed state for validation (memoized, auto-updating)
+ * ✅ Declarative validation schema (reduces boilerplate)
+ * ✅ Focused effects for UI updates (granular reactivity)
+ * ✅ Manual event listeners for inputs (no re-render on typing)
+ * ✅ Immediate async validation with race condition handling
+ * ✅ Real-time feedback without performance overhead
+ */
+
+// ============================================================================
+// STATE MANAGEMENT
+// ============================================================================
+
+// Form data - grouped by sections (mirrors form structure)
 const form = state({
   personal: state({
     firstName: '',
@@ -24,129 +40,140 @@ const form = state({
   terms: false,
 });
 
-const errors = state({
-  firstName: '',
-  lastName: '',
-  email: '',
-  phone: '',
-  username: '',
-  password: '',
-  confirm: '',
-  terms: '',
-});
-
+// UI state - controls display and interactions
 const ui = state({
   currentStep: 1,
-  usernameLoading: false,
-  usernameAvailable: false,
-  passwordStrength: '',
-  passwordVisible: false,
-  confirmVisible: false,
+  usernameCheck: state({
+    isChecking: false,
+    isAvailable: false,
+    checkedValue: '',
+  }),
   submitted: false,
-  touched: {}, // Track which fields have been touched
+  attemptedSubmit: false,
 });
 
-// --- DOM ---
-const stepContent = document.getElementById('stepContent');
-const stepper = document.getElementById('stepper');
-const stepLabels = document.getElementById('stepLabels');
-const multiForm = document.getElementById('multiForm');
-const prevBtn = document.getElementById('prevBtn');
-const nextBtn = document.getElementById('nextBtn');
-const submitBtn = document.getElementById('submitBtn');
 
-let cleanupBindDom = bindDom(document.body, { form });
+// ============================================================================
+// USERNAME AVAILABILITY CHECK
+// ============================================================================
 
-// --- Validation Functions ---
-function validateStep1() {
-  const firstNameValid = form.personal.firstName.trim().length >= 2;
-  const lastNameValid = form.personal.lastName.trim().length >= 2;
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.personal.email);
-  
-  errors.firstName = firstNameValid ? '' : 'First name must be at least 2 characters';
-  errors.lastName = lastNameValid ? '' : 'Last name must be at least 2 characters';
-  errors.email = emailValid ? '' : 'Please enter a valid email';
-  // Phone is optional, only validate if provided
-  errors.phone = '';
-  
-  return firstNameValid && lastNameValid && emailValid;
-}
+let usernameRequestId = 0; // Track latest request
 
-function validateStep2() {
-  errors.username = form.account.username.trim().length < 5 ? 'Username must be at least 5 characters' : '';
-  errors.password = form.account.password.length < 8 ? 'Password must be at least 8 characters' : '';
-  errors.confirm = form.account.password !== form.account.confirm ? 'Passwords do not match' : '';
-  const isValid = !errors.username && !errors.password && !errors.confirm;
-  return isValid;
-}
-
-function validateStep4() {
-  errors.terms = !form.terms ? 'You must agree to the terms' : '';
-  return !errors.terms;
-}
-
-function isStepValid(step) {
-  if (step === 1) return validateStep1();
-  if (step === 2) return validateStep2();
-  if (step === 3) return true; // Preferences are optional
-  if (step === 4) return validateStep4();
-  return true;
-}
-
-// --- Password Strength ---
-function calculatePasswordStrength(password) {
-  if (!password) return '';
-  let score = 0;
-  if (password.length >= 8) score++;
-  if (password.length >= 12) score++;
-  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
-  if (/\d/.test(password)) score++;
-  if (/[^a-zA-Z0-9]/.test(password)) score++;
-  
-  if (score <= 2) return 'weak';
-  if (score <= 4) return 'medium';
-  return 'strong';
-}
-
-// --- Username Availability Mock ---
 async function checkUsernameAvailability(username) {
-  if (username.length < 5) {
-    ui.usernameAvailable = false;
-    return;
+  const trimmed = username.trim();
+  
+  // Clear previous results when user types
+  ui.usernameCheck.isAvailable = false;
+  ui.usernameCheck.checkedValue = '';
+  
+  // Fire API check immediately (no debounce)
+  const requestId = ++usernameRequestId;
+  ui.usernameCheck.isChecking = true;
+  
+  try {
+    // Simulate API call with random delay (200-1000ms)
+    const delay = Math.random() * 800 + 200;
+    await new Promise(resolve => setTimeout(resolve, delay));
+    
+    // Only process if this is still the latest request
+    if (requestId !== usernameRequestId) return;
+    
+    // Simulate random availability (50/50 chance)
+    const isAvailable = Math.random() > 0.5;
+    
+    ui.usernameCheck.isAvailable = isAvailable;
+    ui.usernameCheck.checkedValue = trimmed;
+    
+  } catch (error) {
+    console.error('Username check failed:', error);
+  } finally {
+    // Only clear loading if this is still the latest request
+    if (requestId === usernameRequestId) {
+      ui.usernameCheck.isChecking = false;
+    }
   }
-  
-  ui.usernameLoading = true;
-  ui.usernameAvailable = false;
-  errors.username = '';
-  
-  // Randomize API delay (1-3 seconds)
-  const delay = Math.random() * 2000 + 1000;
-  await new Promise(resolve => setTimeout(resolve, delay));
-  
-  // Randomize availability (60% available, 40% taken)
-  const isAvailable = Math.random() > 0.4;
-  
-  if (isAvailable) {
-    errors.username = '';
-    ui.usernameAvailable = true;
-  } else {
-    errors.username = 'Username is already taken';
-    ui.usernameAvailable = false;
-  }
-  
-  ui.usernameLoading = false;
-  updateErrorDisplay();
-  updateNextButton();
 }
 
-let usernameCheckTimeout;
-function debouncedUsernameCheck(username) {
-  clearTimeout(usernameCheckTimeout);
-  usernameCheckTimeout = setTimeout(() => checkUsernameAvailability(username), 500);
+
+// ============================================================================
+// VALIDATION SCHEMA & HELPER
+// ============================================================================
+
+// Declarative validation rules - easier to read and maintain
+const validationRules = {
+  firstName: {
+    validate: (val) => val.trim().length >= 2,
+    message: 'First name must be at least 2 characters',
+  },
+  lastName: {
+    validate: (val) => val.trim().length >= 2,
+    message: 'Last name must be at least 2 characters',
+  },
+  email: {
+    validate: (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim()),
+    message: 'Please enter a valid email',
+  },
+  username: {
+    // Async validate that handles both sync and async checks
+    validate: async (val) => {
+      const trimmed = val.trim();
+      
+      // Sync validation first
+      if (trimmed.length < 5) {
+        return 'Must be at least 5 characters';
+      }
+      
+      // Async validation - check if username matches the checked value
+      if (ui.usernameCheck.checkedValue === trimmed) {
+        if (!ui.usernameCheck.isAvailable) {
+          return `Username "${trimmed}" is already taken`;
+        }
+      }
+      
+      return null; // Valid
+    },
+    // Sync-only version for immediate feedback
+    validateSync: (val) => val.trim().length >= 5,
+    message: 'Must be at least 5 characters',
+  },
+  password: {
+    validate: (val) => val.length >= 8,
+    message: 'Password must be at least 8 characters',
+  },
+  confirm: {
+    validate: (val) => val === form.account.password,
+    message: 'Passwords do not match',
+  },
+};
+
+// Validation state - simple reactive state instead of computed
+const validation = state({
+  errors: {},
+  passwordStrength: null,
+  isCurrentStepValid: false,
+});
+
+// ============================================================================
+// PHONE NUMBER FORMATTING
+// ============================================================================
+
+function formatPhoneNumber(value) {
+  const cleaned = value.replace(/\D/g, '');
+  if (cleaned.length === 0) return '';
+  if (cleaned.length <= 3) return `(${cleaned}`;
+  if (cleaned.length <= 6) return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
+  return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
 }
 
-// --- Rendering ---
+
+// ============================================================================
+// RENDERING FUNCTIONS (Only called on step changes, not during typing)
+// ============================================================================
+
 function renderStepper() {
+  const stepper = document.getElementById('stepper');
+  const stepLabels = document.getElementById('stepLabels');
+  
   stepper.innerHTML = '';
   for (let i = 1; i <= 4; i++) {
     const div = document.createElement('div');
@@ -154,63 +181,295 @@ function renderStepper() {
     stepper.appendChild(div);
   }
   
-  // Update labels
   const labels = stepLabels.querySelectorAll('span');
   labels.forEach((label, i) => {
     label.className = ui.currentStep === i + 1 ? 'active' : '';
   });
 }
 
+function renderStep1() {
+  return `
+    <div class="field-group">
+      <label for="firstName">First Name *</label>
+      <input 
+        id="firstName" 
+        name="firstName"
+        type="text"
+        value="${form.personal.firstName}"
+        required 
+        aria-required="true"
+        aria-describedby="firstNameError"
+      />
+      <span class="error" id="firstNameError" role="alert" aria-live="polite"></span>
+    </div>
+    <div class="field-group">
+      <label for="lastName">Last Name *</label>
+      <input 
+        id="lastName" 
+        name="lastName"
+        type="text"
+        value="${form.personal.lastName}"
+        required 
+        aria-required="true"
+        aria-describedby="lastNameError"
+      />
+      <span class="error" id="lastNameError" role="alert" aria-live="polite"></span>
+    </div>
+    <div class="field-group">
+      <label for="email">
+        Email *
+        <span class="tooltip" tabindex="0" role="tooltip" aria-label="We'll never share your email">
+          <span class="tooltip-icon" aria-hidden="true">?</span>
+          <span class="tooltip-text">We'll never share your email</span>
+        </span>
+      </label>
+      <input 
+        id="email" 
+        name="email" 
+        type="email"
+        value="${form.personal.email}"
+        required 
+        aria-required="true"
+        aria-describedby="emailError"
+      />
+      <span class="error" id="emailError" role="alert" aria-live="polite"></span>
+    </div>
+    <div class="field-group">
+      <label for="phone">Phone (optional)</label>
+      <input 
+        id="phone" 
+        name="phone" 
+        type="tel"
+        value="${form.personal.phone}"
+        placeholder="(555) 123-4567"
+        aria-describedby="phoneError"
+      />
+      <span class="error" id="phoneError" role="alert" aria-live="polite"></span>
+    </div>
+  `;
+}
 
+function renderStep2() {
+  return `
+    <div class="field-group">
+      <label for="username">
+        Username *
+        <span class="tooltip" tabindex="0" role="tooltip" aria-label="5+ characters, letters and numbers">
+          <span class="tooltip-icon" aria-hidden="true">?</span>
+          <span class="tooltip-text">5+ characters, letters and numbers</span>
+        </span>
+      </label>
+      <input 
+        id="username" 
+        name="username"
+        type="text"
+        value="${form.account.username}"
+        required 
+        aria-required="true"
+        aria-describedby="usernameStatus usernameError"
+      />
+      <span class="username-status" id="usernameStatus" aria-live="polite"></span>
+      <span class="error" id="usernameError" role="alert" aria-live="polite"></span>
+    </div>
+    <div class="field-group">
+      <label for="password">
+        Password *
+        <span class="tooltip" tabindex="0" role="tooltip" aria-label="8+ characters with uppercase, numbers, and symbols">
+          <span class="tooltip-icon" aria-hidden="true">?</span>
+          <span class="tooltip-text">8+ characters with uppercase, numbers, and symbols</span>
+        </span>
+      </label>
+      <div class="input-wrapper">
+        <input 
+          id="password" 
+          name="password" 
+          type="password"
+          value="${form.account.password}"
+          required 
+          aria-required="true"
+          aria-describedby="passwordStrength passwordError"
+        />
+        <button type="button" class="toggle-password" id="togglePassword" aria-label="Toggle password visibility">
+          🙈
+        </button>
+      </div>
+      <div class="password-strength" id="passwordStrength" aria-live="polite"></div>
+      <span class="error" id="passwordError" role="alert" aria-live="polite"></span>
+    </div>
+    <div class="field-group">
+      <label for="confirm">Confirm Password *</label>
+      <div class="input-wrapper">
+        <input 
+          id="confirm" 
+          name="confirm" 
+          type="password"
+          value="${form.account.confirm}"
+          required 
+          aria-required="true"
+          aria-describedby="confirmError"
+        />
+        <button type="button" class="toggle-password" id="toggleConfirm" aria-label="Toggle password visibility">
+          🙈
+        </button>
+      </div>
+      <span class="error" id="confirmError" role="alert" aria-live="polite"></span>
+    </div>
+    <div class="field-group">
+      <label id="accountTypeLabel">Account Type</label>
+      <div class="radio-group" role="radiogroup" aria-labelledby="accountTypeLabel">
+        <label>
+          <input 
+            type="radio" 
+            name="type" 
+            value="free" 
+            ${form.account.type === 'free' ? 'checked' : ''}
+          />
+          Free
+        </label>
+        <label>
+          <input 
+            type="radio" 
+            name="type" 
+            value="premium" 
+            ${form.account.type === 'premium' ? 'checked' : ''}
+          />
+          Premium
+        </label>
+      </div>
+    </div>
+  `;
+}
 
-function updateErrorDisplay() {
-  for (const key in errors) {
-    const errorEl = document.getElementById(key + 'Error');
-    if (errorEl) {
-      // Only show error if field has been touched
-      const shouldShow = ui.touched[key] && errors[key];
-      errorEl.textContent = shouldShow ? errors[key] : '';
-      const input = document.querySelector(`[name="${key}"]`) || document.getElementById(key);
-      if (input && input.classList) {
-        input.classList.toggle('error-field', !!shouldShow);
-      }
-    }
+function renderStep3() {
+  let html = `
+    <div class="field-group">
+      <div class="checkbox-group">
+        <label>
+          <input 
+            type="checkbox" 
+            id="newsletter"
+            ${form.preferences.newsletter ? 'checked' : ''}
+          />
+          Subscribe to newsletter
+        </label>
+      </div>
+    </div>
+  `;
+  
+  if (form.account.type === 'premium') {
+    html += `
+      <div class="field-group">
+        <label for="billing">Billing Cycle</label>
+        <select id="billing" name="billing" aria-label="Select billing cycle">
+          <option value="monthly" ${form.preferences.billing === 'monthly' ? 'selected' : ''}>Monthly ($9.99)</option>
+          <option value="yearly" ${form.preferences.billing === 'yearly' ? 'selected' : ''}>Yearly ($99.99 - Save 17%)</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label id="paymentMethodLabel">Payment Method</label>
+        <div class="radio-group" role="radiogroup" aria-labelledby="paymentMethodLabel">
+          <label>
+            <input 
+              type="radio" 
+              name="payment" 
+              value="credit" 
+              ${form.preferences.payment === 'credit' ? 'checked' : ''}
+            />
+            Credit Card
+          </label>
+          <label>
+            <input 
+              type="radio" 
+              name="payment" 
+              value="paypal" 
+              ${form.preferences.payment === 'paypal' ? 'checked' : ''}
+            />
+            PayPal
+          </label>
+        </div>
+      </div>
+    `;
+  } else {
+    html += `
+      <div class="field-group">
+        <label for="referral">
+          Referral Code (optional)
+          <span class="tooltip" tabindex="0" role="tooltip" aria-label="Enter a code to get bonus features">
+            <span class="tooltip-icon" aria-hidden="true">?</span>
+            <span class="tooltip-text">Enter a code to get bonus features</span>
+          </span>
+        </label>
+        <input 
+          id="referral" 
+          name="referral"
+          type="text"
+          value="${form.preferences.referral}"
+          placeholder="e.g., FRIEND2024"
+        />
+      </div>
+    `;
   }
   
-  // Update username status (loading/available)
-  const usernameStatusEl = document.getElementById('usernameStatus');
-  if (usernameStatusEl) {
-    if (ui.usernameLoading) {
-      usernameStatusEl.textContent = 'Checking availability';
-      usernameStatusEl.className = 'username-status loading';
-    } else if (ui.usernameAvailable && form.account.username.length >= 5 && !errors.username) {
-      usernameStatusEl.textContent = '✓ Username is available';
-      usernameStatusEl.className = 'username-status available';
-    } else {
-      usernameStatusEl.textContent = '';
-      usernameStatusEl.className = 'username-status';
-    }
-  }
+  return html;
+}
+
+function renderStep4() {
+  return `
+    <div class="review-list">
+      <h3>Review Your Information</h3>
+      <ul>
+        <li><strong>Name:</strong> ${form.personal.firstName} ${form.personal.lastName}</li>
+        <li><strong>Email:</strong> ${form.personal.email}</li>
+        ${form.personal.phone ? `<li><strong>Phone:</strong> ${form.personal.phone}</li>` : ''}
+        <li><strong>Username:</strong> ${form.account.username}</li>
+        <li><strong>Account Type:</strong> ${form.account.type.charAt(0).toUpperCase() + form.account.type.slice(1)}</li>
+        ${form.account.type === 'premium' ? `
+          <li><strong>Billing:</strong> ${form.preferences.billing.charAt(0).toUpperCase() + form.preferences.billing.slice(1)}</li>
+          <li><strong>Payment:</strong> ${form.preferences.payment === 'credit' ? 'Credit Card' : 'PayPal'}</li>
+        ` : form.preferences.referral ? `
+          <li><strong>Referral:</strong> ${form.preferences.referral}</li>
+        ` : ''}
+        <li><strong>Newsletter:</strong> ${form.preferences.newsletter ? 'Subscribed' : 'Not subscribed'}</li>
+      </ul>
+    </div>
+    <div class="field-group">
+      <div class="checkbox-group">
+        <label>
+          <input 
+            type="checkbox" 
+            id="terms" 
+            ${form.terms ? 'checked' : ''}
+          />
+          I agree to the terms & conditions *
+        </label>
+      </div>
+      <span class="error" id="termsError" role="alert" aria-live="polite"></span>
+    </div>
+  `;
+}
+
+function renderSuccessMessage() {
+  const stepContent = document.getElementById('stepContent');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const submitBtn = document.getElementById('submitBtn');
   
-  // Update username input icon
-  const usernameInput = document.getElementById('username');
-  if (usernameInput) {
-    usernameInput.classList.toggle('input-success', ui.usernameAvailable && !errors.username);
-  }
+  stepContent.innerHTML = `
+    <div class="success-message">
+      <h2>🎉 Registration Successful!</h2>
+      <p>Welcome, ${form.personal.firstName}! Your account has been created.</p>
+      <button type="button" id="resetBtn" style="margin-top: 2em; width: 100%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.9em 1.5em; border: none; border-radius: 6px; font-size: 1em; font-weight: 600; cursor: pointer;">
+        Start Over
+      </button>
+    </div>
+  `;
   
-  // Update password strength
-  const strengthEl = document.getElementById('passwordStrength');
-  if (strengthEl) {
-    const strength = ui.passwordStrength;
-    if (strength) {
-      strengthEl.innerHTML = `
-        <div>Password strength: <strong>${strength}</strong></div>
-        <div class="strength-bar"><div class="strength-fill ${strength}"></div></div>
-      `;
-    } else {
-      strengthEl.innerHTML = '';
-    }
-  }
+  prevBtn.style.display = 'none';
+  nextBtn.style.display = 'none';
+  submitBtn.style.display = 'none';
+  
+  // Attach reset button listener
+  document.getElementById('resetBtn').addEventListener('click', resetForm);
 }
 
 function renderStep() {
@@ -219,391 +478,111 @@ function renderStep() {
     return;
   }
   
+  const stepContent = document.getElementById('stepContent');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const submitBtn = document.getElementById('submitBtn');
+  
   renderStepper();
-  stepContent.innerHTML = '';
+  
+  // Update navigation buttons
   prevBtn.style.display = ui.currentStep === 1 ? 'none' : '';
-  prevBtn.setAttribute('aria-label', 'Go to previous step');
   nextBtn.classList.toggle('hidden', ui.currentStep === 4);
-  nextBtn.setAttribute('aria-label', 'Go to next step');
   submitBtn.classList.toggle('hidden', ui.currentStep !== 4);
-  submitBtn.setAttribute('aria-label', 'Submit registration form');
-
-  let html = `<div class="step-container" role="region" aria-label="Step ${ui.currentStep} of 4">`;
-
-  // Step 1: Personal Info
-  if (ui.currentStep === 1) {
-    html += `
-      <div class="field-group">
-        <label for="firstName">First Name *</label>
-        <input 
-          id="firstName" 
-          name="firstName" 
-          data-bind="form.personal.firstName" 
-          required 
-          aria-required="true"
-          aria-invalid="${!!errors.firstName}"
-          aria-describedby="firstNameError"
-        />
-        <span class="error" id="firstNameError" role="alert" aria-live="polite"></span>
-      </div>
-      <div class="field-group">
-        <label for="lastName">Last Name *</label>
-        <input 
-          id="lastName" 
-          name="lastName" 
-          data-bind="form.personal.lastName" 
-          required 
-          aria-required="true"
-          aria-invalid="${!!errors.lastName}"
-          aria-describedby="lastNameError"
-        />
-        <span class="error" id="lastNameError" role="alert" aria-live="polite"></span>
-      </div>
-      <div class="field-group">
-        <label for="email">
-          Email *
-          <span class="tooltip" tabindex="0" role="tooltip" aria-label="We'll never share your email">
-            <span class="tooltip-icon" aria-hidden="true">?</span>
-            <span class="tooltip-text">We'll never share your email</span>
-          </span>
-        </label>
-        <input 
-          id="email" 
-          name="email" 
-          type="email" 
-          data-bind="form.personal.email" 
-          required 
-          aria-required="true"
-          aria-invalid="${!!errors.email}"
-          aria-describedby="emailError"
-        />
-        <span class="error" id="emailError" role="alert" aria-live="polite"></span>
-      </div>
-      <div class="field-group">
-        <label for="phone">Phone (optional)</label>
-        <input 
-          id="phone" 
-          name="phone" 
-          type="tel" 
-          data-bind="form.personal.phone" 
-          placeholder="+1 (555) 123-4567"
-          aria-invalid="${!!errors.phone}"
-          aria-describedby="phoneError"
-        />
-        <span class="error" id="phoneError" role="alert" aria-live="polite"></span>
-      </div>
-    `;
-  }
-  // Step 2: Account Details
-  else if (ui.currentStep === 2) {
-    html += `
-      <div class="field-group">
-        <label for="username">
-          Username *
-          <span class="tooltip" tabindex="0" role="tooltip" aria-label="5+ characters, letters and numbers">
-            <span class="tooltip-icon" aria-hidden="true">?</span>
-            <span class="tooltip-text">5+ characters, letters and numbers</span>
-          </span>
-        </label>
-        <div class="input-wrapper">
-          <input 
-            id="username" 
-            name="username" 
-            data-bind="form.account.username" 
-            required 
-            aria-required="true"
-            aria-invalid="${!!errors.username}"
-            aria-describedby="usernameStatus usernameError"
-          />
-          <span class="input-icon" id="usernameIcon"></span>
-        </div>
-        <span class="username-status" id="usernameStatus" aria-live="polite"></span>
-        <span class="error" id="usernameError" role="alert" aria-live="polite"></span>
-      </div>
-      <div class="field-group">
-        <label for="password">
-          Password *
-          <span class="tooltip" tabindex="0" role="tooltip" aria-label="8+ characters with uppercase, numbers, and symbols">
-            <span class="tooltip-icon" aria-hidden="true">?</span>
-            <span class="tooltip-text">8+ characters with uppercase, numbers, and symbols</span>
-          </span>
-        </label>
-        <div class="input-wrapper">
-          <input 
-            id="password" 
-            name="password" 
-            type="${ui.passwordVisible ? 'text' : 'password'}" 
-            data-bind="form.account.password" 
-            required 
-            aria-required="true"
-            aria-invalid="${!!errors.password}"
-            aria-describedby="passwordStrength passwordError"
-          />
-          <button type="button" class="toggle-password" id="togglePassword" aria-label="Toggle password visibility">
-            ${ui.passwordVisible ? '🐵' : '🙈'}
-          </button>
-        </div>
-        <div class="password-strength" id="passwordStrength" aria-live="polite"></div>
-        <span class="error" id="passwordError" role="alert" aria-live="polite"></span>
-      </div>
-      <div class="field-group">
-        <label for="confirm">Confirm Password *</label>
-        <div class="input-wrapper">
-          <input 
-            id="confirm" 
-            name="confirm" 
-            type="${ui.confirmVisible ? 'text' : 'password'}" 
-            data-bind="form.account.confirm" 
-            required 
-            aria-required="true"
-            aria-invalid="${!!errors.confirm}"
-            aria-describedby="confirmError"
-          />
-          <button type="button" class="toggle-password" id="toggleConfirm" aria-label="Toggle password visibility">
-            ${ui.confirmVisible ? '🐵' : '🙈'}
-          </button>
-        </div>
-        <span class="error" id="confirmError" role="alert" aria-live="polite"></span>
-      </div>
-      <div class="field-group">
-        <label id="accountTypeLabel">Account Type</label>
-        <div class="radio-group" role="radiogroup" aria-labelledby="accountTypeLabel">
-          <label>
-            <input 
-              type="radio" 
-              name="type" 
-              value="free" 
-              data-bind="form.account.type" 
-              ${form.account.type === 'free' ? 'checked' : ''}
-              aria-checked="${form.account.type === 'free'}"
-            />
-            Free
-          </label>
-          <label>
-            <input 
-              type="radio" 
-              name="type" 
-              value="premium" 
-              data-bind="form.account.type" 
-              ${form.account.type === 'premium' ? 'checked' : ''}
-              aria-checked="${form.account.type === 'premium'}"
-            />
-            Premium
-          </label>
-        </div>
-      </div>
-    `;
-  }
-  // Step 3: Preferences
-  else if (ui.currentStep === 3) {
-    html += `
-      <div class="field-group">
-        <div class="checkbox-group">
-          <label>
-            <input 
-              type="checkbox" 
-              data-bind="form.preferences.newsletter" 
-              ${form.preferences.newsletter ? 'checked' : ''}
-              aria-checked="${form.preferences.newsletter}"
-            />
-            Subscribe to newsletter
-          </label>
-        </div>
-      </div>
-    `;
-    
-    if (form.account.type === 'premium') {
-      html += `
-        <div class="field-group">
-          <label for="billing">Billing Cycle</label>
-          <select 
-            id="billing" 
-            name="billing" 
-            data-bind="form.preferences.billing"
-            aria-label="Select billing cycle"
-          >
-            <option value="monthly" ${form.preferences.billing === 'monthly' ? 'selected' : ''}>Monthly ($9.99)</option>
-            <option value="yearly" ${form.preferences.billing === 'yearly' ? 'selected' : ''}>Yearly ($99.99 - Save 17%)</option>
-          </select>
-        </div>
-        <div class="field-group">
-          <label id="paymentMethodLabel">Payment Method</label>
-          <div class="radio-group" role="radiogroup" aria-labelledby="paymentMethodLabel">
-            <label>
-              <input 
-                type="radio" 
-                name="payment" 
-                value="credit" 
-                data-bind="form.preferences.payment" 
-                ${form.preferences.payment === 'credit' ? 'checked' : ''}
-                aria-checked="${form.preferences.payment === 'credit'}"
-              />
-              Credit Card
-            </label>
-            <label>
-              <input 
-                type="radio" 
-                name="payment" 
-                value="paypal" 
-                data-bind="form.preferences.payment" 
-                ${form.preferences.payment === 'paypal' ? 'checked' : ''}
-                aria-checked="${form.preferences.payment === 'paypal'}"
-              />
-              PayPal
-            </label>
-          </div>
-        </div>
-      `;
-    } else {
-      html += `
-        <div class="field-group">
-          <label for="referral">
-            Referral Code (optional)
-            <span class="tooltip" tabindex="0" role="tooltip" aria-label="Enter a code to get bonus features">
-              <span class="tooltip-icon" aria-hidden="true">?</span>
-              <span class="tooltip-text">Enter a code to get bonus features</span>
-            </span>
-          </label>
-          <input 
-            id="referral" 
-            name="referral" 
-            data-bind="form.preferences.referral" 
-            placeholder="e.g., FRIEND2024"
-            aria-label="Enter referral code"
-          />
-        </div>
-      `;
-    }
-  }
-  // Step 4: Review & Submit
-  else if (ui.currentStep === 4) {
-    html += `
-      <div class="review-list" role="region" aria-label="Review your information">
-        <h3>Review Your Information</h3>
-        <ul>
-          <li><strong>Name:</strong> ${form.personal.firstName} ${form.personal.lastName}</li>
-          <li><strong>Email:</strong> ${form.personal.email}</li>
-          ${form.personal.phone ? `<li><strong>Phone:</strong> ${form.personal.phone}</li>` : ''}
-          <li><strong>Username:</strong> ${form.account.username}</li>
-          <li><strong>Account Type:</strong> ${form.account.type.charAt(0).toUpperCase() + form.account.type.slice(1)}</li>
-          ${form.account.type === 'premium' ? `
-            <li><strong>Billing:</strong> ${form.preferences.billing.charAt(0).toUpperCase() + form.preferences.billing.slice(1)}</li>
-            <li><strong>Payment:</strong> ${form.preferences.payment === 'credit' ? 'Credit Card' : 'PayPal'}</li>
-          ` : form.preferences.referral ? `
-            <li><strong>Referral:</strong> ${form.preferences.referral}</li>
-          ` : ''}
-          <li><strong>Newsletter:</strong> ${form.preferences.newsletter ? 'Subscribed' : 'Not subscribed'}</li>
-        </ul>
-      </div>
-      <div class="field-group">
-        <div class="checkbox-group">
-          <label>
-            <input 
-              type="checkbox" 
-              id="terms" 
-              data-bind="form.terms" 
-              ${form.terms ? 'checked' : ''}
-              aria-checked="${form.terms}"
-              aria-required="true"
-              aria-invalid="${!!errors.terms}"
-              aria-describedby="termsError"
-            />
-            I agree to the terms & conditions *
-          </label>
-        </div>
-        <span class="error" id="termsError" role="alert" aria-live="polite"></span>
-      </div>
-    `;
-  }
-
+  
+  // Render step content
+  let html = '<div class="step-container">';
+  if (ui.currentStep === 1) html += renderStep1();
+  else if (ui.currentStep === 2) html += renderStep2();
+  else if (ui.currentStep === 3) html += renderStep3();
+  else if (ui.currentStep === 4) html += renderStep4();
   html += '</div>';
+  
   stepContent.innerHTML = html;
-
-  // Clean up previous subscriptions and re-bind
-  if (cleanupBindDom) {
-    cleanupBindDom();
-  }
-  cleanupBindDom = bindDom(document.body, { form });
   
+  // Attach event listeners for this step
   attachEventListeners();
-  updateErrorDisplay();
-  updateNextButton();
-  
-  // Focus first input
+}
+
+// Separate function for initial focus (only called on step change)
+function focusFirstField() {
+  const stepContent = document.getElementById('stepContent');
   const firstInput = stepContent.querySelector('input:not([type="radio"]):not([type="checkbox"])');
   if (firstInput) {
     firstInput.focus();
-  } else {
-    const firstInteractive = stepContent.querySelector('input, select, button');
-    if (firstInteractive) firstInteractive.focus();
   }
 }
 
-function renderSuccessMessage() {
-  stepContent.innerHTML = `
-    <div class="success-message">
-      <h2>🎉 Registration Successful!</h2>
-      <p>Welcome, ${form.personal.firstName}! Your account has been created.</p>
-    </div>
-  `;
-  prevBtn.style.display = 'none';
-  nextBtn.style.display = 'none';
-  submitBtn.style.display = 'none';
-}
 
-// --- Event Listeners ---
+// ============================================================================
+// EVENT LISTENERS (Manual, not bindDom)
+// ============================================================================
+
 function attachEventListeners() {
-  // Real-time validation
-  const inputs = stepContent.querySelectorAll('input:not([type="radio"]):not([type="checkbox"]), select');
-  inputs.forEach(input => {
-    input.addEventListener('blur', () => {
-      const fieldName = input.name || input.id;
-      ui.touched[fieldName] = true; // Mark as touched
-      isStepValid(ui.currentStep);
-      updateErrorDisplay();
-      updateNextButton();
+  const stepContent = document.getElementById('stepContent');
+  
+  // ===== STEP 1: Personal Info =====
+  const firstNameInput = document.getElementById('firstName');
+  if (firstNameInput) {
+    firstNameInput.addEventListener('input', (e) => {
+      form.personal.firstName = e.target.value;
     });
-    
-    input.addEventListener('input', () => {
-      // Mark as touched and re-validate on input
-      const fieldName = input.name || input.id;
-      ui.touched[fieldName] = true;
-      isStepValid(ui.currentStep);
-      updateErrorDisplay();
-      updateNextButton();
+  }
+  
+  const lastNameInput = document.getElementById('lastName');
+  if (lastNameInput) {
+    lastNameInput.addEventListener('input', (e) => {
+      form.personal.lastName = e.target.value;
     });
-    
-    // Enter key to go to next field or submit
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const formInputs = Array.from(stepContent.querySelectorAll('input:not([type="radio"]):not([type="checkbox"]), select'));
-        const currentIndex = formInputs.indexOf(input);
-        if (currentIndex < formInputs.length - 1) {
-          formInputs[currentIndex + 1].focus();
-        } else if (ui.currentStep < 4 && !nextBtn.disabled) {
-          nextBtn.click();
-        } else if (ui.currentStep === 4 && !submitBtn.disabled) {
-          submitBtn.click();
-        }
+  }
+  
+  const emailInput = document.getElementById('email');
+  if (emailInput) {
+    emailInput.addEventListener('input', (e) => {
+      form.personal.email = e.target.value;
+    });
+  }
+  
+  const phoneInput = document.getElementById('phone');
+  if (phoneInput) {
+    phoneInput.addEventListener('input', (e) => {
+      const formatted = formatPhoneNumber(e.target.value);
+      form.personal.phone = formatted;
+      // Update input value if formatting changed it
+      if (e.target.value !== formatted) {
+        e.target.value = formatted;
       }
     });
-  });
+  }
   
-  // Username check
+  // ===== STEP 2: Account Info =====
   const usernameInput = document.getElementById('username');
   if (usernameInput) {
     usernameInput.addEventListener('input', (e) => {
-      debouncedUsernameCheck(e.target.value);
+      form.account.username = e.target.value;
+      // Trigger availability check only if valid length
+      if (e.target.value.trim().length >= 5) {
+        checkUsernameAvailability(e.target.value);
+      } else {
+        // Clear check state if too short
+        ui.usernameCheck.isChecking = false;
+        ui.usernameCheck.isAvailable = false;
+        ui.usernameCheck.checkedValue = '';
+      }
     });
   }
   
-  // Password strength
   const passwordInput = document.getElementById('password');
   if (passwordInput) {
     passwordInput.addEventListener('input', (e) => {
-      ui.passwordStrength = calculatePasswordStrength(e.target.value);
-      updateErrorDisplay();
+      form.account.password = e.target.value;
+    });
+  }
+  
+  const confirmInput = document.getElementById('confirm');
+  if (confirmInput) {
+    confirmInput.addEventListener('input', (e) => {
+      form.account.confirm = e.target.value;
     });
   }
   
@@ -612,14 +591,12 @@ function attachEventListeners() {
   if (togglePassword) {
     togglePassword.addEventListener('click', (e) => {
       e.preventDefault();
-      e.stopPropagation();
-      ui.passwordVisible = !ui.passwordVisible;
       const pwdInput = document.getElementById('password');
       if (pwdInput) {
-        pwdInput.type = ui.passwordVisible ? 'text' : 'password';
+        const isVisible = pwdInput.type === 'text';
+        pwdInput.type = isVisible ? 'password' : 'text';
+        togglePassword.textContent = isVisible ? '🙈' : '🐵';
       }
-      // update icon without re-render
-      togglePassword.textContent = ui.passwordVisible ? '🐵' : '🙈';
     });
   }
   
@@ -627,46 +604,45 @@ function attachEventListeners() {
   if (toggleConfirm) {
     toggleConfirm.addEventListener('click', (e) => {
       e.preventDefault();
-      e.stopPropagation();
-      ui.confirmVisible = !ui.confirmVisible;
       const confInput = document.getElementById('confirm');
       if (confInput) {
-        confInput.type = ui.confirmVisible ? 'text' : 'password';
-      }
-      // update icon without re-render
-      toggleConfirm.textContent = ui.confirmVisible ? '🐵' : '🙈';
-    });
-  }
-  
-  // Phone auto-formatting
-  const phoneInput = document.getElementById('phone');
-  if (phoneInput) {
-    phoneInput.addEventListener('input', (e) => {
-      const cleaned = e.target.value.replace(/\D/g, '');
-      if (cleaned.length <= 10) {
-        let formatted = cleaned;
-        if (cleaned.length > 6) {
-          formatted = `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
-        } else if (cleaned.length > 3) {
-          formatted = `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
-        } else if (cleaned.length > 0) {
-          formatted = `(${cleaned}`;
-        }
-        form.personal.phone = formatted;
-        e.target.value = formatted;
+        const isVisible = confInput.type === 'text';
+        confInput.type = isVisible ? 'password' : 'text';
+        toggleConfirm.textContent = isVisible ? '🙈' : '🐵';
       }
     });
   }
   
-  // Account type change triggers step 3 re-render
+  // Account type radio buttons
   const typeInputs = document.querySelectorAll('input[name="type"]');
   typeInputs.forEach(input => {
     input.addEventListener('change', (e) => {
+      const previousType = form.account.type;
       form.account.type = e.target.value;
+      
+      // Only re-render if we're on step 3 (preferences) to show/hide conditional fields
+      // If we're on step 2, don't re-render
+      if (ui.currentStep === 3 && previousType !== e.target.value) {
+        renderStep();
+      }
     });
   });
   
-  // Payment method radio buttons
+  // ===== STEP 3: Preferences =====
+  const newsletterInput = document.getElementById('newsletter');
+  if (newsletterInput) {
+    newsletterInput.addEventListener('change', (e) => {
+      form.preferences.newsletter = e.target.checked;
+    });
+  }
+  
+  const billingSelect = document.getElementById('billing');
+  if (billingSelect) {
+    billingSelect.addEventListener('change', (e) => {
+      form.preferences.billing = e.target.value;
+    });
+  }
+  
   const paymentInputs = document.querySelectorAll('input[name="payment"]');
   paymentInputs.forEach(input => {
     input.addEventListener('change', (e) => {
@@ -674,110 +650,339 @@ function attachEventListeners() {
     });
   });
   
-  // Newsletter checkbox
-  const newsletterInput = stepContent.querySelector('input[type="checkbox"][data-bind="form.preferences.newsletter"]');
-  if (newsletterInput) {
-    newsletterInput.addEventListener('change', (e) => {
-      form.preferences.newsletter = e.target.checked;
+  const referralInput = document.getElementById('referral');
+  if (referralInput) {
+    referralInput.addEventListener('input', (e) => {
+      form.preferences.referral = e.target.value;
     });
   }
   
-  // Terms checkbox to update submit button
+  // ===== STEP 4: Terms =====
   const termsInput = document.getElementById('terms');
   if (termsInput) {
     termsInput.addEventListener('change', (e) => {
       form.terms = e.target.checked;
-      updateNextButton();
     });
   }
-  
-  // Tooltips keyboard support
-  const tooltips = stepContent.querySelectorAll('.tooltip');
-  tooltips.forEach(tooltip => {
-    tooltip.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        const tooltipText = tooltip.querySelector('.tooltip-text');
-        if (tooltipText) {
-          tooltipText.style.visibility = tooltipText.style.visibility === 'visible' ? 'hidden' : 'visible';
-          tooltipText.style.opacity = tooltipText.style.opacity === '1' ? '0' : '1';
-        }
+}
+
+// ============================================================================
+// REACTIVE EFFECTS SETUP
+// ============================================================================
+
+function setupEffects() {
+  // EFFECT 1: Calculate validation errors and update DOM
+  // Runs whenever form fields change
+  effect(() => {
+    const errs = {};
+    
+    // Read all form fields to track as dependencies
+    const firstName = form.personal.firstName;
+    const lastName = form.personal.lastName;
+    const email = form.personal.email;
+    const username = form.account.username;
+    const password = form.account.password;
+    const confirm = form.account.confirm;
+    const currentStep = ui.currentStep;
+    
+    // Validate personal info
+    if (firstName && !validationRules.firstName.validate(firstName)) {
+      errs.firstName = validationRules.firstName.message;
+    }
+    if (lastName && !validationRules.lastName.validate(lastName)) {
+      errs.lastName = validationRules.lastName.message;
+    }
+    if (email && !validationRules.email.validate(email)) {
+      errs.email = validationRules.email.message;
+    }
+    
+    // Validate account info only on step 2
+    if (currentStep === 2) {
+      // Username: use sync validation, then check async result
+      if (username && !validationRules.username.validateSync(username)) {
+        errs.username = validationRules.username.message;
+      } else if (username.length >= 5 && 
+                 !ui.usernameCheck.isChecking && 
+                 ui.usernameCheck.checkedValue === username.trim() && 
+                 !ui.usernameCheck.isAvailable) {
+        errs.username = `Username "${username.trim()}" is already taken`;
+      }
+      
+      if (password && !validationRules.password.validate(password)) {
+        errs.password = validationRules.password.message;
+      }
+      if (confirm && !validationRules.confirm.validate(confirm)) {
+        errs.confirm = validationRules.confirm.message;
+      }
+    }
+    
+    // Update validation state
+    validation.errors = errs;
+    
+    // Update DOM error messages
+    const allErrorFields = ['firstName', 'lastName', 'email', 'phone', 'username', 'password', 'confirm'];
+    allErrorFields.forEach(key => {
+      const errorEl = document.getElementById(key + 'Error');
+      if (errorEl) {
+        errorEl.textContent = errs[key] || '';
+      }
+      
+      const input = document.getElementById(key) || document.querySelector(`[name="${key}"]`);
+      if (input && input.classList) {
+        input.classList.toggle('error-field', !!errs[key]);
       }
     });
+    
+    // Handle terms error
+    const termsError = document.getElementById('termsError');
+    if (termsError) {
+      if (ui.attemptedSubmit && !form.terms) {
+        termsError.textContent = 'You must agree to the terms';
+      } else {
+        termsError.textContent = '';
+      }
+    }
+    
+    // Update username status display
+    const statusEl = document.getElementById('usernameStatus');
+    const usernameInput = document.getElementById('username');
+    const usernameErrorEl = document.getElementById('usernameError');
+    
+    if (statusEl) {
+      const currentUsername = username.trim();
+      const isChecking = ui.usernameCheck.isChecking;
+      const isAvailable = ui.usernameCheck.isAvailable;
+      const checkedValue = ui.usernameCheck.checkedValue;
+      
+      if (isChecking && currentUsername.length >= 5) {
+        statusEl.textContent = `Checking availability for "${currentUsername}"...`;
+        statusEl.className = 'username-status loading';
+        if (usernameInput) usernameInput.classList.remove('input-success');
+      } else if (isAvailable && checkedValue === currentUsername && currentUsername.length >= 5) {
+        statusEl.textContent = `✓ Username "${checkedValue}" is available`;
+        statusEl.className = 'username-status available';
+        if (usernameInput) usernameInput.classList.add('input-success');
+        if (usernameErrorEl) usernameErrorEl.textContent = '';
+      } else if (!isAvailable && checkedValue === currentUsername && currentUsername.length >= 5) {
+        statusEl.textContent = '';
+        statusEl.className = 'username-status';
+        if (usernameInput) usernameInput.classList.remove('input-success');
+      } else {
+        statusEl.textContent = '';
+        statusEl.className = 'username-status';
+        if (usernameInput) usernameInput.classList.remove('input-success');
+      }
+    }
+  });
+
+  // EFFECT 2: Calculate password strength and update DOM
+  effect(() => {
+    const password = form.account.password;
+    let strength = null;
+    
+    if (password) {
+      let score = 0;
+      if (password.length >= 8) score++;
+      if (password.length >= 12) score++;
+      if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+      if (/\d/.test(password)) score++;
+      if (/[^a-zA-Z0-9]/.test(password)) score++;
+      
+      if (score <= 2) strength = 'weak';
+      else if (score <= 4) strength = 'medium';
+      else strength = 'strong';
+    }
+    
+    validation.passwordStrength = strength;
+    
+    const strengthEl = document.getElementById('passwordStrength');
+    if (!strengthEl) return;
+    
+    if (strength) {
+      strengthEl.innerHTML = `
+        <div>Password strength: <strong>${strength}</strong></div>
+        <div class="strength-bar"><div class="strength-fill ${strength}"></div></div>
+      `;
+    } else {
+      strengthEl.innerHTML = '';
+    }
+  });
+
+  // EFFECT 3: Calculate step validity and update button states
+  effect(() => {
+    const step = ui.currentStep;
+    let valid = false;
+    
+    if (step === 1) {
+      const firstName = form.personal.firstName.trim();
+      const lastName = form.personal.lastName.trim();
+      const email = form.personal.email.trim();
+      
+      valid = firstName.length >= 2 && 
+              lastName.length >= 2 && 
+              /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    } else if (step === 2) {
+      const username = form.account.username.trim();
+      const password = form.account.password;
+      const confirm = form.account.confirm;
+      
+      valid = username.length >= 5 &&
+              password.length >= 8 &&
+              password === confirm &&
+              !ui.usernameCheck.isChecking &&
+              ui.usernameCheck.isAvailable &&
+              ui.usernameCheck.checkedValue === username;
+    } else if (step === 3) {
+      valid = true;
+    } else if (step === 4) {
+      valid = form.terms;
+    }
+    
+    validation.isCurrentStepValid = valid;
+    
+    const nextBtn = document.getElementById('nextBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (step === 4 && submitBtn) {
+      submitBtn.disabled = !valid;
+    } else if (nextBtn) {
+      nextBtn.disabled = !valid;
+    }
   });
 }
 
-function updateNextButton() {
-  // Validate without setting errors (just check)
-  let valid = true;
-  if (ui.currentStep === 1) {
-    valid = form.personal.firstName.trim().length >= 2 &&
-            form.personal.lastName.trim().length >= 2 &&
-            /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.personal.email);
-  } else if (ui.currentStep === 2) {
-    valid = form.account.username.trim().length >= 5 &&
-            form.account.password.length >= 8 &&
-            form.account.password === form.account.confirm &&
-            !ui.usernameLoading &&
-            !errors.username; // Username must be available
-  } else if (ui.currentStep === 3) {
-    valid = true; // Preferences are optional
-  } else if (ui.currentStep === 4) {
-    valid = form.terms;
-  }
-  
-  if (ui.currentStep === 4) {
-    submitBtn.disabled = !valid;
-  } else {
-    nextBtn.disabled = !valid;
-  }
-}
+// ============================================================================
+// NAVIGATION HANDLERS
+// ============================================================================
 
-// --- Navigation ---
-prevBtn.onclick = () => {
-  if (ui.currentStep > 1) {
-    ui.currentStep--;
-    renderStep();
-  }
-};
-
-nextBtn.onclick = () => {
-  // Mark all fields in current step as touched
-  if (ui.currentStep === 1) {
-    ui.touched.firstName = true;
-    ui.touched.lastName = true;
-    ui.touched.email = true;
-    ui.touched.phone = true;
-  } else if (ui.currentStep === 2) {
-    ui.touched.username = true;
-    ui.touched.password = true;
-    ui.touched.confirm = true;
-  }
-  
-  if (isStepValid(ui.currentStep) && ui.currentStep < 4) {
-    ui.currentStep++;
-    renderStep();
-  } else {
-    updateErrorDisplay();
-  }
-};
-
-// --- Form Submission ---
-multiForm.onsubmit = (e) => {
-  e.preventDefault();
-  
-  // Mark terms as touched
-  ui.touched.terms = true;
-  
-  if (!validateStep4()) {
-    updateErrorDisplay();
+function goToNextStep() {
+  if (!validation.isCurrentStepValid) {
+    // Highlight first invalid field
+    const currentErrors = validation.errors;
+    const firstError = Object.keys(currentErrors).find(key => currentErrors[key]);
+    if (firstError) {
+      const input = document.getElementById(firstError);
+      if (input) {
+        input.focus();
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
     return;
   }
   
-  // Simulate submission
+  if (ui.currentStep < 4) {
+    ui.currentStep++;
+    ui.attemptedSubmit = false;
+    renderStep();
+    focusFirstField();
+  }
+}
+
+function goToPrevStep() {
+  if (ui.currentStep > 1) {
+    ui.currentStep--;
+    ui.attemptedSubmit = false;
+    renderStep();
+    focusFirstField();
+  }
+}
+
+async function submitForm(e) {
+  e.preventDefault();
+  
+  if (!validation.isCurrentStepValid) {
+    ui.attemptedSubmit = true;
+    const termsInput = document.getElementById('terms');
+    if (termsInput) termsInput.focus();
+    return;
+  }
+  
+  ui.attemptedSubmit = false;
+  
+  // Simulate API submission with random delay
+  const submitBtn = document.getElementById('submitBtn');
+  const originalText = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submitting...';
+  
+  const delay = Math.random() * 1500 + 500; // 500-2000ms
+  await new Promise(resolve => setTimeout(resolve, delay));
+  
+  // Log form data (password redacted)
+  console.log('Form submitted:', {
+    personal: { ...form.personal },
+    account: { 
+      username: form.account.username,
+      type: form.account.type,
+      password: '[REDACTED]'
+    },
+    preferences: { ...form.preferences },
+    terms: form.terms
+  });
+  
   ui.submitted = true;
   renderStep();
-};
+}
 
-ui.touched = {};
+function resetForm() {
+  // Reset all form data
+  form.personal.firstName = '';
+  form.personal.lastName = '';
+  form.personal.email = '';
+  form.personal.phone = '';
+  
+  form.account.username = '';
+  form.account.password = '';
+  form.account.confirm = '';
+  form.account.type = 'free';
+  
+  form.preferences.newsletter = false;
+  form.preferences.billing = 'monthly';
+  form.preferences.payment = 'credit';
+  form.preferences.referral = '';
+  
+  form.terms = false;
+  
+  // Reset UI state
+  ui.currentStep = 1;
+  ui.usernameCheck.isChecking = false;
+  ui.usernameCheck.isAvailable = false;
+  ui.usernameCheck.checkedValue = '';
+  ui.submitted = false;
+  ui.attemptedSubmit = false;
+  
+  // Reset username request tracking
+  usernameRequestId = 0;
+  
+  // Reset button visibility (clear any inline styles from success message)
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const submitBtn = document.getElementById('submitBtn');
+  
+  prevBtn.style.display = 'none'; // Step 1 - no previous
+  nextBtn.style.display = '';
+  nextBtn.classList.remove('hidden');
+  submitBtn.style.display = 'none';
+  submitBtn.classList.add('hidden');
+
+  // Re-render
+  renderStep();
+ 
+  focusFirstField();
+}
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
+// Attach navigation listeners
+document.getElementById('prevBtn').addEventListener('click', goToPrevStep);
+document.getElementById('nextBtn').addEventListener('click', goToNextStep);
+document.getElementById('multiForm').addEventListener('submit', submitForm);
+
+// Initial render
 renderStep();
+focusFirstField();
+
+// Setup effects AFTER DOM is rendered
+setupEffects();

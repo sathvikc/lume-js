@@ -1,4 +1,4 @@
-import { state, bindDom } from 'lume-js';
+import { state, bindDom, effect } from 'lume-js';
 
 // Create reactive state
 const store = state({
@@ -93,9 +93,44 @@ store.user.$subscribe('name', (val) => {
     console.log('Name changed:', val);
 });
 
+// Example 7: Effect - automatic dependency tracking
+// Note: This effect reads from two different state objects: store.user (nested state)
+// and the root store. If both change synchronously, the effect may run once per
+// state that changed (by design with per-state batching).
+const effectCleanup = effect(() => {
+    const displayText = `Hello ${store.user.name}, count is ${store.count}`;
+    console.log('Effect ran:', displayText);
+    document.title = `Lume.js Demo - ${displayText}`;
+});
+
+// Example 8: Per-state batching demo
+// This effect depends on two root-level keys (same state object), so if both
+// change synchronously, it should run only once due to per-state batching.
+const rootEffectCleanup = effect(() => {
+    // Access two root keys so this effect tracks both
+    const snapshot = `Root snapshot → count: ${store.count}, events: ${store.events}`;
+    console.log('Root effect ran:', snapshot);
+});
+
+// Button: Update two root keys in one tick → expect one root effect run
+document.getElementById('updateRootTwoKeys')?.addEventListener('click', () => {
+    // Both are on the same state object (root)
+    store.count++;
+    store.events++;
+});
+
+// Button: Update across different state objects → may run multi-state effects twice
+document.getElementById('updateCrossState')?.addEventListener('click', () => {
+    store.count++;
+    // Flip between two names to guarantee a change
+    store.user.name = store.user.name === 'Guest' ? 'Member' : 'Guest';
+});
+
 // Cleanup on page unload (good practice)
 window.addEventListener('beforeunload', () => {
     cleanup();
     unsubEvents();
+    effectCleanup();
+    rootEffectCleanup();
     if (timerUnsub) timerUnsub();
 });

@@ -60,6 +60,22 @@
       margin: 10px 0;
       font-size: 14px;
     }
+    .code-example {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .code-example pre {
+      margin: 0;
+      padding: 15px;
+      overflow-x: auto;
+    }
+    .code-example code {
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.4;
+    }
   </style>
 </head>
 <body>
@@ -149,6 +165,35 @@
     </div>
     <div class="note">
       <strong>Note:</strong> Always cleanup subscriptions to prevent memory leaks
+    </div>
+  </div>
+
+  <!-- Example 7: Effect - Automatic Dependency Tracking -->
+  <div class="example">
+    <h3>7. Effect - Automatic Dependency Tracking</h3>
+    <div class="note">
+      <strong>Check the console and document title!</strong> The effect automatically tracks when you change the name or count above and updates the document title. Because it reads from both the root store and <code>store.user</code>, simultaneous changes across those states may re-run the effect once per state (by design).
+    </div>
+    <div class="code-example">
+      <pre><code>effect(() => {
+  const text = `Hello ${store.user.name}, count is ${store.count}`;
+  document.title = `Lume.js Demo - ${text}`;
+  // Automatically re-runs when name or count changes!
+});</code></pre>
+    </div>
+  </div>
+
+  <!-- Example 8: Per-State Batching Demo -->
+  <div class="example">
+    <h3>8. Per-State Batching Demo</h3>
+    <div class="note">
+      Per-state batching means multiple changes to the <em>same</em> state object collapse into a single effect run.
+      Changes across <em>different</em> state objects may trigger one run per state (by design).
+    </div>
+    <button id="updateRootTwoKeys">Update two root keys (count & events)</button>
+    <button id="updateCrossState">Update across states (count & user.name)</button>
+    <div class="output">
+      Open the console to see how many times effects run for each button.
     </div>
   </div>
 

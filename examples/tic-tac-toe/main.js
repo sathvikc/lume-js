@@ -1,4 +1,4 @@
-import { state, bindDom } from 'lume-js';
+import { state, bindDom, effect } from 'lume-js';
 import { computed } from 'lume-js/addons';
 
 // Game logic
@@ -32,31 +32,56 @@ const store = state({
 // Bind static fields
 const cleanup = bindDom(document.body, store);
 
-// Computed current game state
+// Computed current game state with automatic dependency tracking
 const currentSquares = computed(() => store.history[store.currentMove].squares);
 const xIsNext = computed(() => store.currentMove % 2 === 0);
-const winner = computed(() => calculateWinner(currentSquares.value));
+const winner = computed(() => {
+  const squares = store.history[store.currentMove].squares;
+  return calculateWinner(squares);
+});
 const gameStatus = computed(() => {
-  const w = winner.value;
+  const squares = store.history[store.currentMove].squares;
+  const w = calculateWinner(squares);
+
   if (w) return `Winner: ${w}`;
-  if (isBoardFull(currentSquares.value)) return 'Draw!';
-  return `Next player: ${xIsNext.value ? 'X' : 'O'}`;
+  if (isBoardFull(squares)) return 'Draw!';
+
+  const isX = store.currentMove % 2 === 0;
+
+  return `Next player: ${isX ? 'X' : 'O'}`;
 });
 
-// Update derived state
-function updateDerived() {
-  currentSquares.recompute();
-  xIsNext.recompute();
-  winner.recompute();
-  gameStatus.recompute();
-}
+// Get DOM elements first (before effect)
+const boardEl = document.getElementById('board');
+const historyListEl = document.getElementById('history-list');
+
+// Use effect to automatically handle all updates when state changes
+const effectCleanup = effect(() => {
+  // Track the complete game state - this will trigger when either property changes
+  // but we only need to track once since they represent the same logical state change
+  const gameState = `${store.currentMove}-${store.history.length}`;
+  
+  // Update game status in document title
+  const status = gameStatus.value;
+  console.log('Game status updated:', status);
+  document.title = `Tic-Tac-Toe - ${status}`;
+  
+  // Update status element if it exists
+  const statusEl = document.getElementById('status');
+  if (statusEl) {
+    statusEl.textContent = status;
+  }
+  
+  // Render the board and history
+  renderBoard();
+  renderHistory();
+});
 
 // Render board
-const boardEl = document.getElementById('board');
-
 function renderBoard() {
   const squares = currentSquares.value;
-  const gameOver = winner.value || isBoardFull(squares);
+  const currentWinner = winner.value;
+  const gameOver = currentWinner || isBoardFull(squares);
   boardEl.innerHTML = '';
   
   for (let i = 0; i < 9; i++) {
@@ -90,18 +115,18 @@ function renderBoard() {
   }
   
   // Add winner overlay if game is over
-  const w = winner.value;
-  const isDraw = !w && isBoardFull(squares);
+  const overlayWinner = winner.value;
+  const isDraw = !overlayWinner && isBoardFull(squares);
   
-  if (w || isDraw) {
+  if (overlayWinner || isDraw) {
     const overlay = document.createElement('div');
     overlay.className = 'winner-overlay';
     
-    if (w) {
-      overlay.classList.add(`winner-${w.toLowerCase()}`);
+    if (overlayWinner) {
+      overlay.classList.add(`winner-${overlayWinner.toLowerCase()}`);
       const text = document.createElement('div');
-      text.className = `winner-text ${w.toLowerCase()}`;
-      text.textContent = `${w} Wins!`;
+      text.className = `winner-text ${overlayWinner.toLowerCase()}`;
+      text.textContent = `${overlayWinner} Wins!`;
       overlay.appendChild(text);
       
       const sub = document.createElement('div');
@@ -127,13 +152,15 @@ function renderBoard() {
 
 // Handle cell click
 function handleClick(index) {
-  if (winner.value || currentSquares.value[index]) return;
+  const squares = currentSquares.value;
+  const currentWinner = winner.value;
+  if (currentWinner || squares[index]) return;
   
   // Store the clicked cell index to restore focus
   const clickedIndex = index;
   
   // Create new board state
-  const newSquares = [...currentSquares.value];
+  const newSquares = [...squares];
   newSquares[index] = xIsNext.value ? 'X' : 'O';
   
   // Truncate history if we're not at the end (time travel then make new move)
@@ -148,6 +175,7 @@ function handleClick(index) {
     move: `Move #${moveNum}: ${player} → (${row}, ${col})`
   });
   
+  // Update both properties to trigger re-renders
   store.history = newHistory;
   store.currentMove = newHistory.length - 1;
   
@@ -161,8 +189,6 @@ function handleClick(index) {
 }
 
 // Render history
-const historyListEl = document.getElementById('history-list');
-
 function renderHistory() {
   const historyItems = store.history;
   historyListEl.innerHTML = '';
@@ -211,30 +237,15 @@ function resetGame() {
   // Create fresh history with new array reference
   const newHistory = [{ squares: Array(9).fill(null), move: 'Game start' }];
   
-  // Update both to trigger re-renders
+  // Update both properties to trigger re-renders
   store.currentMove = 0;
   store.history = newHistory;
 }
 
 document.getElementById('reset').addEventListener('click', resetGame);
 
-// Subscriptions
-store.$subscribe('history', () => {
-  updateDerived();
-  renderBoard();
-  renderHistory();
-});
-
-store.$subscribe('currentMove', () => {
-  updateDerived();
-  renderBoard();
-  renderHistory();
-});
-
-// Initial render
-updateDerived();
-renderBoard();
-renderHistory();
-
 // Cleanup
-window.addEventListener('beforeunload', () => cleanup());
+window.addEventListener('beforeunload', () => {
+  cleanup();
+  effectCleanup();
+});

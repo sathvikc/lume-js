@@ -1,4 +1,4 @@
-import { state, bindDom } from 'lume-js';
+import { state, bindDom, effect } from 'lume-js';
 import { computed } from 'lume-js/addons';
 
 // Simple id generator
@@ -18,16 +18,15 @@ const store = state({
 // Bind static fields
 const cleanup = bindDom(document.body, store);
 
-// Derived counts using computed; manually recompute on todos change
+// Derived counts using computed with automatic dependency tracking
 const remaining = computed(() => store.todos.filter(t => !t.done).length);
 const completed = computed(() => store.todos.filter(t => t.done).length);
 
-const updateDerived = () => {
-  remaining.recompute();
-  completed.recompute();
+// Use effect to automatically update store properties when computed values change
+const effectCleanup = effect(() => {
   store.remaining = remaining.value;
   store.completed = completed.value;
-};
+});
 
 // Render list whenever todos or filter changes
 const listEl = document.getElementById('todo-list');
@@ -157,7 +156,6 @@ document.getElementById('clear-completed').addEventListener('click', clearComple
 
 // Subscriptions
 store.$subscribe('todos', () => {
-  updateDerived();
   render();
   persist();
 });
@@ -168,9 +166,11 @@ store.$subscribe('filter', () => {
 });
 
 // Initial paint
-updateDerived();
 render();
 updateFilterUI();
 
 // Cleanup
-window.addEventListener('beforeunload', () => cleanup());
+window.addEventListener('beforeunload', () => {
+  cleanup();
+  effectCleanup();
+});

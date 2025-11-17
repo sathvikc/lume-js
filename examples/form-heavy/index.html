@@ -55,7 +55,7 @@
     .step-labels {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 0.8em;
+      margin-bottom: 1.5em;
       font-size: 0.85em;
       color: #888;
     }
@@ -67,28 +67,12 @@
       font-weight: 600;
     }
     
-    /* Progress */
-    .progress {
-      height: 6px;
-      background: #f0f0f0;
-      border-radius: 3px;
-      margin-bottom: 1.2em;
-      overflow: hidden;
-    }
-    .progress-bar {
-      height: 100%;
-      background: linear-gradient(90deg, #667eea, #764ba2);
-      border-radius: 3px;
-      transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      width: 0%;
-    }
-    
     /* Form Content */
     #stepContent {
-      position: relative;
+      min-height: 320px;
     }
     .step-container {
-      animation: fadeIn 0.4s ease;
+      animation: fadeIn 0.3s ease;
     }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(10px); }
@@ -97,8 +81,7 @@
     
     /* Field Groups */
     .field-group {
-      margin-bottom: 1em;
-      position: relative;
+      margin-bottom: 1.2em;
     }
     .field-group label {
       display: block;
@@ -118,19 +101,16 @@
       transition: border-color 0.3s ease, box-shadow 0.3s ease;
     }
     .field-group input:focus,
-    .field-group select:focus,
-    .field-group textarea:focus {
+    .field-group select:focus {
       outline: none;
       border-color: #667eea;
       box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
-    .field-group input.error-field,
-    .field-group select.error-field {
+    .field-group input.error-field {
       border-color: #ef4444;
     }
     .field-group input.input-success {
       border-color: #10b981;
-      padding-right: 2.5em;
     }
     
     /* Input wrapper for icons/buttons */
@@ -141,16 +121,7 @@
     }
     .input-wrapper input {
       flex: 1;
-    }
-    .input-icon {
-      position: absolute;
-      right: 0.75em;
-      pointer-events: none;
-      font-size: 1.2em;
-    }
-    .input-success ~ .input-icon::after {
-      content: '✓';
-      color: #10b981;
+      padding-right: 2.5em;
     }
     .toggle-password {
       position: absolute;
@@ -162,37 +133,34 @@
       font-size: 1.2em;
       opacity: 0.6;
       transition: opacity 0.2s;
-      flex: none;
     }
     .toggle-password:hover {
       opacity: 1;
     }
     
-    /* Errors */
+    /* Messages */
     .error {
       color: #ef4444;
       font-size: 0.85em;
       margin-top: 0.4em;
       display: block;
-      /* min-height: 1.2em; */
+      min-height: 1.2em;
     }
-    
-    /* Username status */
     .username-status {
       font-size: 0.85em;
       margin-top: 0.4em;
       display: block;
+      min-height: 1.2em;
     }
     .username-status.loading {
       color: #667eea;
     }
-    .username-status.loading::after {
-      content: '...';
-      animation: dots 1.5s steps(4, end) infinite;
-    }
     .username-status.available {
       color: #10b981;
       font-weight: 500;
+    }
+    .username-status.taken {
+      color: #ef4444;
     }
     
     /* Tooltips */
@@ -266,22 +234,6 @@
     .strength-fill.medium { width: 66%; background: #f59e0b; }
     .strength-fill.strong { width: 100%; background: #10b981; }
     
-    /* Loading */
-    .loading {
-      font-size: 0.85em;
-      color: #667eea;
-      margin-top: 0.3em;
-    }
-    .loading::after {
-      content: '...';
-      animation: dots 1.5s steps(4, end) infinite;
-    }
-    @keyframes dots {
-      0%, 20% { content: '.'; }
-      40% { content: '..'; }
-      60%, 100% { content: '...'; }
-    }
-    
     /* Radio/Checkbox */
     .radio-group,
     .checkbox-group {
@@ -335,7 +287,7 @@
       display: flex;
       justify-content: space-between;
       gap: 1em;
-      margin-top: 1.2em;
+      margin-top: 1.5em;
     }
     button {
       flex: 1;
@@ -372,12 +324,13 @@
     /* Utility */
     .hidden { display: none !important; }
     .success-message {
-      background: #10b981;
-      color: white;
-      padding: 1em;
-      border-radius: 6px;
       text-align: center;
+      padding: 2em;
       animation: fadeIn 0.4s ease;
+    }
+    .success-message h2 {
+      color: #10b981;
+      margin-bottom: 0.5em;
     }
   </style>
 </head>
