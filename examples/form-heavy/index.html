@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lume.js Multi-Step Registration Form</title>
+  <title>Lume.js Multi-Step Form</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -67,11 +67,15 @@
       font-weight: 600;
     }
     
-    /* Form Content */
-    #stepContent {
+    /* Step containers - use display instead of innerHTML */
+    .step-container {
       min-height: 320px;
     }
-    .step-container {
+    .step-content {
+      display: none;
+    }
+    .step-content.active {
+      display: block;
       animation: fadeIn 0.3s ease;
     }
     @keyframes fadeIn {
@@ -113,44 +117,19 @@
       border-color: #10b981;
     }
     
-    /* Input wrapper for icons/buttons */
-    .input-wrapper {
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-    .input-wrapper input {
-      flex: 1;
-      padding-right: 2.5em;
-    }
-    .toggle-password {
-      position: absolute;
-      right: 0.5em;
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      padding: 0.25em 0.5em;
-      font-size: 1.2em;
-      opacity: 0.6;
-      transition: opacity 0.2s;
-    }
-    .toggle-password:hover {
-      opacity: 1;
-    }
-    
     /* Messages */
     .error {
       color: #ef4444;
       font-size: 0.85em;
       margin-top: 0.4em;
       display: block;
-      min-height: 1.2em;
+      /* min-height: 1.2em; */
     }
     .username-status {
       font-size: 0.85em;
       margin-top: 0.4em;
       display: block;
-      min-height: 1.2em;
+      /* min-height: 1.2em; */
     }
     .username-status.loading {
       color: #667eea;
@@ -161,56 +140,6 @@
     }
     .username-status.taken {
       color: #ef4444;
-    }
-    
-    /* Tooltips */
-    .tooltip {
-      position: relative;
-      display: inline-block;
-      margin-left: 0.3em;
-      cursor: help;
-    }
-    .tooltip-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 18px;
-      height: 18px;
-      background: #667eea;
-      color: white;
-      border-radius: 50%;
-      font-size: 0.75em;
-      font-weight: bold;
-    }
-    .tooltip-text {
-      visibility: hidden;
-      opacity: 0;
-      position: absolute;
-      bottom: 125%;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #333;
-      color: white;
-      padding: 0.5em 0.75em;
-      border-radius: 6px;
-      font-size: 0.85em;
-      white-space: nowrap;
-      z-index: 10;
-      transition: opacity 0.3s ease;
-    }
-    .tooltip-text::after {
-      content: '';
-      position: absolute;
-      top: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      border: 5px solid transparent;
-      border-top-color: #333;
-    }
-    .tooltip:hover .tooltip-text,
-    .tooltip:focus .tooltip-text {
-      visibility: visible;
-      opacity: 1;
     }
     
     /* Password Strength */
@@ -267,17 +196,14 @@
       color: #333;
       font-size: 1.1em;
     }
-    .review-list ul {
-      list-style: none;
-    }
-    .review-list li {
+    .review-item {
       padding: 0.5em 0;
       border-bottom: 1px solid #e0e0e0;
     }
-    .review-list li:last-child {
+    .review-item:last-child {
       border-bottom: none;
     }
-    .review-list strong {
+    .review-item strong {
       color: #667eea;
       margin-right: 0.5em;
     }
@@ -332,23 +258,196 @@
       color: #10b981;
       margin-bottom: 0.5em;
     }
+    .success-message p {
+      margin-bottom: 1.5em;
+    }
+    .success-message button {
+      margin-top: 1em;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Create Your Account</h1>
-    <p class="subtitle">Fill out the form below to get started</p>
     
-    <div class="stepper" id="stepper"></div>
-    <div class="step-labels" id="stepLabels">
-      <span>Personal</span>
-      <span>Account</span>
-      <span>Preferences</span>
-      <span>Review</span>
+    <!-- Stepper -->
+    <div class="stepper">
+      <div class="step" data-step-indicator="1"></div>
+      <div class="step" data-step-indicator="2"></div>
+      <div class="step" data-step-indicator="3"></div>
+      <div class="step" data-step-indicator="4"></div>
+    </div>
+    <div class="step-labels">
+      <span data-step-label="1">Personal</span>
+      <span data-step-label="2">Account</span>
+      <span data-step-label="3">Preferences</span>
+      <span data-step-label="4">Review</span>
     </div>
     
     <form id="multiForm" autocomplete="off">
-      <div id="stepContent"></div>
+      <div class="step-container">
+        <!-- Step 1: Personal Info -->
+        <div id="step1" class="step-content">
+          <div class="field-group">
+            <label for="firstName">First Name *</label>
+            <input id="firstName" type="text" data-bind="personal.firstName" required />
+            <span class="error" data-bind="errors.firstName"></span>
+          </div>
+          <div class="field-group">
+            <label for="lastName">Last Name *</label>
+            <input id="lastName" type="text" data-bind="personal.lastName" required />
+            <span class="error" data-bind="errors.lastName"></span>
+          </div>
+          <div class="field-group">
+            <label for="email">Email *</label>
+            <input id="email" type="email" data-bind="personal.email" required />
+            <span class="error" data-bind="errors.email"></span>
+          </div>
+          <div class="field-group">
+            <label for="phone">Phone (optional)</label>
+            <input id="phone" type="tel" data-bind="personal.phone" placeholder="(555) 123-4567" />
+          </div>
+        </div>
+
+        <!-- Step 2: Account Info -->
+        <div id="step2" class="step-content">
+          <div class="field-group">
+            <label for="username">Username *</label>
+            <input id="username" type="text" data-bind="account.username" required />
+            <span id="usernameStatus" class="username-status"></span>
+            <span class="error" data-bind="errors.username"></span>
+          </div>
+          <div class="field-group">
+            <label for="password">Password *</label>
+            <input id="password" type="password" data-bind="account.password" required />
+            <div id="passwordStrength" class="password-strength"></div>
+            <span class="error" data-bind="errors.password"></span>
+          </div>
+          <div class="field-group">
+            <label for="confirm">Confirm Password *</label>
+            <input id="confirm" type="password" data-bind="account.confirm" required />
+            <span class="error" data-bind="errors.confirm"></span>
+          </div>
+          <div class="field-group">
+            <label>Account Type</label>
+            <div class="radio-group">
+              <label>
+                <input type="radio" name="type" value="free" data-bind="account.type" />
+                Free
+              </label>
+              <label>
+                <input type="radio" name="type" value="premium" data-bind="account.type" />
+                Premium
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Preferences -->
+        <div id="step3" class="step-content">
+          <div class="field-group">
+            <div class="checkbox-group">
+              <label>
+                <input type="checkbox" id="newsletter" data-bind="preferences.newsletter" />
+                Subscribe to newsletter
+              </label>
+            </div>
+          </div>
+          
+          <!-- Premium-only fields -->
+          <div id="premiumFields">
+            <div class="field-group">
+              <label for="billing">Billing Cycle</label>
+              <select id="billing" data-bind="preferences.billing">
+                <option value="monthly">Monthly ($9.99)</option>
+                <option value="yearly">Yearly ($99.99 - Save 17%)</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label>Payment Method</label>
+              <div class="radio-group">
+                <label>
+                  <input type="radio" name="payment" value="credit" data-bind="preferences.payment" />
+                  Credit Card
+                </label>
+                <label>
+                  <input type="radio" name="payment" value="paypal" data-bind="preferences.payment" />
+                  PayPal
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Free-only fields -->
+          <div id="freeFields">
+            <div class="field-group">
+              <label for="referral">Referral Code (optional)</label>
+              <input id="referral" type="text" data-bind="preferences.referral" placeholder="e.g., FRIEND2024" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4: Review -->
+        <div id="step4" class="step-content">
+          <div class="review-list">
+            <h3>Review Your Information</h3>
+            <div class="review-item">
+              <strong>Name:</strong>
+              <span data-bind="personal.firstName"></span>
+              <span data-bind="personal.lastName"></span>
+            </div>
+            <div class="review-item">
+              <strong>Email:</strong>
+              <span data-bind="personal.email"></span>
+            </div>
+            <div class="review-item" id="phoneReview">
+              <strong>Phone:</strong>
+              <span data-bind="personal.phone"></span>
+            </div>
+            <div class="review-item">
+              <strong>Username:</strong>
+              <span data-bind="account.username"></span>
+            </div>
+            <div class="review-item">
+              <strong>Account Type:</strong>
+              <span id="accountTypeDisplay"></span>
+            </div>
+            <div class="review-item" id="billingReview">
+              <strong>Billing:</strong>
+              <span id="billingDisplay"></span>
+            </div>
+            <div class="review-item" id="paymentReview">
+              <strong>Payment:</strong>
+              <span id="paymentDisplay"></span>
+            </div>
+            <div class="review-item" id="referralReview">
+              <strong>Referral:</strong>
+              <span data-bind="preferences.referral"></span>
+            </div>
+            <div class="review-item">
+              <strong>Newsletter:</strong>
+              <span id="newsletterDisplay"></span>
+            </div>
+          </div>
+          <div class="field-group">
+            <div class="checkbox-group">
+              <label>
+                <input type="checkbox" id="terms" data-bind="terms" />
+                I agree to the terms & conditions *
+              </label>
+            </div>
+            <span class="error" data-bind="errors.terms"></span>
+          </div>
+        </div>
+
+        <!-- Success Message (hidden initially) -->
+        <div id="successMessage" class="success-message hidden">
+          <h2>🎉 Registration Successful!</h2>
+          <p>Welcome, <span data-bind="personal.firstName"></span>! Your account has been created.</p>
+          <button type="button" id="resetBtn">Start Over</button>
+        </div>
+      </div>
+
       <div class="actions">
         <button type="button" id="prevBtn">Previous</button>
         <button type="button" id="nextBtn">Next</button>
@@ -356,6 +455,7 @@
       </div>
     </form>
   </div>
-  <script type="module" src="main.js"></script>
+
+  <script type="module" src="./main.js"></script>
 </body>
 </html>
