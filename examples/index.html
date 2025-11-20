@@ -5,26 +5,58 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lume.js Examples</title>
   <style>
-    body { font-family: sans-serif; padding: 2rem; }
-    h1 { margin-bottom: 1rem; }
+    body { font-family: sans-serif; padding: 2rem; max-width: 800px; margin: 0 auto; }
+    h1 { margin-bottom: 0.5rem; }
+    p { color: #666; margin-bottom: 2rem; }
     ul { list-style: none; padding: 0; }
     li { margin: 0.5rem 0; }
-    a { text-decoration: none; color: #0070f3; }
-    a:hover { text-decoration: underline; }
+    a { 
+      text-decoration: none; 
+      color: #0070f3; 
+      font-size: 1.1rem;
+      display: block;
+      padding: 0.75rem;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    a:hover { 
+      background: #f5f5f5;
+      border-color: #0070f3;
+    }
   </style>
 </head>
 <body>
   <h1>Lume.js Examples</h1>
+  <p>Interactive examples demonstrating Lume.js reactive state management</p>
   <ul id="examples-list"></ul>
 
   <script type="module">
-    const response = await fetch("/__examples.json");
-    const examples = await response.json();
+    // Try dev server first, fallback to static list
+    let examples = [];
+    try {
+      const response = await fetch("/__examples.json");
+      if (response.ok) {
+        examples = await response.json();
+      } else {
+        throw new Error('Dev server not available');
+      }
+    } catch (e) {
+      // Fallback to static JSON file or hardcoded list
+      try {
+        const response = await fetch("./__examples.json");
+        examples = await response.json();
+      } catch {
+        // Hardcoded fallback for production
+        examples = ["comprehensive", "form-heavy", "tic-tac-toe", "todo"];
+      }
+    }
 
     const list = document.getElementById("examples-list");
     examples.forEach(name => {
       const li = document.createElement("li");
-      li.innerHTML = `<a href="/examples/${name}/">${name}</a>`;
+      const displayName = name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      li.innerHTML = `<a href="./${name}/">${displayName}</a>`;
       list.appendChild(li);
     });
   </script>

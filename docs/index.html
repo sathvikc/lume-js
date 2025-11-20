@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lume.js - Standards-Only Reactive State Management</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6;
+      color: #333;
+    }
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 3rem 2rem;
+      text-align: center;
+    }
+    header h1 { font-size: 3rem; margin-bottom: 1rem; }
+    header p { font-size: 1.25rem; opacity: 0.95; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+    .hero { text-align: center; margin: 3rem 0; }
+    .hero h2 { font-size: 2rem; margin-bottom: 1rem; color: #667eea; }
+    .features { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+      gap: 2rem; 
+      margin: 3rem 0; 
+    }
+    .feature {
+      padding: 1.5rem;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      transition: all 0.3s;
+    }
+    .feature:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+      transform: translateY(-2px);
+    }
+    .feature h3 { color: #667eea; margin-bottom: 0.5rem; }
+    .cta {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin: 3rem 0;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-block;
+      padding: 1rem 2rem;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      transition: all 0.3s;
+      font-size: 1.1rem;
+    }
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    .btn-secondary {
+      background: white;
+      color: #667eea;
+      border: 2px solid #667eea;
+    }
+    .btn-secondary:hover {
+      background: #f8f9ff;
+      transform: translateY(-2px);
+    }
+    .code-example {
+      background: #f5f5f5;
+      padding: 2rem;
+      border-radius: 8px;
+      margin: 2rem 0;
+      overflow-x: auto;
+    }
+    pre { background: #2d2d2d; color: #f8f8f2; padding: 1.5rem; border-radius: 6px; overflow-x: auto; }
+    code { font-family: 'Consolas', 'Monaco', 'Courier New', monospace; }
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      margin: 3rem 0;
+      flex-wrap: wrap;
+    }
+    .stat { text-align: center; }
+    .stat-value { font-size: 2.5rem; font-weight: bold; color: #667eea; }
+    .stat-label { color: #666; margin-top: 0.5rem; }
+    footer {
+      background: #f8f9fa;
+      padding: 2rem;
+      text-align: center;
+      margin-top: 4rem;
+      border-top: 1px solid #e0e0e0;
+    }
+    .comparison {
+      margin: 3rem 0;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    th, td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    th {
+      background: #667eea;
+      color: white;
+      font-weight: 600;
+    }
+    tr:hover { background: #f8f9ff; }
+    .check { color: #22c55e; }
+    .cross { color: #ef4444; }
+    .warning { color: #f59e0b; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🌟 Lume.js</h1>
+    <p>Reactivity that follows web standards</p>
+  </header>
+
+  <div class="container">
+    <div class="hero">
+      <h2>Minimal reactive state management using only standard JavaScript and HTML</h2>
+      <p>No custom syntax • No build step required • No framework lock-in</p>
+    </div>
+
+    <div class="cta">
+      <a href="./examples/" class="btn btn-primary">🚀 Live Examples</a>
+      <a href="https://github.com/sathvikc/lume-js" class="btn btn-secondary">📖 View on GitHub</a>
+      <a href="https://www.npmjs.com/package/lume-js" class="btn btn-secondary">📦 npm Package</a>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value">&lt;2KB</div>
+        <div class="stat-label">Gzipped Size</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">0</div>
+        <div class="stat-label">Dependencies</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">100%</div>
+        <div class="stat-label">Standards-Based</div>
+      </div>
+    </div>
+
+    <div class="code-example">
+      <h3 style="margin-bottom: 1rem;">Quick Start</h3>
+      <pre><code>&lt;!-- HTML: Just use data-bind --&gt;
+&lt;div&gt;
+  &lt;p&gt;Count: &lt;span data-bind="count"&gt;&lt;/span&gt;&lt;/p&gt;
+  &lt;input data-bind="name" placeholder="Enter name"&gt;
+  &lt;button id="increment"&gt;+&lt;/button&gt;
+&lt;/div&gt;
+
+&lt;script type="module"&gt;
+  import { state, bindDom } from 'lume-js';
+
+  // Create reactive state
+  const store = state({ count: 0, name: 'World' });
+
+  // Bind to DOM - that's it!
+  bindDom(document.body, store);
+
+  // Update state with standard JavaScript
+  document.getElementById('increment')
+    .addEventListener('click', () => store.count++);
+&lt;/script&gt;</code></pre>
+    </div>
+
+    <h2 style="text-align: center; margin: 3rem 0 2rem;">Why Choose Lume.js?</h2>
+
+    <div class="features">
+      <div class="feature">
+        <h3>🎯 Standards-Only</h3>
+        <p>Uses only <code>data-*</code> attributes and standard JavaScript. Your HTML validates perfectly and screen readers work flawlessly.</p>
+      </div>
+      <div class="feature">
+        <h3>📦 Tiny Bundle</h3>
+        <p>Less than 2KB gzipped. No virtual DOM overhead, just direct DOM updates that are fast and efficient.</p>
+      </div>
+      <div class="feature">
+        <h3>🔧 No Build Step</h3>
+        <p>Works directly in the browser. Import from CDN or use with any bundler - your choice.</p>
+      </div>
+      <div class="feature">
+        <h3>🎨 No Lock-in</h3>
+        <p>Works with any library (GSAP, jQuery, D3, etc.). Mix and match with your existing stack.</p>
+      </div>
+      <div class="feature">
+        <h3>⚡ Fast Performance</h3>
+        <p>Direct DOM updates with surgical precision. Only what changed gets updated.</p>
+      </div>
+      <div class="feature">
+        <h3>🧹 Clean API</h3>
+        <p>Cleanup functions prevent memory leaks. Proper lifecycle management built-in.</p>
+      </div>
+    </div>
+
+    <div class="comparison">
+      <h2 style="text-align: center; margin: 3rem 0 2rem;">Comparison with Other Libraries</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Lume.js</th>
+            <th>Alpine.js</th>
+            <th>Vue</th>
+            <th>React</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Custom Syntax</td>
+            <td><span class="check">✅</span> No</td>
+            <td><span class="cross">❌</span> x-data, @click</td>
+            <td><span class="cross">❌</span> v-bind, v-model</td>
+            <td><span class="cross">❌</span> JSX</td>
+          </tr>
+          <tr>
+            <td>Build Step</td>
+            <td><span class="check">✅</span> Optional</td>
+            <td><span class="check">✅</span> Optional</td>
+            <td><span class="warning">⚠️</span> Recommended</td>
+            <td><span class="cross">❌</span> Required</td>
+          </tr>
+          <tr>
+            <td>Bundle Size</td>
+            <td>~2KB</td>
+            <td>~15KB</td>
+            <td>~35KB</td>
+            <td>~45KB</td>
+          </tr>
+          <tr>
+            <td>HTML Validation</td>
+            <td><span class="check">✅</span> Pass</td>
+            <td><span class="warning">⚠️</span> Warnings</td>
+            <td><span class="warning">⚠️</span> Warnings</td>
+            <td><span class="cross">❌</span> JSX</td>
+          </tr>
+          <tr>
+            <td>Cleanup API</td>
+            <td><span class="check">✅</span> Yes</td>
+            <td><span class="warning">⚠️</span> Limited</td>
+            <td><span class="check">✅</span> Yes</td>
+            <td><span class="check">✅</span> Yes</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="text-align: center; margin-top: 1rem; color: #666;">
+        <em>Lume.js is essentially "Modern Knockout.js" - standards-only reactivity for 2025.</em>
+      </p>
+    </div>
+
+    <div class="hero" style="margin: 4rem 0;">
+      <h2>Ready to Get Started?</h2>
+      <div class="cta">
+        <a href="./examples/" class="btn btn-primary">🎮 Try Interactive Examples</a>
+        <a href="https://github.com/sathvikc/lume-js#readme" class="btn btn-secondary">📚 Read Full Documentation</a>
+      </div>
+    </div>
+
+    <div class="code-example">
+      <h3 style="margin-bottom: 1rem;">Installation</h3>
+      <pre><code># Via npm
+npm install lume-js
+
+# Via CDN
+&lt;script type="module"&gt;
+  import { state, bindDom } from 'https://cdn.jsdelivr.net/npm/lume-js/src/index.js';
+&lt;/script&gt;</code></pre>
+    </div>
+  </div>
+
+  <footer>
+    <p>Built with ❤️ by the Lume.js community</p>
+    <p style="margin-top: 0.5rem;">
+      <a href="https://github.com/sathvikc/lume-js" style="color: #667eea; text-decoration: none;">GitHub</a> •
+      <a href="https://github.com/sathvikc/lume-js/blob/main/LICENSE" style="color: #667eea; text-decoration: none;">MIT License</a> •
+      <a href="https://www.npmjs.com/package/lume-js" style="color: #667eea; text-decoration: none;">npm</a>
+    </p>
+  </footer>
+</body>
+</html>

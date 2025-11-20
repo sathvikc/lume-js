@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "vite",
     "build": "echo 'No build step needed - zero-runtime library!'",
+    "build:examples": "vite build --config vite.config.build.js && node scripts/generate-examples-list.js",
+    "preview": "vite preview --outDir dist",
     "size": "node scripts/check-size.js",
     "test": "vitest run",
     "test:watch": "vitest",
