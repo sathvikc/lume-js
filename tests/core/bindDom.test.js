@@ -361,4 +361,147 @@ describe('bindDom', () => {
     // After cleanup, DOM should not update further
     expect(span.textContent).toBe('x');
   });
+
+  describe('auto-ready functionality', () => {
+    it('binds immediately when document is already ready', async () => {
+      // Simulate document already loaded (default state in tests)
+      const root = setupDOM(`<div><span data-bind="count"></span></div>`);
+      const store = state({ count: 42 });
+
+      const cleanup = bindDom(root, store);
+      
+      // Should bind immediately since document.readyState !== 'loading'
+      expect(root.querySelector('span').textContent).toBe('42');
+
+      cleanup();
+    });
+
+    it('binds immediately with immediate option set to true', async () => {
+      const root = setupDOM(`<div><span data-bind="count"></span></div>`);
+      const store = state({ count: 99 });
+
+      const cleanup = bindDom(root, store, { immediate: true });
+      
+      // Should bind immediately with immediate flag
+      expect(root.querySelector('span').textContent).toBe('99');
+
+      cleanup();
+    });
+
+    it('waits for DOMContentLoaded when document is loading', async () => {
+      const root = setupDOM(`<div><span data-bind="count"></span></div>`);
+      const store = state({ count: 123 });
+
+      // Mock document.readyState as 'loading'
+      const readyStateGetter = vi.fn(() => 'loading');
+      Object.defineProperty(document, 'readyState', {
+        get: readyStateGetter,
+        configurable: true
+      });
+
+      let domContentLoadedListener = null;
+      const originalAddEventListener = document.addEventListener;
+      document.addEventListener = vi.fn((event, listener, options) => {
+        if (event === 'DOMContentLoaded') {
+          domContentLoadedListener = listener;
+        }
+        return originalAddEventListener.call(document, event, listener, options);
+      });
+
+      const cleanup = bindDom(root, store);
+
+      // Should not bind yet - DOM is 'loading'
+      expect(root.querySelector('span').textContent).toBe('');
+      expect(document.addEventListener).toHaveBeenCalledWith(
+        'DOMContentLoaded',
+        expect.any(Function),
+        { once: true }
+      );
+
+      // Simulate DOMContentLoaded event
+      if (domContentLoadedListener) {
+        domContentLoadedListener();
+      }
+
+      // Now should be bound
+      expect(root.querySelector('span').textContent).toBe('123');
+
+      // Restore original state
+      Object.defineProperty(document, 'readyState', {
+        get: () => 'complete',
+        configurable: true
+      });
+      document.addEventListener = originalAddEventListener;
+
+      cleanup();
+    });
+
+    it('cleanup before DOMContentLoaded removes event listener', async () => {
+      const root = setupDOM(`<div><span data-bind="count"></span></div>`);
+      const store = state({ count: 456 });
+
+      // Mock document.readyState as 'loading'
+      const readyStateGetter = vi.fn(() => 'loading');
+      Object.defineProperty(document, 'readyState', {
+        get: readyStateGetter,
+        configurable: true
+      });
+
+      const removeEventListenerSpy = vi.spyOn(document, 'removeEventListener');
+
+      const cleanup = bindDom(root, store);
+
+      // Call cleanup before DOMContentLoaded fires
+      cleanup();
+
+      // Should have removed the event listener
+      expect(removeEventListenerSpy).toHaveBeenCalledWith(
+        'DOMContentLoaded',
+        expect.any(Function)
+      );
+
+      // Restore original state
+      Object.defineProperty(document, 'readyState', {
+        get: () => 'complete',
+        configurable: true
+      });
+
+      removeEventListenerSpy.mockRestore();
+    });
+
+    it('immediate option bypasses auto-wait even when loading', async () => {
+      const root = setupDOM(`<div><span data-bind="count"></span></div>`);
+      const store = state({ count: 789 });
+
+      // Mock document.readyState as 'loading'
+      const readyStateGetter = vi.fn(() => 'loading');
+      Object.defineProperty(document, 'readyState', {
+        get: readyStateGetter,
+        configurable: true
+      });
+
+      const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
+
+      const cleanup = bindDom(root, store, { immediate: true });
+
+      // Should bind immediately, not wait for DOMContentLoaded
+      expect(root.querySelector('span').textContent).toBe('789');
+      
+      // Should NOT have added event listener
+      expect(addEventListenerSpy).not.toHaveBeenCalledWith(
+        'DOMContentLoaded',
+        expect.any(Function),
+        expect.any(Object)
+      );
+
+      // Restore original state
+      Object.defineProperty(document, 'readyState', {
+        get: () => 'complete',
+        configurable: true
+      });
+
+      addEventListenerSpy.mockRestore();
+      cleanup();
+    });
+  });
 });

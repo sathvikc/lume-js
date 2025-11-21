@@ -59,18 +59,37 @@ export type ReactiveState<T extends object> = T & {
 export function state<T extends object>(obj: T): ReactiveState<T>;
 
 /**
+ * Options for bindDom function
+ */
+export interface BindDomOptions {
+  /**
+   * Skip auto-wait for DOM, bind immediately
+   * @default false
+   */
+  immediate?: boolean;
+}
+
+/**
  * Bind reactive state to DOM elements
+ * 
+ * Automatically waits for DOMContentLoaded if the document is still loading,
+ * ensuring safe binding regardless of when the function is called.
  * 
  * @param root - Root element to scan for [data-bind] attributes
  * @param store - Reactive state object
+ * @param options - Optional configuration
  * @returns Cleanup function to remove all bindings
  * @throws {Error} If root is not an HTMLElement
  * @throws {Error} If store is not a reactive state object
  * 
  * @example
  * ```typescript
+ * // Default: Auto-waits for DOM (safe anywhere)
  * const store = state({ count: 0 });
  * const cleanup = bindDom(document.body, store);
+ * 
+ * // Advanced: Force immediate binding (no auto-wait)
+ * const cleanup = bindDom(myElement, store, { immediate: true });
  * 
  * // Later: cleanup all bindings
  * cleanup();
@@ -84,7 +103,8 @@ export function state<T extends object>(obj: T): ReactiveState<T>;
  */
 export function bindDom(
   root: HTMLElement,
-  store: ReactiveState<any>
+  store: ReactiveState<any>,
+  options?: BindDomOptions
 ): Unsubscribe;
 
 /**

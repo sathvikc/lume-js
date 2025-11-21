@@ -4,10 +4,19 @@
  *
  * Binds reactive state to DOM elements using [data-bind].
  * Supports two-way binding for INPUT/TEXTAREA/SELECT.
+ * 
+ * Automatically waits for DOMContentLoaded if the document is still loading,
+ * ensuring safe binding regardless of when the function is called.
  *
  * Usage:
  *   import { bindDom } from "lume-js";
+ *   
+ *   // Default: Auto-waits for DOM (safe anywhere)
  *   const cleanup = bindDom(document.body, store);
+ *   
+ *   // Advanced: Force immediate binding (no auto-wait)
+ *   const cleanup = bindDom(myElement, store, { immediate: true });
+ *   
  *   // Later: cleanup();
  *
  * HTML:
@@ -23,9 +32,11 @@ import { resolvePath } from "./utils.js";
  * 
  * @param {HTMLElement} root - Root element to scan for [data-bind]
  * @param {object} store - Reactive state object
+ * @param {object} [options] - Optional configuration
+ * @param {boolean} [options.immediate=false] - Skip auto-wait, bind immediately
  * @returns {function} Cleanup function to remove all bindings
  */
-export function bindDom(root, store) {
+export function bindDom(root, store, options = {}) {
   if (!(root instanceof HTMLElement)) {
     throw new Error('bindDom() requires a valid HTMLElement as root');
   }
@@ -34,52 +45,79 @@ export function bindDom(root, store) {
     throw new Error('bindDom() requires a reactive state object');
   }
 
-  const nodes = root.querySelectorAll("[data-bind]");
-  const cleanups = [];
+  const { immediate = false } = options;
 
-  nodes.forEach(el => {
-    const bindPath = el.getAttribute("data-bind");
-    
-    if (!bindPath) {
-      console.warn('[Lume.js] Empty data-bind attribute found', el);
-      return;
-    }
+  // Core binding logic extracted to separate function
+  const performBinding = () => {
+    const nodes = root.querySelectorAll("[data-bind]");
+    const cleanups = [];
 
-    const pathArr = bindPath.split(".");
-    const lastKey = pathArr.pop();
+    nodes.forEach(el => {
+      const bindPath = el.getAttribute("data-bind");
+      
+      if (!bindPath) {
+        console.warn('[Lume.js] Empty data-bind attribute found', el);
+        return;
+      }
 
-    let target;
-    try {
-      target = resolvePath(store, pathArr);
-    } catch (err) {
-      console.warn(`[Lume.js] Invalid binding path "${bindPath}":`, err.message);
-      return;
-    }
+      const pathArr = bindPath.split(".");
+      const lastKey = pathArr.pop();
 
-    if (!target || typeof target.$subscribe !== 'function') {
-      console.warn(`[Lume.js] Target for "${bindPath}" is not a reactive state object`);
-      return;
-    }
+      let target;
+      try {
+        target = resolvePath(store, pathArr);
+      } catch (err) {
+        console.warn(`[Lume.js] Invalid binding path "${bindPath}":`, err.message);
+        return;
+      }
 
-    // Subscribe to changes - receives already-batched notifications
-    const unsubscribe = target.$subscribe(lastKey, val => {
-      updateElement(el, val);
+      if (!target || typeof target.$subscribe !== 'function') {
+        console.warn(`[Lume.js] Target for "${bindPath}" is not a reactive state object`);
+        return;
+      }
+
+      // Subscribe to changes - receives already-batched notifications
+      const unsubscribe = target.$subscribe(lastKey, val => {
+        updateElement(el, val);
+      });
+      cleanups.push(unsubscribe);
+
+      // Two-way binding for form inputs
+      if (isFormInput(el)) {
+        const handler = e => {
+          target[lastKey] = getInputValue(e.target);
+        };
+        el.addEventListener("input", handler);
+        cleanups.push(() => el.removeEventListener("input", handler));
+      }
     });
-    cleanups.push(unsubscribe);
 
-    // Two-way binding for form inputs
-    if (isFormInput(el)) {
-      const handler = e => {
-        target[lastKey] = getInputValue(e.target);
-      };
-      el.addEventListener("input", handler);
-      cleanups.push(() => el.removeEventListener("input", handler));
-    }
-  });
-
-  return () => {
-    cleanups.forEach(cleanup => cleanup());
+    return () => {
+      cleanups.forEach(cleanup => cleanup());
+    };
   };
+
+  // Auto-wait for DOM if needed (unless immediate flag is set)
+  if (!immediate && document.readyState === 'loading') {
+    let cleanup = null;
+    const onReady = () => {
+      cleanup = performBinding();
+    };
+    document.addEventListener('DOMContentLoaded', onReady, { once: true });
+    
+    // Return cleanup function that handles both cases
+    return () => {
+      if (cleanup) {
+        cleanup();
+      } else {
+        // If cleanup hasn't been created yet, remove the event listener
+        document.removeEventListener('DOMContentLoaded', onReady);
+      }
+    };
+  }
+
+  // Immediate binding (DOM already ready or immediate flag set)
+  return performBinding();
 }
 
 /**
@@ -89,8 +127,13 @@ export function bindDom(root, store) {
 function updateElement(el, val) {
   if (el.tagName === "INPUT") {
     if (el.type === "checkbox") {
+      // Single checkbox: bind to boolean value
+      // For multiple checkboxes, use nested state objects:
+      //   <input data-bind="tags.javascript"> → state({ tags: state({ javascript: true }) })
       el.checked = Boolean(val);
     } else if (el.type === "radio") {
+      // Radio: checked when el.value matches state value
+      // String() handles null/undefined gracefully (no radio selected)
       el.checked = el.value === String(val);
     } else {
       el.value = val ?? '';

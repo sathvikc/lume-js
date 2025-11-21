@@ -59,9 +59,11 @@ export function state(obj) {
       flushScheduled = false;
       
       // Notify all subscribers of changed keys
+      // Snapshot listeners array to handle unsubscribes during iteration
       for (const [key, value] of pendingNotifications) {
         if (listeners[key]) {
-          listeners[key].forEach(fn => fn(value));
+          const subscribersSnapshot = Array.from(listeners[key]);
+          subscribersSnapshot.forEach(fn => fn(value));
         }
       }
       
