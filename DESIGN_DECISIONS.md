@@ -25,7 +25,55 @@ This document explains **why** Lume.js is designed the way it is. If you have su
 
 ## API Design
 
-### Why Nested State Must Be Wrapped?
+### Why Only Objects in State (Not Primitives)?
+
+**Decision:** `state()` only accepts objects, not primitives.
+
+```javascript
+// ✅ Correct
+const store = state({ count: 0 });
+
+// ❌ Won't work
+const count = state(0);  // Error: Must pass an object
+```
+
+**Reasoning:**
+1. **Proxy limitation:** JavaScript Proxies can only wrap objects, not primitives
+2. **Consistency:** All state uses the same API (dot notation)
+3. **Namespace benefits:** `store.count` is clearer than generic `value`
+4. **Multiple properties:** Objects naturally group related state
+5. **Extensibility:** Easy to add more properties later
+
+**Why this doesn't limit applications:**
+
+```javascript
+// ✅ Single value? Just use one property
+const timer = state({ seconds: 0 });
+
+// ✅ Boolean flag? Same pattern
+const ui = state({ isOpen: false });
+
+// ✅ Multiple related values? Natural grouping
+const auth = state({ 
+  user: null, 
+  token: '', 
+  isLoggedIn: false 
+});
+
+// ✅ Need multiple stores? Create multiple objects
+const counter = state({ count: 0 });
+const todos = state({ items: [], filter: 'all' });
+```
+
+**Alternatives considered:**
+- ❌ Support both primitives and objects → Inconsistent API, confusing edge cases
+- ❌ Use getter/setter functions → Verbose, doesn't match natural property access
+
+**Tradeoff:** Slight verbosity (wrapping in object) for consistency and clarity.
+
+---
+
+### Why Nested State Must Be Explicitly Wrapped?
 
 **Decision:** Require explicit `state()` wrapping for nested objects.
 
@@ -35,7 +83,7 @@ const store = state({
   user: state({ name: 'Alice' })  // Must wrap
 });
 
-// ❌ Won't work
+// ❌ Won't work reactively
 const store = state({
   user: { name: 'Alice' }  // Plain object, not reactive
 });
@@ -149,6 +197,150 @@ bindDom(document.body, store);
 
 ---
 
+### Why No Built-in Event Handling (`@click` style)?
+
+**Decision:** Use standard `addEventListener()`, not custom event attributes.
+
+```javascript
+// ✅ Lume.js approach
+document.getElementById('btn').addEventListener('click', () => {
+  store.count++;
+});
+```
+
+```html
+<!-- ❌ NOT supported (Alpine/Vue style) -->
+<button @click="count++">Increment</button>
+```
+
+**Reasoning:**
+- **Standards-only:** `addEventListener()` is the standard way
+- **No custom syntax:** Keeps HTML validator-friendly
+- **Flexibility:** Use event delegation, capture phase, passive listeners, etc.
+- **Familiarity:** Everyone knows `addEventListener()`
+- **Separation of concerns:** HTML stays declarative, JS handles logic
+
+**Alternatives considered:**
+- ❌ Custom `@click` or `on:click` → Breaks standards-only philosophy
+- ❌ Inline handlers `onclick="..."` → Poor separation, XSS risks
+
+**Tradeoff:** Slightly more verbose, but keeps everything standards-compliant.
+
+---
+
+### Why No Conditional Rendering (`v-if`, `x-if`)?
+
+**Decision:** Use standard JavaScript for conditionals, not template directives.
+
+```javascript
+// ✅ Lume.js approach
+store.$subscribe('isLoggedIn', (value) => {
+  document.querySelector('.user-menu').style.display = 
+    value ? 'block' : 'none';
+});
+```
+
+```html
+<!-- ❌ NOT supported (Vue/Alpine style) -->
+<div v-if="isLoggedIn">Welcome back!</div>
+```
+
+**Reasoning:**
+- **Standards-only:** No custom template syntax needed
+- **Full control:** Use any DOM manipulation method you prefer
+- **Simple mental model:** "Just JavaScript" - no special rules
+- **Integration:** Works with any DOM library (jQuery, GSAP, etc.)
+
+**Alternatives (user can choose):**
+```javascript
+// Option 1: Display toggle
+el.style.display = condition ? 'block' : 'none';
+
+// Option 2: Add/remove from DOM
+if (condition) {
+  parent.appendChild(el);
+} else {
+  el.remove();
+}
+
+// Option 3: Use classes
+el.classList.toggle('hidden', !condition);
+```
+
+**Tradeoff:** More manual, but gives complete flexibility and stays standards-compliant.
+
+---
+
+### Why No Loop Rendering in Core (`v-for`, `x-for`)?
+
+**Decision:** Core uses standard JavaScript for loops; `repeat()` helper planned as optional addon.
+
+```javascript
+// ✅ Core approach - pure JavaScript
+store.$subscribe('items', (items) => {
+  const container = document.querySelector('.list');
+  container.innerHTML = items.map(item => `
+    <li>${item.name}</li>
+  `).join('');
+});
+```
+
+```javascript
+// ✅ Future addon approach
+import { repeat } from 'lume-js/addons';
+
+repeat(container, store.items, item => `
+  <li>${item.name}</li>
+`);
+```
+
+```html
+<!-- ❌ NOT supported - custom template syntax -->
+<li v-for="item in items">{{ item.name }}</li>
+```
+
+**Reasoning:**
+- **Core minimalism:** Most users can write their own loops easily
+- **Standards-only in core:** No custom syntax required
+- **Flexibility:** Users choose their strategy (innerHTML vs createElement)
+- **Addon for convenience:** `repeat()` helper for common use case
+- **No lock-in:** If repeat() doesn't fit, just use JavaScript
+
+**Alternatives (user can choose):**
+```javascript
+// Option 1: Template literals (simple)
+container.innerHTML = items.map(i => `<li>${i.name}</li>`).join('');
+
+// Option 2: createElement (more control)
+items.forEach(item => {
+  const li = document.createElement('li');
+  li.textContent = item.name;
+  container.appendChild(li);
+});
+
+// Option 3: Template element (reusable)
+const template = document.querySelector('#item-template');
+items.forEach(item => {
+  const clone = template.content.cloneNode(true);
+  clone.querySelector('.name').textContent = item.name;
+  container.appendChild(clone);
+});
+```
+
+**Planned addon:**
+```javascript
+// Helper for common case - but completely optional
+import { repeat } from 'lume-js/addons';
+
+repeat(container, store.items, item => `<li>${item.name}</li>`);
+// Or with template element
+repeat(container, store.items, item => templateFn(item));
+```
+
+**Tradeoff:** Core requires more code, but addon provides convenience while maintaining "just JavaScript" philosophy.
+
+---
+
 ## Binding Patterns
 
 ### Why Nested State for Multiple Checkboxes Instead of Arrays?
@@ -219,22 +411,46 @@ Array bindings like `store.tags = ['javascript', 'python']` would require:
 - **Cursor position:** Updating innerHTML loses cursor position
 - **Security:** XSS risks if binding user input directly to innerHTML
 - **Standards focus:** `contenteditable` isn't a standard form input
-- **Workaround exists:** Use `effect()` for manual control
+- **Workaround exists:** Use manual subscriptions for control
 
 **Alternatives considered:**
 - ❌ Add `contenteditable` support → Security risks, cursor issues, scope creep
 
 **Workaround:**
 ```javascript
-effect(() => {
+store.$subscribe('text', (value) => {
   const el = document.querySelector('[contenteditable]');
-  if (el.textContent !== store.text) {
-    el.textContent = store.text; // Loses cursor position
+  if (el.textContent !== value) {
+    el.textContent = value; // Note: Loses cursor position
   }
 });
 ```
 
 **Future consideration:** Could add with proper cursor position handling if there's demand.
+
+---
+
+### Why `data-bind` Only (Not `data-model` or `data-text`)?
+
+**Decision:** Single attribute `data-bind` for both one-way and two-way binding.
+
+```html
+<!-- One attribute for everything -->
+<span data-bind="count"></span>
+<input data-bind="name">
+```
+
+**Reasoning:**
+- **Simplicity:** One concept to learn
+- **Context-aware:** Behavior changes based on element type (span vs input)
+- **Less typing:** Shorter HTML
+- **Consistent:** Same pattern everywhere
+
+**Alternatives considered:**
+- ❌ Separate `data-model`, `data-text`, `data-value` → More API surface
+- ❌ Directionality flags `data-bind.one-way` → Custom syntax
+
+**Tradeoff:** Slightly less explicit, but much simpler API.
 
 ---
 
@@ -330,6 +546,8 @@ effect(() => {
 - Build step requirement (breaks no-build-step principle)
 - Virtual DOM (too complex for minimal philosophy)
 - Lifecycle hooks (too framework-y)
+- Event handling syntax (`@click`, `on:click`)
+- Template directives (`v-if`, `v-for`, `x-if`)
 
 ---
 
@@ -353,4 +571,6 @@ We're open to change, but will prioritize **simplicity and standards** over feat
 
 ## Document History
 
-- **2025-11-20:** Initial version documenting core decisions
+- **2025-11-20:** 
+  - Initial version documenting core decisions
+  - Added reactive identity (`isReactive`) decision and `$` meta method tracking exclusion
