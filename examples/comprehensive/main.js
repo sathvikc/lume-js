@@ -19,34 +19,23 @@ const store = state({
 });
 
 // Bind to DOM
+// Safe to call from anywhere (even in <head>)
 const cleanup = bindDom(document.body, store);
 
-// Example 1: Counter
-document.getElementById('increment').addEventListener('click', () => {
-    store.count++;
-});
-
-document.getElementById('decrement').addEventListener('click', () => {
-    store.count--;
-});
-
-document.getElementById('reset').addEventListener('click', () => {
-    store.count = 0;
-});
+// Example 1: Counter (script is loaded at end of body, so DOM is ready)
+document.getElementById('increment').addEventListener('click', () => { store.count++; });
+document.getElementById('decrement').addEventListener('click', () => { store.count--; });
+document.getElementById('reset').addEventListener('click', () => { store.count = 0; });
 
 // Example 5: Manual subscriptions
 const logEl = document.getElementById('log');
 let eventLog = [];
-
 const unsubEvents = store.$subscribe('events', (value) => {
     eventLog.push(`Event #${value} at ${new Date().toLocaleTimeString()}`);
     if (eventLog.length > 5) eventLog.shift();
     logEl.innerHTML = eventLog.join('<br>');
 });
-
-document.getElementById('trigger').addEventListener('click', () => {
-    store.events++;
-});
+document.getElementById('trigger').addEventListener('click', () => { store.events++; });
 
 // Example 6: Cleanup demo
 let updateInterval = null;

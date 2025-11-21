@@ -18,21 +18,16 @@ exampleEntries.forEach((entry) => {
     input[entry] = resolve(examplesPath, `${entry}/index.html`);
 });
 
-const myResolverPlugin = () => {
-    return {
-        name: 'my-resolver-plugin',
-        enforce: 'pre', // Run before all other plugins
-        resolveId(source, importer, options) {
-            if (source === 'lume-js') {
-                return resolve(projectRoot, 'src/index.js');
-            }
-            if (source === 'lume-js/addons') {
-                return resolve(projectRoot, 'src/addons/index.js');
-            }
-            return null; // Let other resolvers handle the rest
-        }
-    };
-};
+// Simple resolver: map package-style imports to local source during dev
+const lumeResolverPlugin = () => ({
+    name: 'lume-resolver',
+    enforce: 'pre',
+    resolveId(source) {
+        if (source === 'lume-js') return resolve(projectRoot, 'src/index.js');
+        if (source === 'lume-js/addons') return resolve(projectRoot, 'src/addons/index.js');
+        return null;
+    }
+});
 
 export default defineConfig({
     root: projectRoot,
@@ -55,22 +50,6 @@ export default defineConfig({
     //     },
     // },
     plugins: [
-        myResolverPlugin(),
-        {
-            name: "examples-list",
-            enforce: "pre",
-            configureServer(server) {
-                server.middlewares.use((req, res, next) => {
-                    const cleanUrl = req.url.split("?");
-
-                    if (cleanUrl[0] === "/__examples.json") {
-                        res.setHeader('Content-Type', 'application/json');
-                        res.end(JSON.stringify(exampleEntries));
-                    } else {
-                        next();
-                    }
-                });
-            },
-        },
+        lumeResolverPlugin(),
     ],
 });

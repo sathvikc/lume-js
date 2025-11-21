@@ -29,6 +29,7 @@ import { state, bindDom, effect } from 'lume-js';
 // ============================================================================
 
 // Create a single unified store that contains everything
+// Note: bindDom() will be called below and auto-waits for DOMContentLoaded
 const store = state({
   // Form data
   personal: state({

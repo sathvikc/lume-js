@@ -5,27 +5,138 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lume.js Examples</title>
   <style>
-    body { font-family: sans-serif; padding: 2rem; }
-    h1 { margin-bottom: 1rem; }
-    ul { list-style: none; padding: 0; }
-    li { margin: 0.5rem 0; }
-    a { text-decoration: none; color: #0070f3; }
-    a:hover { text-decoration: underline; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body { 
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 40px;
+      max-width: 800px;
+      margin: 0 auto;
+      line-height: 1.6;
+      background: #f8f9fa;
+    }
+    
+    h1 { 
+      margin-bottom: 10px;
+      color: #333;
+    }
+    
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    
+    .examples-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+      list-style: none;
+    }
+    
+    .example-card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .example-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+    
+    .example-card h3 {
+      margin-bottom: 8px;
+      color: #0070f3;
+      font-size: 18px;
+    }
+    
+    .example-card p {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+    
+    .example-card a {
+      display: inline-block;
+      text-decoration: none;
+      color: #0070f3;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    
+    .example-card a:hover {
+      text-decoration: underline;
+    }
+    
+    .badge {
+      display: inline-block;
+      background: #e3f2fd;
+      color: #1565c0;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    
+    .badge.new {
+      background: #c8e6c9;
+      color: #2e7d32;
+    }
   </style>
 </head>
 <body>
-  <h1>Lume.js Examples</h1>
-  <ul id="examples-list"></ul>
+  <h1>🎯 Lume.js Examples</h1>
+  <p class="subtitle">Interactive demos showcasing Lume.js features and patterns</p>
+  
+  <ul class="examples-grid" id="examples-grid"></ul>
 
   <script type="module">
-    const response = await fetch("/__examples.json");
-    const examples = await response.json();
+    // Static example metadata (add/remove entries as needed)
+    // Keeping all relevant info in one place avoids extra fetch and simplifies maintenance.
+    const examples = [
+      {
+        slug: 'comprehensive',
+        title: 'Comprehensive',
+        desc: 'Feature showcase + auto-ready (head-safe), counter, forms, effects, manual subscriptions.',
+        badge: 'UPDATED'
+      },
+      {
+        slug: 'todo',
+        title: 'Todo App',
+        desc: 'Classic Todo with filters, persistence, computed counts.'
+      },
+      {
+        slug: 'tic-tac-toe',
+        title: 'Tic-Tac-Toe',
+        desc: 'Game with history, time travel, computed winner.'
+      },
+      {
+        slug: 'form-heavy',
+        title: 'Form Heavy',
+        desc: 'Multi-step wizard: validation, async checks, conditional fields.',
+        badge: 'ADVANCED'
+      }
+    ];
 
-    const list = document.getElementById("examples-list");
-    examples.forEach(name => {
-      const li = document.createElement("li");
-      li.innerHTML = `<a href="/examples/${name}/">${name}</a>`;
-      list.appendChild(li);
+    const grid = document.getElementById('examples-grid');
+
+    examples.forEach(ex => {
+      const li = document.createElement('li');
+      li.className = 'example-card';
+      const badgeHtml = ex.badge ? `<span class=\"badge ${ex.badge === 'NEW' ? 'new' : ''}\">${ex.badge}</span>` : '';
+      li.innerHTML = `
+        <h3>${ex.title} ${badgeHtml}</h3>
+        <p>${ex.desc}</p>
+        <a href=\"./${ex.slug}/\">View Demo →</a>
+      `;
+      grid.appendChild(li);
     });
   </script>
 </body>

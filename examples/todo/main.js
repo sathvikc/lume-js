@@ -155,11 +155,12 @@ filterButtons.forEach(btn => {
 document.getElementById('clear-completed').addEventListener('click', clearCompleted);
 
 // Subscriptions
-store.$subscribe('todos', () => {
+// Capture unsubscribe functions for symmetrical cleanup
+const unsubscribeTodos = store.$subscribe('todos', () => {
   render();
   persist();
 });
-store.$subscribe('filter', () => {
+const unsubscribeFilter = store.$subscribe('filter', () => {
   render();
   updateFilterUI();
   persist();
@@ -173,4 +174,6 @@ updateFilterUI();
 window.addEventListener('beforeunload', () => {
   cleanup();
   effectCleanup();
+  unsubscribeTodos();
+  unsubscribeFilter();
 });
