@@ -29,6 +29,8 @@ Minimal reactive state management using only standard JavaScript and HTML - no c
 
 **Lume.js is essentially "Modern Knockout.js" - standards-only reactivity for 2025.**
 
+📖 **New to the project?** Read [DESIGN_DECISIONS.md](DESIGN_DECISIONS.md) to understand our design philosophy and why certain choices were made.
+
 ---
 
 ## Installation
@@ -164,16 +166,28 @@ cleanup(); // Stop the effect
 
 **How it works:** Effects use `globalThis.__LUME_CURRENT_EFFECT__` to track which state properties are accessed during execution. When any tracked property changes, the effect is queued in that state's pending effects set and runs once in the next microtask.
 
-### `bindDom(root, store)`
+### `bindDom(root, store, options?)`
 
 Binds reactive state to DOM elements with `data-bind` attributes.
 
+**Automatically waits for DOMContentLoaded** if the document is still loading, making it safe to call from anywhere (even in `<head>`).
+
 ```javascript
+// Default: Auto-waits for DOM (safe anywhere)
 const cleanup = bindDom(document.body, store);
+
+// Advanced: Force immediate binding (no auto-wait)
+const cleanup = bindDom(myElement, store, { immediate: true });
 
 // Later: cleanup all bindings
 cleanup();
 ```
+
+**Parameters:**
+- `root` (HTMLElement) - Root element to scan for `[data-bind]` attributes
+- `store` (Object) - Reactive state object
+- `options` (Object, optional)
+  - `immediate` (Boolean) - Skip auto-wait, bind immediately. Default: `false`
 
 **Supports:**
 - ✅ Text content: `<span data-bind="count"></span>`
@@ -185,11 +199,75 @@ cleanup();
 - ✅ Radio buttons: `<input type="radio" data-bind="choice">`
 - ✅ Nested paths: `<span data-bind="user.name"></span>`
 
+**Multiple Checkboxes Pattern:**
+
+For multiple checkboxes, use nested state instead of arrays:
+
+```javascript
+// ✅ Recommended: Nested state objects
+const store = state({
+  tags: state({
+    javascript: true,
+    python: false,
+    go: true
+  })
+});
+```
+
+```html
+<input type="checkbox" data-bind="tags.javascript"> JavaScript
+<input type="checkbox" data-bind="tags.python"> Python
+<input type="checkbox" data-bind="tags.go"> Go
+```
+
+Nested state is **more explicit and easier to validate** than array-based bindings. See [DESIGN_DECISIONS.md](DESIGN_DECISIONS.md#why-nested-state-for-multiple-checkboxes-instead-of-arrays) for the full rationale.
+
 **Features:**
+- ✅ Auto-waits for DOM if needed (no timing issues!)
 - ✅ Returns cleanup function
 - ✅ Better error messages with `[Lume.js]` prefix
 - ✅ Handles edge cases (empty bindings, invalid paths)
 - ✅ Two-way binding for form inputs
+
+**Why Auto-Ready?**
+
+Works seamlessly regardless of script placement:
+
+```html
+<!-- ✅ Works in <head> -->
+<script type="module">
+  import { state, bindDom } from 'lume-js';
+  const store = state({ count: 0 });
+  bindDom(document.body, store); // Auto-waits for DOM!
+</script>
+
+<!-- ✅ Works inline in <body> -->
+<body>
+  <span data-bind="count"></span>
+  <script type="module">
+    // bindDom() waits for DOMContentLoaded automatically
+  </script>
+</body>
+
+<!-- ✅ Works with defer -->
+<script type="module" defer>
+  // Already loaded, executes immediately
+</script>
+```
+
+**When to use `immediate: true`:**
+
+Rare scenarios where you're dynamically creating DOM or need precise control:
+
+```javascript
+// Dynamic DOM injection
+const container = document.createElement('div');
+container.innerHTML = '<span data-bind="count"></span>';
+document.body.appendChild(container);
+
+// Bind immediately (DOM already exists)
+bindDom(container, store, { immediate: true });
+```
 
 ### `$subscribe(key, callback)`
 
@@ -629,7 +707,10 @@ We welcome contributions! Please:
 
 1. **Focus on:** Examples, documentation, bug fixes, performance
 2. **Avoid:** Adding core features without discussion (keep it minimal!)
-3. **Check:** Project specification for philosophy
+3. **Read:** [DESIGN_DECISIONS.md](DESIGN_DECISIONS.md) to understand our philosophy and why certain choices were made
+4. **Propose alternatives:** If you think a design decision should be reconsidered, open an issue with your reasoning
+
+Before suggesting new features, check if they align with Lume's core principles: standards-only, minimal API, no build step required.
 
 ---
 
