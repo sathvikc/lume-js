@@ -29,6 +29,9 @@
  * @param {Object} obj - Initial state object
  * @returns {Proxy} Reactive proxy with $subscribe method
  */
+// Internal symbol used to mark reactive proxies (non-enumerable via Proxy trap)
+const REACTIVE_MARKER = Symbol('__LUME_REACTIVE__');
+
 export function state(obj) {
   // Validate input
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
@@ -78,6 +81,12 @@ export function state(obj) {
 
   const proxy = new Proxy(obj, {
     get(target, key) {
+      // Reactive marker check (avoid tracking for internal symbol)
+      if (key === REACTIVE_MARKER) return true;
+      // Skip effect tracking for internal meta methods (e.g. $subscribe)
+      if (typeof key === 'string' && key.startsWith('$')) {
+        return target[key];
+      }
       // Support effect tracking
       // Check if we're inside an effect context
       if (typeof globalThis.__LUME_CURRENT_EFFECT__ !== 'undefined') {
@@ -158,4 +167,14 @@ export function state(obj) {
   };
 
   return proxy;
+}
+
+/**
+ * Determine if an object is a Lume reactive proxy.
+ * Defensive: ensures object and marker presence.
+ * @param {any} obj
+ * @returns {boolean}
+ */
+export function isReactive(obj) {
+  return !!(obj && typeof obj === 'object' && obj[REACTIVE_MARKER]);
 }

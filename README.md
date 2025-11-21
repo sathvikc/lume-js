@@ -229,6 +229,38 @@ Nested state is **more explicit and easier to validate** than array-based bindin
 - ✅ Handles edge cases (empty bindings, invalid paths)
 - ✅ Two-way binding for form inputs
 
+### `isReactive(obj)`
+
+Checks whether a value is a reactive proxy created by `state()`.
+
+```javascript
+import { state, isReactive } from 'lume-js';
+
+const original = { count: 1 };
+const store = state(original);
+
+isReactive(store);    // true
+isReactive(original); // false
+isReactive(null);     // false
+```
+
+**How it works:**
+Lume.js uses an internal `Symbol` checked via the Proxy `get` trap rather than mutating the proxy or storing external WeakSet state. Accessing `obj[REACTIVE_SYMBOL]` returns `true` only for reactive proxies, and the symbol is not enumerable or visible via `Object.getOwnPropertySymbols`.
+
+**Characteristics:**
+- ✅ Zero mutation of the proxy
+- ✅ Invisible to enumeration and reflection
+- ✅ Fast: single symbol identity check in the `get` path
+- ✅ Supports nested reactive states naturally
+- ✅ Skips tracking meta `$`-prefixed methods (e.g. `$subscribe`)
+
+**When to use:** Utility/debugging, conditional wrapping patterns like:
+```javascript
+function ensureReactive(val) {
+  return isReactive(val) ? val : state(val);
+}
+```
+
 **Why Auto-Ready?**
 
 Works seamlessly regardless of script placement:
@@ -697,7 +729,7 @@ resolve: {
 **Current coverage:**
 - 100% statements, functions, and lines
 - 100% branches (including edge-case paths)
-- 63 tests covering core behavior, addons, inputs (text/checkbox/radio/number/range/select/textarea), nested state, and cleanup semantics
+- 67 tests covering core behavior, addons, inputs (text/checkbox/radio/number/range/select/textarea), nested state, reactive identity, and cleanup semantics
 
 ---
 

@@ -10,6 +10,6 @@
  *   import { state, bindDom, effect } from "lume-js";
  */
 
-export { state } from "./core/state.js";
+export { state, isReactive } from "./core/state.js";
 export { bindDom } from "./core/bindDom.js";
 export { effect } from "./core/effect.js";

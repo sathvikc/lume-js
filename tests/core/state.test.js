@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { state } from 'src/core/state.js';
+import { state, isReactive } from 'src/core/state.js';
 
 describe('state', () => {
   it('throws for non-object inputs', () => {
@@ -195,5 +195,32 @@ describe('state', () => {
 
     // This behavior relies on snapshot iteration; without Array.from() capturing listeners
     // at flush start, mutating the listeners list inside a callback could cause skipped execution.
+  });
+
+  it('detects reactive proxy with isReactive', () => {
+    const original = { count: 1 };
+    const store = state(original);
+    expect(isReactive(store)).toBe(true);
+    expect(isReactive(original)).toBe(false); // original object not reactive
+  });
+
+  it('isReactive returns false for primitives and null', () => {
+    expect(isReactive(null)).toBe(false);
+    expect(isReactive(123)).toBe(false);
+    expect(isReactive('str')).toBe(false);
+    expect(isReactive(true)).toBe(false);
+  });
+
+  it('nested state objects are also detected', () => {
+    const inner = state({ a: 1 });
+    const outer = state({ inner });
+    expect(isReactive(outer)).toBe(true);
+    expect(isReactive(inner)).toBe(true);
+    expect(isReactive(outer.inner)).toBe(true);
+  });
+
+  it('marker is not enumerable on reactive proxy', () => {
+    const store = state({ x: 1 });
+    expect(Object.keys(store)).not.toContain('__LUME_REACTIVE__');
   });
 });

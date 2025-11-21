@@ -133,3 +133,10 @@ export function bindDom(
  * ```
  */
 export function effect(fn: () => void): Unsubscribe;
+
+/**
+ * Check if a value is a Lume reactive proxy produced by state().
+ * Returns true only for objects created by state().
+ * @param obj - Value to check
+ */
+export function isReactive(obj: any): boolean;
