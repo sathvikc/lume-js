@@ -5,7 +5,7 @@
 Minimal reactive state management using only standard JavaScript and HTML - no custom syntax, no build step required, no framework lock-in.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.4.0-green.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-0.4.1-green.svg)](package.json)
 
 ## Why Lume.js?
 
@@ -384,6 +384,70 @@ unwatch();
 ```
 
 **Note:** `watch()` is just a convenience wrapper around `store.$subscribe()`. Use whichever feels more natural.
+
+---
+
+## Choosing the Right Reactive Pattern
+
+Lume.js provides three ways to react to state changes. Here's when to use each:
+
+| Pattern | Use When | Pros | Cons |
+|---------|----------|------|------|
+| **`bindDom()`** | Syncing state ↔ DOM | Zero code, declarative HTML | DOM-only, no custom logic |
+| **`$subscribe()`** | Listening to specific keys | Explicit, immediate, simple | Manual dependency tracking |
+| **`effect()`** | Auto-run code on any state access | Automatic dependencies, concise | Microtask delay, can infinite loop |
+| **`computed()`** | Deriving values from state | Cached, automatic recompute | Addon import, slight overhead |
+
+**Quick Decision Tree:**
+
+```
+Need to update DOM?
+├─ Yes, just sync form/text → Use bindDom()
+└─ No, custom logic needed
+   ├─ Watch single key? → Use $subscribe()
+   ├─ Watch multiple keys dynamically? → Use effect()
+   └─ Derive a value? → Use computed()
+```
+
+**Examples:**
+
+```javascript
+// 1. bindDom - Zero code DOM sync
+<span data-bind="count"></span>
+bindDom(document.body, store);
+
+// 2. $subscribe - Specific key, immediate execution
+store.$subscribe('count', (val) => {
+  if (val > 10) showNotification('High!');
+});
+
+// 3. effect - Multiple keys, automatic tracking
+effect(() => {
+  document.title = `${store.user.name}: ${store.count}`;
+  // Tracks both user.name and count automatically
+});
+
+// 4. computed - Derive cached value
+import { computed } from 'lume-js/addons';
+const total = computed(() => store.items.reduce((sum, i) => sum + i.price, 0));
+console.log(total.value);
+```
+
+**Gotchas:**
+
+- ⚠️ **effect()** runs in next microtask (~0.002ms delay). Use `$subscribe()` for immediate execution.
+- ⚠️ **Don't mutate tracked state inside effect** - causes infinite loops:
+  ```javascript
+  // ❌ BAD - Infinite loop
+  effect(() => {
+    store.count++; // Writes to what it reads!
+  });
+  
+  // ✅ GOOD - Read-only or separate keys
+  effect(() => {
+    store.displayCount = store.count * 2; // Different keys
+  });
+  ```
 
 ---
 

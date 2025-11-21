@@ -5,6 +5,17 @@
   "main": "src/index.js",
   "types": "src/index.d.ts",
   "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": "./src/index.js",
+      "types": "./src/index.d.ts"
+    },
+    "./addons": {
+      "import": "./src/addons/index.js",
+      "types": "./src/addons/index.d.ts"
+    }
+  },
   "scripts": {
     "dev": "vite",
     "build": "echo 'No build step needed - zero-runtime library!'",
