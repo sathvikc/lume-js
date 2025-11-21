@@ -697,7 +697,7 @@ resolve: {
 **Current coverage:**
 - 100% statements, functions, and lines
 - 100% branches (including edge-case paths)
-- 37 tests covering core behavior, addons, inputs (text/checkbox/radio/number/range/select/textarea), nested state, and cleanup semantics
+- 63 tests covering core behavior, addons, inputs (text/checkbox/radio/number/range/select/textarea), nested state, and cleanup semantics
 
 ---
 
