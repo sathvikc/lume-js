@@ -156,4 +156,44 @@ describe('state', () => {
     expect(spyB).toHaveBeenCalledTimes(1);
     expect(spyB).toHaveBeenCalledWith('z');
   });
+
+  it('invokes all subscribers scheduled at flush even if one unsubscribes another during notification', async () => {
+    const store = state({ val: 0 });
+
+    let firstCalls = 0;
+    let secondCalls = 0;
+    let unsubSecond;
+
+    // Second subscriber (will potentially be removed by first during first flush)
+    unsubSecond = store.$subscribe('val', () => {
+      secondCalls++;
+    });
+
+    // First subscriber unsubscribes second ONLY during the flush (value === 1)
+    store.$subscribe('val', (v) => {
+      firstCalls++;
+      if (v === 1) {
+        unsubSecond(); // unsubscribe second inside notification callback
+      }
+    });
+
+    // Clear initial immediate call counts (both subscribers saw initial value 0 already)
+    expect(firstCalls).toBe(1); // immediate
+    expect(secondCalls).toBe(1); // immediate
+
+    // Trigger first flush with value 1 – both should be called; second then unsubscribed
+    store.val = 1;
+    await Promise.resolve();
+    expect(firstCalls).toBe(2); // immediate + flush
+    expect(secondCalls).toBe(2); // still called this flush even though unsubscribed inside first callback
+
+    // Trigger second flush with value 2 – only first should run now
+    store.val = 2;
+    await Promise.resolve();
+    expect(firstCalls).toBe(3);
+    expect(secondCalls).toBe(2); // not incremented
+
+    // This behavior relies on snapshot iteration; without Array.from() capturing listeners
+    // at flush start, mutating the listeners list inside a callback could cause skipped execution.
+  });
 });
