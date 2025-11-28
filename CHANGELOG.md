@@ -22,11 +22,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added "Design Decisions" document explaining architectural choices
   - Clarified "Standards-Only" philosophy
   - Added explicit warnings about immutable array requirements
+  - Updated test count to 114 tests (from 67)
 - Examples:
-  - Updated Todo app to use `repeat`
+  - Updated Todo app to use `repeat` for list rendering
   - Added Tic-Tac-Toe example demonstrating time travel and computed state
+  - Added comprehensive `repeat-test` example with automated test suite for preservation features
+- Testing:
+  - Added test coverage for `repeat` with `computed` values
+  - Added test coverage for non-reactive store error handling
+  - 47 tests for `repeat` addon covering all features and edge cases
 
 ### Fixed
+- Support for generic `.subscribe()` method in `repeat` (for `computed` integration)
 - Regression tests added for array mutation behavior
 
 ---

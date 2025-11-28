@@ -5,7 +5,7 @@
 Minimal reactive state management using only standard JavaScript and HTML - no custom syntax, no build step required, no framework lock-in.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.4.1-green.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-0.5.0-green.svg)](package.json)
 
 ## Why Lume.js?
 
@@ -793,7 +793,7 @@ resolve: {
 **Current coverage:**
 - 100% statements, functions, and lines
 - 100% branches (including edge-case paths)
-- 67 tests covering core behavior, addons, inputs (text/checkbox/radio/number/range/select/textarea), nested state, reactive identity, and cleanup semantics
+- 114 tests covering core behavior, addons, inputs (text/checkbox/radio/number/range/select/textarea), nested state, reactive identity, and cleanup semantics
 
 ---
 

@@ -154,6 +154,36 @@ describe('repeat', () => {
       expect(container.children[1].textContent).toBe('Alice');
     });
 
+    it('handles non-reactive store gracefully', () => {
+      // Spy on console.warn to verify warning is logged
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+
+      // Plain object with no subscribe methods
+      const plainStore = { items: [{ id: 1, name: 'Alice' }] };
+
+      const cleanup = repeat(container, plainStore, 'items', {
+        key: item => item.id,
+        render: (item, el) => {
+          el.textContent = item.name;
+        }
+      });
+
+      // Should render initial items
+      expect(container.children.length).toBe(1);
+      expect(container.children[0].textContent).toBe('Alice');
+
+      // Should have warned about non-reactive store
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[Lume.js] repeat(): store is not reactive (no $subscribe or subscribe method)'
+      );
+
+      // Cleanup should still work
+      cleanup();
+      expect(container.children.length).toBe(0);
+
+      warnSpy.mockRestore();
+    });
+
     it('updates when items are reordered', async () => {
       const store = state({
         items: [

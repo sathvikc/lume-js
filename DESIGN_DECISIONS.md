@@ -584,6 +584,9 @@ We're open to change, but will prioritize **simplicity and standards** over feat
 
 ## Document History
 
+- **2025-11-28:** 
+  - Added `repeat` addon decision and immutable array update reasoning
+  - Updated examples count and test coverage stats (114 tests)
 - **2025-11-20:** 
   - Initial version documenting core decisions
   - Added reactive identity (`isReactive`) decision and `$` meta method tracking exclusion
