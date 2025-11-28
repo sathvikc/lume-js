@@ -317,7 +317,20 @@ export function repeat(container, store, arrayKey, options) {
   updateList();
 
   // Subscription
-  const unsubscribe = store.$subscribe(arrayKey, updateList);
+  let unsubscribe;
+  if (typeof store.$subscribe === 'function') {
+    unsubscribe = store.$subscribe(arrayKey, updateList);
+  } else if (typeof store.subscribe === 'function') {
+    // Generic subscribe (e.g. computed)
+    unsubscribe = store.subscribe(() => updateList());
+  } else {
+    console.warn('[Lume.js] repeat(): store is not reactive (no $subscribe or subscribe method)');
+    return () => {
+      containerEl.replaceChildren();
+      elementsByKey.clear();
+      seenKeys.clear();
+    };
+  }
 
   return () => {
     unsubscribe();

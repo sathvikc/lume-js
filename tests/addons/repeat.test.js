@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { state } from 'src/core/state.js';
 import { repeat, defaultFocusPreservation, defaultScrollPreservation } from 'src/addons/repeat.js';
+import { computed } from 'src/addons/computed.js';
 
 describe('repeat', () => {
   let container;
@@ -126,6 +127,31 @@ describe('repeat', () => {
 
       expect(container.children.length).toBe(1); // Still 1
       expect(store.items.length).toBe(2); // State updated, but no notification
+    });
+
+    it('works with computed values (generic subscribe)', async () => {
+      const store = state({ items: [{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }] });
+
+      // Computed that filters items
+      const filtered = computed(() => store.items.filter(i => i.name === 'Alice'));
+
+      repeat(container, filtered, 'value', {
+        key: item => item.id,
+        render: (item, el) => {
+          el.textContent = item.name;
+        }
+      });
+
+      // Initial render
+      expect(container.children.length).toBe(1);
+      expect(container.children[0].textContent).toBe('Alice');
+
+      // Update store -> updates computed -> updates list
+      store.items = [...store.items, { id: 3, name: 'Alice' }]; // Add another Alice
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(container.children.length).toBe(2);
+      expect(container.children[1].textContent).toBe('Alice');
     });
 
     it('updates when items are reordered', async () => {

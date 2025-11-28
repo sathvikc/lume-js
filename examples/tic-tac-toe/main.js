@@ -1,5 +1,5 @@
 import { state, bindDom, effect } from 'lume-js';
-import { computed } from 'lume-js/addons';
+import { computed, repeat } from 'lume-js/addons';
 
 // Game logic
 function calculateWinner(squares) {
@@ -24,8 +24,10 @@ function isBoardFull(squares) {
 // Initial state
 const initialSquares = Array(9).fill(null);
 
+let historyId = 0;
+
 const store = state({
-  history: [{ squares: initialSquares, move: 'Game start' }],
+  history: [{ id: historyId++, squares: initialSquares, move: 'Game start' }],
   currentMove: 0,
 });
 
@@ -55,6 +57,33 @@ const gameStatus = computed(() => {
 const boardEl = document.getElementById('board');
 const historyListEl = document.getElementById('history-list');
 
+// Use repeat for history list with element reuse
+const repeatCleanup = repeat(historyListEl, store, 'history', {
+  tag: 'div',
+  key: item => item.id,
+  render: (item, btn, index) => {
+    if (!btn.dataset.bound) {
+      btn.className = 'history-item';
+      btn.setAttribute('tabindex', '0');
+      btn.setAttribute('role', 'button');
+      
+      btn.addEventListener('click', () => jumpToMove(index));
+      btn.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          jumpToMove(index);
+        }
+      });
+      
+      btn.dataset.bound = 'true';
+    }
+    
+    // Update on every render
+    btn.textContent = item.move;
+    btn.classList.toggle('current', index === store.currentMove);
+  }
+});
+
 // Use effect to automatically handle all updates when state changes
 const effectCleanup = effect(() => {
   // Track the complete game state - this will trigger when either property changes
@@ -72,9 +101,8 @@ const effectCleanup = effect(() => {
     statusEl.textContent = status;
   }
   
-  // Render the board and history
+  // Render the board
   renderBoard();
-  renderHistory();
 });
 
 // Render board
@@ -171,6 +199,7 @@ function handleClick(index) {
   const col = (index % 3) + 1;
   
   newHistory.push({
+    id: historyId++,
     squares: newSquares,
     move: `Move #${moveNum}: ${player} → (${row}, ${col})`
   });
@@ -186,45 +215,6 @@ function handleClick(index) {
       cells[clickedIndex].focus();
     }
   }, 0);
-}
-
-// Render history
-function renderHistory() {
-  const historyItems = store.history;
-  historyListEl.innerHTML = '';
-  
-  if (historyItems.length === 1) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-history';
-    empty.textContent = 'No moves yet. Make your first move!';
-    historyListEl.appendChild(empty);
-    return;
-  }
-  
-  for (let i = 0; i < historyItems.length; i++) {
-    const item = historyItems[i];
-    const btn = document.createElement('div');
-    btn.className = 'history-item';
-    btn.setAttribute('tabindex', '0');
-    btn.setAttribute('role', 'button');
-    
-    if (i === store.currentMove) {
-      btn.classList.add('current');
-    }
-    
-    btn.textContent = item.move;
-    btn.dataset.moveIndex = i;
-    
-    btn.addEventListener('click', () => jumpToMove(i));
-    btn.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        jumpToMove(i);
-      }
-    });
-    
-    historyListEl.appendChild(btn);
-  }
 }
 
 // Time travel
@@ -248,4 +238,5 @@ document.getElementById('reset').addEventListener('click', resetGame);
 window.addEventListener('beforeunload', () => {
   cleanup();
   effectCleanup();
+  repeatCleanup();
 });

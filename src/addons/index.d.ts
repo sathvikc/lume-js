@@ -83,3 +83,176 @@ export function watch<T extends object, K extends keyof T>(
   key: K,
   callback: Subscriber<T[K]>
 ): Unsubscribe;
+
+/**
+ * Context passed to preservation functions
+ */
+export interface PreservationContext {
+  /** Whether this update is a reorder (vs add/remove) */
+  isReorder?: boolean;
+}
+
+/**
+ * Focus preservation function signature
+ * 
+ * @param container - The list container element
+ * @returns Restore function to call after DOM updates, or null if nothing to restore
+ */
+export type FocusPreservation = (container: HTMLElement) => (() => void) | null;
+
+/**
+ * Scroll preservation function signature
+ * 
+ * @param container - The list container element
+ * @param context - Additional context about the update
+ * @returns Restore function to call after DOM updates
+ */
+export type ScrollPreservation = (container: HTMLElement, context?: PreservationContext) => () => void;
+
+/**
+ * Options for the repeat() function
+ */
+export interface RepeatOptions<T> {
+  /** Function to extract unique key from item */
+  key: (item: T) => string | number;
+  
+  /** Function to render/update an item's element */
+  render: (item: T, element: HTMLElement, index: number) => void;
+  
+  /** Element tag name or factory function (default: 'div') */
+  element?: string | (() => HTMLElement);
+  
+  /** 
+   * Focus preservation strategy (default: defaultFocusPreservation)
+   * Set to null to disable focus preservation
+   */
+  preserveFocus?: FocusPreservation | null;
+  
+  /** 
+   * Scroll preservation strategy (default: defaultScrollPreservation)
+   * Set to null to disable scroll preservation
+   */
+  preserveScroll?: ScrollPreservation | null;
+}
+
+/**
+ * Default focus preservation strategy
+ * Saves activeElement and selection state before DOM updates
+ * 
+ * @param container - The list container element
+ * @returns Restore function or null
+ * 
+ * @example
+ * ```typescript
+ * import { defaultFocusPreservation } from 'lume-js/addons';
+ * 
+ * // Use in custom preservation wrapper
+ * const myPreservation = (container) => {
+ *   console.log('Saving focus...');
+ *   const restore = defaultFocusPreservation(container);
+ *   return restore ? () => {
+ *     restore();
+ *     console.log('Focus restored!');
+ *   } : null;
+ * };
+ * ```
+ */
+export function defaultFocusPreservation(container: HTMLElement): (() => void) | null;
+
+/**
+ * Default scroll preservation strategy
+ * Uses anchor-based preservation for add/remove, pixel position for reorder
+ * 
+ * @param container - The list container element
+ * @param context - Additional context about the update
+ * @returns Restore function
+ * 
+ * @example
+ * ```typescript
+ * import { defaultScrollPreservation } from 'lume-js/addons';
+ * 
+ * // Wrap default behavior
+ * const myScrollPreservation = (container, context) => {
+ *   const restore = defaultScrollPreservation(container, context);
+ *   return () => {
+ *     restore();
+ *     console.log('Scroll position restored');
+ *   };
+ * };
+ * ```
+ */
+export function defaultScrollPreservation(container: HTMLElement, context?: PreservationContext): () => void;
+
+/**
+ * Efficiently render a list with element reuse by key.
+ * 
+ * Features:
+ * - Element reuse (same DOM nodes, not recreated)
+ * - Minimal DOM operations (only updates what changed)
+ * - Optional focus preservation (maintains activeElement and selection)
+ * - Optional scroll preservation (intelligent positioning)
+ * - Fully customizable preservation strategies
+ * 
+ * @param container - Container element or CSS selector
+ * @param store - Reactive state object
+ * @param arrayKey - Key in store containing the array
+ * @param options - Configuration options
+ * @returns Cleanup function
+ * 
+ * @example
+ * ```typescript
+ * import { state } from 'lume-js';
+ * import { repeat } from 'lume-js/addons';
+ * 
+ * const store = state({
+ *   todos: [
+ *     { id: 1, text: 'Learn Lume.js' },
+ *     { id: 2, text: 'Build an app' }
+ *   ]
+ * });
+ * 
+ * // Basic usage (preservation enabled by default)
+ * const cleanup = repeat('#todo-list', store, 'todos', {
+ *   key: todo => todo.id,
+ *   render: (todo, el) => {
+ *     if (!el.dataset.init) {
+ *       el.innerHTML = `<input value="${todo.text}">`;
+ *       el.dataset.init = 'true';
+ *     }
+ *   }
+ * });
+ * 
+ * // Disable preservation (bare-bones)
+ * repeat('#list', store, 'todos', {
+ *   key: todo => todo.id,
+ *   render: (todo, el) => { el.textContent = todo.text; },
+ *   preserveFocus: null,
+ *   preserveScroll: null
+ * });
+ * 
+ * // Custom preservation
+ * import { defaultFocusPreservation } from 'lume-js/addons';
+ * 
+ * repeat('#list', store, 'todos', {
+ *   key: todo => todo.id,
+ *   render: (todo, el) => { ... },
+ *   preserveFocus: (container) => {
+ *     // Custom logic
+ *     const restore = defaultFocusPreservation(container);
+ *     return () => {
+ *       restore?.();
+ *       console.log('Focus restored');
+ *     };
+ *   }
+ * });
+ * 
+ * // Cleanup
+ * cleanup();
+ * ```
+ */
+export function repeat<T>(
+  container: string | HTMLElement,
+  store: ReactiveState<any>,
+  arrayKey: string,
+  options: RepeatOptions<T>
+): Unsubscribe;

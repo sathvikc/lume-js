@@ -1,10 +1,14 @@
 import { state, bindDom, effect } from 'lume-js';
-import { computed } from 'lume-js/addons';
-
-// Simple id generator
-const nextId = (() => { let i = 0; return () => ++i; })();
+import { computed, repeat } from 'lume-js/addons';
 
 const persisted = JSON.parse(localStorage.getItem('lume_todos') || 'null');
+
+// Simple id generator - start after highest existing ID
+const nextId = (() => {
+  const maxId = persisted?.todos?.reduce((max, todo) => Math.max(max, todo.id || 0), 0) || 0;
+  let i = maxId;
+  return () => ++i;
+})();
 
 const store = state({
   todos: persisted?.todos ?? [], // plain array, we replace it on changes
@@ -22,73 +26,76 @@ const cleanup = bindDom(document.body, store);
 const remaining = computed(() => store.todos.filter(t => !t.done).length);
 const completed = computed(() => store.todos.filter(t => t.done).length);
 
-// Use effect to automatically update store properties when computed values change
-const effectCleanup = effect(() => {
-  store.remaining = remaining.value;
-  store.completed = completed.value;
+// Subscribe to computed values and update DOM directly
+remaining.subscribe(value => {
+  const el = document.querySelector('[data-bind="remaining"]');
+  if (el) el.textContent = value;
 });
 
-// Render list whenever todos or filter changes
+completed.subscribe(value => {
+  const el = document.querySelector('[data-bind="completed"]');
+  if (el) el.textContent = value;
+});
+
+// Render list using repeat() for automatic updates and element reuse
 const listEl = document.getElementById('todo-list');
 
-function applyFilter(items, filter) {
-  if (filter === 'active') return items.filter(t => !t.done);
-  if (filter === 'completed') return items.filter(t => t.done);
-  return items;
-}
+// Create a computed filtered list
+const filteredTodos = computed(() => {
+  const filter = store.filter;
+  const todos = store.todos;
+  if (filter === 'active') return todos.filter(t => !t.done);
+  if (filter === 'completed') return todos.filter(t => t.done);
+  return todos;
+});
 
-function render() {
-  const items = applyFilter(store.todos, store.filter);
-  listEl.innerHTML = '';
-  if (items.length === 0) {
+// Use repeat to render the filtered todo list with focus preservation
+const repeatCleanup = repeat(listEl, filteredTodos, 'value', {
+  tag: 'li',
+  key: todo => todo.id,
+  render: (todo, li) => {
+    if (!li.dataset.bound) {
+      li.className = 'todo';
+      li.innerHTML = `
+        <label>
+          <input type="checkbox">
+          <span class="title"></span>
+        </label>
+        <div class="right">
+          <button class="danger">Delete</button>
+        </div>
+      `;
+
+      li.querySelector('input').addEventListener('input', () => toggleTodo(todo.id));
+      li.querySelector('button').addEventListener('click', () => deleteTodo(todo.id));
+
+      li.dataset.bound = 'true';
+    }
+
+    // Update on every render
+    const checkbox = li.querySelector('input');
+    const titleSpan = li.querySelector('.title');
+    checkbox.checked = todo.done;
+    titleSpan.textContent = todo.title;
+    titleSpan.className = todo.done ? 'title done' : 'title';
+  }
+});
+
+// Show empty state when no todos match filter
+effect(() => {
+  const items = filteredTodos.value || [];
+  const isEmpty = items.length === 0;
+
+  if (isEmpty && !listEl.querySelector('.empty')) {
     const li = document.createElement('li');
     li.className = 'empty';
     li.textContent = 'Nothing here yet — add a task!';
     listEl.appendChild(li);
-    return;
+  } else if (!isEmpty) {
+    const emptyEl = listEl.querySelector('.empty');
+    if (emptyEl) emptyEl.remove();
   }
-
-  for (const todo of items) {
-    const li = document.createElement('li');
-    li.className = 'todo';
-
-    const label = document.createElement('label');
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = !!todo.done;
-    checkbox.dataset.todoId = todo.id;
-    checkbox.addEventListener('input', (e) => {
-      const id = parseInt(e.target.dataset.todoId, 10);
-      toggleTodo(id, e.target);
-    });
-
-    const span = document.createElement('span');
-    span.className = 'title' + (todo.done ? ' done' : '');
-    span.textContent = todo.title;
-
-    label.appendChild(checkbox);
-    label.appendChild(span);
-    li.appendChild(label);
-
-    const right = document.createElement('div');
-    right.className = 'right';
-
-    const del = document.createElement('button');
-    del.className = 'danger';
-    del.textContent = 'Delete';
-    del.dataset.todoId = todo.id;
-    del.addEventListener('click', (e) => {
-      const id = parseInt(e.target.dataset.todoId, 10);
-      deleteTodo(id);
-    });
-
-    right.appendChild(del);
-    li.appendChild(right);
-
-    listEl.appendChild(li);
-  }
-}
+});
 
 function persist() {
   localStorage.setItem('lume_todos', JSON.stringify({ todos: store.todos, filter: store.filter }));
@@ -103,15 +110,8 @@ function addTodo(title) {
   store.newTodoTitle = '';
 }
 
-function toggleTodo(id, focusedElement) {
+function toggleTodo(id) {
   store.todos = store.todos.map(t => t.id === id ? { ...t, done: !t.done } : t);
-  // Restore focus after re-render
-  if (focusedElement) {
-    setTimeout(() => {
-      const checkbox = listEl.querySelector(`input[data-todo-id="${id}"]`);
-      if (checkbox) checkbox.focus();
-    }, 0);
-  }
 }
 
 function deleteTodo(id) {
@@ -155,25 +155,21 @@ filterButtons.forEach(btn => {
 document.getElementById('clear-completed').addEventListener('click', clearCompleted);
 
 // Subscriptions
-// Capture unsubscribe functions for symmetrical cleanup
-const unsubscribeTodos = store.$subscribe('todos', () => {
-  render();
-  persist();
-});
 const unsubscribeFilter = store.$subscribe('filter', () => {
-  render();
   updateFilterUI();
   persist();
 });
 
+const unsubscribeTodos = store.$subscribe('todos', persist);
+
 // Initial paint
-render();
 updateFilterUI();
 
 // Cleanup
 window.addEventListener('beforeunload', () => {
   cleanup();
   effectCleanup();
+  repeatCleanup();
   unsubscribeTodos();
   unsubscribeFilter();
 });
