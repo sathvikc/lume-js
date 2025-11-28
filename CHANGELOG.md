@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.0] - 2025-11-28
+
+### Added
+- **`repeat` Addon (@experimental)**
+  - Efficient list rendering with element reuse by key
+  - Automatic subscription to array changes
+  - Focus preservation strategy (customizable)
+  - Scroll preservation strategy (customizable)
+  - *Note: Requires immutable array updates (e.g. `store.items = [...items, new]`) instead of `push()`*
+
+### Improved
+- Documentation:
+  - Added "Design Decisions" document explaining architectural choices
+  - Clarified "Standards-Only" philosophy
+  - Added explicit warnings about immutable array requirements
+- Examples:
+  - Updated Todo app to use `repeat`
+  - Added Tic-Tac-Toe example demonstrating time travel and computed state
+
+### Fixed
+- Regression tests added for array mutation behavior
+
+---
+
 ## [0.4.1] - 2025-11-20
 
 ### Added
