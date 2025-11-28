@@ -24,13 +24,7 @@ Minimal reactive state management using only standard JavaScript and HTML. No cu
 
 ## Installation
 
-### Via npm
-
-```bash
-npm install lume-js
-```
-
-### Via CDN
+### Via CDN (Recommended for simple projects)
 
 ```html
 <script type="module">
@@ -38,15 +32,35 @@ npm install lume-js
 </script>
 ```
 
+**Version Pinning:**
+```html
+<script type="module">
+  import { state } from 'https://cdn.jsdelivr.net/npm/lume-js@0.5.0/src/index.js';
+</script>
+```
+
+### Via NPM (Recommended for bundlers)
+
+```bash
+npm install lume-js
+```
+
+```javascript
+import { state, bindDom } from 'lume-js';
+```
+
+### Browser Support
+Works in all modern browsers (Chrome 49+, Firefox 18+, Safari 10+, Edge 79+). **IE11 is NOT supported.**
+
 ---
 
-## 30-Second Example
+## Quick Start
 
 **HTML:**
 ```html
 <div>
-  <p>Count: <span data-bind="count"></span></p>
-  <button id="inc">Increment</button>
+  <h1>Hello, <span data-bind="name"></span>!</h1>
+  <input data-bind="name" placeholder="Enter your name">
 </div>
 ```
 
@@ -55,16 +69,16 @@ npm install lume-js
 import { state, bindDom } from 'lume-js';
 
 // 1. Create state
-const store = state({ count: 0 });
+const store = state({ name: 'World' });
 
 // 2. Bind to DOM
 bindDom(document.body, store);
-
-// 3. Update state (DOM updates automatically)
-document.getElementById('inc').addEventListener('click', () => {
-  store.count++;
-});
 ```
+
+**What just happened?**
+1.  **`state()`** created a reactive object.
+2.  **`bindDom()`** scanned the document for `data-bind="name"`.
+3.  It set up a two-way binding: typing in the input updates the state, and the state updates the text.
 
 ---
 
@@ -72,16 +86,19 @@ document.getElementById('inc').addEventListener('click', () => {
 
 Full documentation is available in the [docs/](docs/) directory:
 
-- **[Getting Started](docs/getting-started/quick-start.md)**
 - **[Tutorial: Build a Todo App](docs/tutorials/build-todo-app.md)**
-- **[API Reference](docs/api/state.md)**
+- **[Tutorial: Build Tic-Tac-Toe](docs/tutorials/build-tic-tac-toe.md)**
+- **[Working with Arrays](docs/tutorials/working-with-arrays.md)**
+- **API Reference**
+    - [Core (state, bindDom, effect)](docs/api/core/state.md)
+    - [Addons (computed, repeat)](docs/api/addons/computed.md)
 - **[Design Philosophy](docs/design/design-decisions.md)**
 
 ---
 
 ## Contributing
 
-We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and setup your development environment.
+We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## License
 

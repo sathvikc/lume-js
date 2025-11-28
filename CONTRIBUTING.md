@@ -31,6 +31,33 @@ Lume.js uses standard JavaScript (ES Modules) and does not require a build step 
 - **Tests**: Located in `tests/`
 - **Docs**: Located in `docs/`
 
+### Project Structure
+
+```
+lume-js/
+├── dist/               # Build artifacts (minified files)
+├── docs/               # Documentation
+│   ├── api/            # API Reference
+│   │   ├── core/       # Core API (state, bindDom, effect)
+│   │   └── addons/     # Addons (computed, repeat, watch)
+│   ├── design/         # Design decisions
+│   ├── guides/         # Guides (forms, routing, etc.)
+│   └── tutorials/      # Step-by-step tutorials
+├── examples/           # Example projects
+├── src/                # Source code
+│   ├── addons/         # Addon source code
+│   ├── core/           # Core logic (state, effect, bindDom)
+│   ├── index.d.ts      # TypeScript definitions
+│   └── index.js        # Main entry point
+├── tests/              # Test suite
+│   ├── addons/         # Addon tests
+│   └── core/           # Core tests
+├── CONTRIBUTING.md     # Contribution guidelines
+├── LICENSE             # MIT License
+├── package.json        # NPM configuration
+└── README.md           # Main entry point
+```
+
 To run the examples locally:
 ```bash
 npm run dev

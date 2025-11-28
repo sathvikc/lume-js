@@ -14,12 +14,11 @@ Welcome to the Lume.js documentation.
 - [Build Tic-Tac-Toe](tutorials/build-tic-tac-toe.md)
 - [Working with Arrays](tutorials/working-with-arrays.md) - **Critical Guide**
 
-## API Reference
-
-- [state()](api/state.md)
-- [bindDom()](api/bindDom.md)
-- [effect()](api/effect.md)
-- [isReactive()](api/isReactive.md)
+## API- **Core**
+  - [`state()`](api/core/state.md)
+  - [`bindDom()`](api/core/bindDom.md)
+  - [`effect()`](api/core/effect.md)
+  - [`isReactive()`](api/core/isReactive.md)
 
 ### Addons
 
