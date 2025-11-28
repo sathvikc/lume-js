@@ -797,6 +797,33 @@ resolve: {
 
 ---
 
+### `repeat(container, store, key, options)`
+
+**@experimental** - API may change in future versions.
+
+Efficiently renders lists with element reuse and automatic subscription.
+
+```javascript
+import { repeat } from 'lume-js/addons/repeat.js';
+
+// ⚠️ IMPORTANT: Arrays must be updated immutably!
+// store.items.push(newItem);       // ❌ Won't trigger update
+// store.items = [...store.items, newItem]; // ✅ Triggers update
+
+repeat('#list', store, 'items', {
+  key: item => item.id,
+  render: (item, el) => {
+    el.textContent = item.name;
+  }
+});
+```
+
+**Features:**
+- ✅ **Element Reuse** - Reuses DOM nodes by key (no full re-renders)
+- ✅ **Focus Preservation** - Maintains active element and selection during updates
+- ✅ **Scroll Preservation** - Maintains scroll position during updates
+- ✅ **Automatic Subscription** - Subscribes to the array key automatically
+
 ## Contributing
 
 We welcome contributions! Please:

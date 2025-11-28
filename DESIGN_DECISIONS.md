@@ -327,17 +327,30 @@ items.forEach(item => {
 });
 ```
 
-**Planned addon:**
-```javascript
-// Helper for common case - but completely optional
-import { repeat } from 'lume-js/addons';
+**Current Status (v0.5.0):**
+The `repeat` addon is available as an **@experimental** feature.
 
-repeat(container, store.items, item => `<li>${item.name}</li>`);
-// Or with template element
-repeat(container, store.items, item => templateFn(item));
+```javascript
+import { repeat } from 'lume-js/addons/repeat.js';
+
+// ⚠️ IMPORTANT: Arrays must be updated immutably!
+// store.items.push(newItem);       // ❌ Won't trigger update
+// store.items = [...store.items, newItem]; // ✅ Triggers update
+
+repeat(container, store, 'items', {
+  key: item => item.id,
+  render: (item, el) => {
+    el.textContent = item.name;
+  }
+});
 ```
 
-**Tradeoff:** Core requires more code, but addon provides convenience while maintaining "just JavaScript" philosophy.
+**Why Immutable Updates?**
+- **Performance:** Checking reference equality (`oldArray === newArray`) is instant.
+- **Simplicity:** No need to monkey-patch `Array.prototype.push` or use expensive Proxies on arrays.
+- **Predictability:** Explicit updates mean explicit renders.
+
+**Tradeoff:** Users must learn to use spread syntax (`[...items, new]`) instead of `push()`.
 
 ---
 
