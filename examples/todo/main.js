@@ -1,4 +1,4 @@
-import { state, bindDom, effect } from 'lume-js';
+import { bindDom, effect, state } from 'lume-js';
 import { computed, repeat } from 'lume-js/addons';
 
 const persisted = JSON.parse(localStorage.getItem('lume_todos') || 'null');
@@ -106,15 +106,19 @@ function addTodo(title) {
   const trimmed = (title || '').trim();
   if (!trimmed) return;
   const todo = { id: nextId(), title: trimmed, done: false };
+  // ⚠️ IMPORTANT: Lume requires immutable array updates!
+  // See: docs/tutorials/working-with-arrays.md
   store.todos = [todo, ...store.todos];
   store.newTodoTitle = '';
 }
 
 function toggleTodo(id) {
+  // Immutable update: map to new array
   store.todos = store.todos.map(t => t.id === id ? { ...t, done: !t.done } : t);
 }
 
 function deleteTodo(id) {
+  // Immutable update: filter to new array
   store.todos = store.todos.filter(t => t.id !== id);
 }
 

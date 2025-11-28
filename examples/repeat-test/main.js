@@ -225,6 +225,10 @@ window.focusTest = {
   },
 
   add: function () {
+    // ⚠️ IMPORTANT: Arrays must be updated immutably!
+    // store.items.push(newItem);       // ❌ Won't trigger update
+    // store.items = [...store.items, newItem]; // ✅ Triggers update
+    // See: docs/tutorials/working-with-arrays.md
     const newItem = { id: focusItemId++, text: `Item ${focusItemId}` };
     focusStore.items = [...focusStore.items, newItem];
     log(`➕ Added item #${newItem.id}`, 'info');
