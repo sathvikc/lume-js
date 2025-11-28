@@ -1,0 +1,63 @@
+name: Documentation Validation
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'examples/**'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'examples/**'
+
+jobs:
+  validate-docs:
+    runs-on: ubuntu-lates
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for broken links
+        run: |
+          echo "Checking for broken internal links..."
+          # Find all markdown files
+          find . -name "*.md" -not -path "./node_modules/*" -exec grep -H "](file://" {} \; | while read line; do
+            file=$(echo $line | cut -d: -f1)
+            link=$(echo $line | grep -o "file://[^)]*")
+            target=$(echo $link | sed 's/file:\/\///')
+            if [ ! -e "$target" ]; then
+              echo "❌ Broken link in $file: $link"
+              exit 1
+            fi
+          done
+          echo "✅ No broken links found"
+
+      - name: Validate code examples
+        run: |
+          echo "Checking if example code is valid..."
+          # Run dev server in background
+          npm run dev &
+          PID=$!
+          sleep 5
+
+          # Check if server is running
+          if ! curl -f http://localhost:5173 > /dev/null 2>&1; then
+            echo "❌ Examples failed to start"
+            kill $PID
+            exit 1
+          fi
+
+          kill $PID
+          echo "✅ Examples are valid"

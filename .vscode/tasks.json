@@ -1,0 +1,77 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "test",
+            "type": "npm",
+            "script": "test",
+            "problemMatcher": {
+                "owner": "vitest",
+                "pattern": {
+                    "regexp": "^\\s+✖\\s+(.*)$",
+                    "message": 1
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^.*FAIL.*$",
+                    "endsPattern": "^.*Test Files.*$"
+                }
+            },
+            "group": "test"
+        },
+        {
+            "label": "size",
+            "type": "npm",
+            "script": "size",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "focus": true
+            }
+        },
+        {
+            "label": "dev",
+            "type": "npm",
+            "script": "dev",
+            "problemMatcher": [],
+            "isBackground": true
+        },
+        {
+            "label": "coverage",
+            "type": "npm",
+            "script": "coverage",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "precommit",
+            "dependsOn": [
+                "test",
+                "size"
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "focus": true
+            }
+        },
+        {
+            "label": "validate",
+            "dependsOn": [
+                "test",
+                "size"
+            ],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}

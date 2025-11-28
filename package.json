@@ -22,7 +22,12 @@
     "size": "node scripts/check-size.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "check-all": "npm test && npm run size",
+    "release:patch": "npm version patch && git push --follow-tags",
+    "release:minor": "npm version minor && git push --follow-tags",
+    "release:major": "npm version major && git push --follow-tags",
+    "prepare": "husky"
   },
   "files": [
     "src",
@@ -59,10 +64,11 @@
   },
   "homepage": "https://github.com/sathvikc/lume-js#readme",
   "devDependencies": {
-    "vite": "^7.1.9",
-    "vitest": "^2.1.4",
     "@vitest/coverage-v8": "^2.1.4",
-    "jsdom": "^25.0.1"
+    "husky": "^9.1.7",
+    "jsdom": "^25.0.1",
+    "vite": "^7.1.9",
+    "vitest": "^2.1.4"
   },
   "engines": {
     "node": ">=20.19.0"

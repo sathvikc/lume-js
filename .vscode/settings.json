@@ -1,0 +1,40 @@
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "files.associations": {
+    "*.js": "javascript"
+  },
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "javascript.suggest.autoImports": true,
+  "javascript.updateImportsOnFileMove.enabled": "always",
+  "javascript.suggest.jsdoc.generateReturns": true,
+  "github.copilot.enable": {
+    "*": true,
+    "javascript": true,
+    "markdown": true
+  },
+  "github.copilot.editor.enableAutoCompletions": true,
+  "github.copilot.editor.enableCodeActions": true,
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+  "github.copilot.chat.testGeneration.enabled": true,
+  "github.copilot.chat.localeOverride": "en",
+  "files.exclude": {
+    "node_modules": true,
+    "**/.git": true,
+    "coverage": true
+  },
+  "search.exclude": {
+    "node_modules": true,
+    "package-lock.json": true,
+    "coverage": true
+  },
+  "editor.wordWrap": "on",
+  "editor.rulers": [
+    120
+  ],
+  "testing.automaticallyOpenPeekView": "failureInVisibleDocument"
+}

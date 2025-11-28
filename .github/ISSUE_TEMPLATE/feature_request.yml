@@ -1,0 +1,69 @@
+name: Feature Reques
+description: Suggest a new feature for lume-js
+title: "[Feature]: "
+labels: ["enhancement", "needs-discussion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea to improve lume-js? We'd love to hear it!
+
+        **Note:** Lume.js stays minimal (\<2KB). Features that significantly increase bundle size will likely be declined.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statemen
+      description: What problem would this feature solve?
+      placeholder: Currently, there's no way to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How would you like this feature to work?
+      placeholder: I'd like to be able to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other solutions have you considered?
+      placeholder: I tried using... but...
+    validations:
+      required: false
+
+  - type: textarea
+    id: example
+    attributes:
+      label: API Example
+      description: What would the API look like?
+      render: javascrip
+      placeholder: |
+        import { newFeature } from 'lume-js';
+
+        const result = newFeature({ ... });
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: principles
+    attributes:
+      label: Lume.js Principles
+      description: Does this feature align with lume-js?
+      options:
+        - label: Uses standard `data-*` attributes (no custom syntax)
+        - label: Zero dependencies
+        - label: Can be implemented in \<200 bytes
+        - label: Doesn't require a build step
+        - label: Can't easily be done in user code
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Contex
+      description: Any other details or examples

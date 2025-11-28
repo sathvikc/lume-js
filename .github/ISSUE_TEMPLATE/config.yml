@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussions
+    url: https://github.com/sathvikc/lume-js/discussions
+    about: Questions, ideas, or general discussion
+  - name: 📚 Documentation
+    url: https://github.com/sathvikc/lume-js#readme
+    about: Read the docs before opening an issue

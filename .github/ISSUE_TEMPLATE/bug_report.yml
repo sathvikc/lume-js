@@ -1,0 +1,89 @@
+name: Bug Repor
+description: Report a bug or issue with lume-js
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the details below.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Clear description of what the bug is
+      placeholder: When I use data-bind with nested objects...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps to reproduce the issue
+      placeholder: |
+        1. Create state with nested objec
+        2. Bind to DOM with data-bind
+        3. Update nested property
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should happen?
+      placeholder: The DOM should update with the new value
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happens?
+      placeholder: Nothing updates, or console error appears
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Code Example
+      description: Minimal code that reproduces the issue
+      render: javascrip
+      placeholder: |
+        import { createState, bindDom } from 'lume-js';
+
+        const state = createState({ user: { name: 'John' } });
+        bindDom(state, document.body);
+        state.user.name = 'Jane'; // Doesn't update
+    validations:
+      required: true
+
+  - type: inpu
+    id: version
+    attributes:
+      label: Lume.js Version
+      description: Which version are you using?
+      placeholder: "0.5.0"
+    validations:
+      required: true
+
+  - type: inpu
+    id: browser
+    attributes:
+      label: Browser
+      description: Which browser(s) does this occur in?
+      placeholder: "Chrome 120, Firefox 121"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Contex
+      description: Any other details, screenshots, or contex
+      placeholder: This started happening after...
