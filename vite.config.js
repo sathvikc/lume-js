@@ -1,7 +1,7 @@
 // vite.config.js
-import { defineConfig } from "vite";
-import { resolve } from "path";
 import fs from "fs";
+import { resolve } from "path";
+import { defineConfig } from "vite";
 
 const projectRoot = resolve(__dirname);
 const examplesPath = resolve(projectRoot, "examples");
@@ -25,6 +25,12 @@ const lumeResolverPlugin = () => ({
     resolveId(source) {
         if (source === 'lume-js') return resolve(projectRoot, 'src/index.js');
         if (source === 'lume-js/addons') return resolve(projectRoot, 'src/addons/index.js');
+        if (source.startsWith('lume-js/addons/')) {
+            const sub = source.replace('lume-js/addons/', '');
+            // support both with and without .js extension
+            const file = sub.endsWith('.js') ? sub : `${sub}.js`;
+            return resolve(projectRoot, `src/addons/${file}`);
+        }
         return null;
     }
 });

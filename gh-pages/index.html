@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lume.js — The Lightweight Reactive Library</title>
+    <meta name="description"
+        content="Build fast, reactive web applications with zero dependencies. No Virtual DOM. Just pure performance." />
+    <meta name="keywords"
+        content="javascript library, reactive, lightweight, no virtual dom, frontend, web development, lume.js, state management" />
+    <meta name="author" content="Sathvik C" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sathvikc.github.io/lume-js/" />
+    <meta property="og:title" content="Lume.js — The Lightweight Reactive Library" />
+    <meta property="og:description"
+        content="Build fast, reactive web applications with zero dependencies. No Virtual DOM. Just pure performance." />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://sathvikc.github.io/lume-js/" />
+    <meta property="twitter:title" content="Lume.js — The Lightweight Reactive Library" />
+    <meta property="twitter:description"
+        content="Build fast, reactive web applications with zero dependencies. No Virtual DOM. Just pure performance." />
+
+    <!-- Highlight.js Styles -->
+    <link id="hljs-light" rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <link id="hljs-dark" rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" disabled>
+
+    <!-- Dark Mode Init -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            document.getElementById('hljs-light').disabled = true;
+            document.getElementById('hljs-dark').disabled = false;
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        // Fix for trailing slash issue in dev/prod
+        if (!window.location.pathname.endsWith('/') && !window.location.pathname.includes('.')) {
+            const newPath = window.location.pathname + '/' + window.location.search + window.location.hash;
+            window.history.replaceState(null, '', newPath);
+        }
+    </script>
+
+    <!-- Import Map for Lume.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "lume-js": "https://cdn.jsdelivr.net/npm/lume-js/src/index.js",
+                "lume-js/addons": "https://cdn.jsdelivr.net/npm/lume-js/src/addons/index.js"
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+    <div id="app"></div>
+    <script type="module" src="./src/main.js"></script>
+</body>
+
+</html>
