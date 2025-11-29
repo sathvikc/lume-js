@@ -24,7 +24,10 @@ export default defineConfig({
     root: resolve(projectRoot, 'gh-pages'),
     base: '/lume-js/', // GitHub Pages repo name
     resolve: {
-        alias: []
+        alias: {
+            'lume-js/addons': 'https://cdn.jsdelivr.net/npm/lume-js/src/addons/index.js',
+            'lume-js': 'https://cdn.jsdelivr.net/npm/lume-js/src/index.js'
+        }
     },
     css: {
         postcss: {
@@ -41,7 +44,16 @@ export default defineConfig({
             input: {
                 main: resolve(projectRoot, 'gh-pages/index.html')
             },
-            external: ['lume-js', 'lume-js/addons']
+            external: [
+                'lume-js',
+                'lume-js/addons',
+                'highlight.js'
+            ],
+            output: {
+                globals: {
+                    'highlight.js': 'hljs'
+                }
+            }
         }
     }
 });
