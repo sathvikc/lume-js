@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Import map for GitHub Pages: allows browser to resolve 'lume-js' and 'lume-js/addons' to CDN. Safe for local dev (ignored by bundlers) -->
+  <script type="importmap">
+    {
+      "imports": {
+        "lume-js": "https://cdn.jsdelivr.net/npm/lume-js@latest/dist/index.js",
+        "lume-js/addons": "https://cdn.jsdelivr.net/npm/lume-js@latest/dist/addons/index.js"
+      }
+    }
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lume.js - Todo App</title>
