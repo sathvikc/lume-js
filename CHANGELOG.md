@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.0.0] - 2025-11-29
+
+### Major Release
+- **Stable API:** All core and most addon APIs are now stable and production-ready.
+- **Website Launch:** Official documentation and interactive examples now live at [https://sathvikc.github.io/lume-js/](https://sathvikc.github.io/lume-js/).
+- **Comprehensive Docs:** Full API, guides, and tutorials included in the repo and website.
+- **Test Coverage:** 114 passing tests, 100% coverage for all features and edge cases.
+- **Performance:** <2KB gzipped, no virtual DOM, zero dependencies, standards-only reactivity.
+- **Features:**
+  - Core: `state`, `bindDom`, `effect`, two-way binding, nested state, subscriptions
+  - Addons: `computed`, `watch`, `isReactive`
+  - **`repeat` Addon:** *Experimental* — efficient keyed list rendering, but API may evolve in future versions (see notes below)
+  - TypeScript definitions for all APIs
+  - Tree-shaking and bundler optimization
+- **Examples:** Todo app, Tic-Tac-Toe, repeat-test, and more
+
+#### Note on `repeat` Addon
+`repeat` remains experimental in v1.0.0. Its API may evolve in future releases as it is refined to best fit Lume.js philosophy.
+
+----
+
 All notable changes to Lume.js will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),

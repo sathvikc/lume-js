@@ -5,11 +5,14 @@
 Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required, no framework lock-in.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.5.0-green.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](package.json)
 [![Tests](https://img.shields.io/badge/tests-114%20passing-brightgreen.svg)](tests/)
 [![Size](https://img.shields.io/badge/size-%3C2KB-blue.svg)](dist/)
 
 ## Why Lume.js?
+
+
+> **Note:** The `repeat` addon is *experimental* in v1.0.0. Its API may evolve in future releases as it is refined to best fit Lume.js philosophy.
 
 | Feature | Lume.js | Alpine.js | Vue | React |
 |---------|---------|-----------|-----|-------|
@@ -35,7 +38,7 @@ Minimal reactive state management using only standard JavaScript and HTML. No cu
 **Version Pinning:**
 ```html
 <script type="module">
-  import { state } from 'https://cdn.jsdelivr.net/npm/lume-js@0.5.0/src/index.js';
+  import { state } from 'https://cdn.jsdelivr.net/npm/lume-js@1.0.0/src/index.js';
 </script>
 ```
 
