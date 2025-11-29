@@ -1,5 +1,5 @@
 import { state } from 'lume-js';
-import { repeat } from 'lume-js/addons/repeat';
+import { repeat } from 'lume-js/addons';
 
 // ============================================================================
 // LOGGING SYSTEM

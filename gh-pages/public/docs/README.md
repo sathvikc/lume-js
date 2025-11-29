@@ -46,8 +46,8 @@ const store = state({ name: 'World' });
 bindDom(document.body, store);
 ```
 
-<!-- ## Next Steps
+## Next Steps
 
 - Follow the [Build a Todo App](tutorials/build-todo-app.md) tutorial.
 - Learn about [Reactivity](api/core/state.md).
-- Explore [Guides](guides/README.md) for advanced topics. -->
+- Explore [Guides](guides/README.md) for advanced topics.

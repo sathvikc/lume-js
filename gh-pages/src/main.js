@@ -1,4 +1,4 @@
-import hljs from 'highlight.js';
+// highlight.js is loaded globally from CDN in index.html
 import { bindDom, effect, state } from 'lume-js';
 import { Comparison } from './components/Comparison.js';
 import { DocsViewer } from './components/DocsViewer.js';
@@ -13,7 +13,7 @@ import './style.css';
 // --- Store Setup ---
 const store = state({
   currentPath: window.location.hash.slice(1) || '',
-  theme: localStorage.getItem('theme') || 'light',
+  theme: 'dark',
 
   // Docs state
   markdownContent: '',

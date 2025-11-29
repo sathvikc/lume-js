@@ -1,7 +1,13 @@
 name: Deploy GH Pages
 
+
 on:
   workflow_dispatch:
+    inputs:
+      deploy_branch:
+        description: 'Branch to deploy to GitHub Pages'
+        required: true
+        default: 'gh-pages'
   push:
     branches:
       - gh-pages
@@ -17,10 +23,13 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-lates
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkou
+
+      - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.deploy_branch || 'gh-pages' }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -31,27 +40,27 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build Assets
+        run: node scripts/build-site-assets.js
+
       - name: Build Website
         run: npx vite build -c vite.site.config.js
-
-      - name: Copy Docs
-        run: cp -r docs dist-site/docs
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload artifac
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist-site
+          path: gh-pages/dist
 
   deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-lates
+    runs-on: ubuntu-latest
     needs: build
     steps:
       - name: Deploy to GitHub Pages
-        id: deploymen
+        id: deployment
         uses: actions/deploy-pages@v4

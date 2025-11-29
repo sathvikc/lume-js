@@ -1,4 +1,3 @@
-import hljs from 'highlight.js';
 import { marked } from 'marked';
 
 export function DocsViewer(store) {

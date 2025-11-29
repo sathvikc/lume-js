@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 
 <head>
     <meta charset="UTF-8" />
@@ -25,22 +25,15 @@
     <meta property="twitter:description"
         content="Build fast, reactive web applications with zero dependencies. No Virtual DOM. Just pure performance." />
 
-    <!-- Highlight.js Styles -->
+    <!-- Highlight.js Styles & Script (CDN) -->
     <link id="hljs-light" rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" disabled>
     <link id="hljs-dark" rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" disabled>
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
     <!-- Dark Mode Init -->
     <script>
-        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-            document.getElementById('hljs-light').disabled = true;
-            document.getElementById('hljs-dark').disabled = false;
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-
         // Fix for trailing slash issue in dev/prod
         if (!window.location.pathname.endsWith('/') && !window.location.pathname.includes('.')) {
             const newPath = window.location.pathname + '/' + window.location.search + window.location.hash;
