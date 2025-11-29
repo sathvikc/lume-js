@@ -18,6 +18,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:site": "node scripts/build-site-assets.js && vite -c vite.site.config.js",
     "build": "echo 'No build step needed - zero-runtime library!'",
     "size": "node scripts/check-size.js",
     "test": "vitest run",
@@ -59,10 +60,18 @@
   },
   "homepage": "https://github.com/sathvikc/lume-js#readme",
   "devDependencies": {
-    "vite": "^7.1.9",
-    "vitest": "^2.1.4",
+    "@tailwindcss/postcss": "^4.1.17",
+    "@tailwindcss/typography": "^0.5.19",
     "@vitest/coverage-v8": "^2.1.4",
-    "jsdom": "^25.0.1"
+    "autoprefixer": "^10.4.22",
+    "highlight.js": "^11.11.1",
+    "husky": "^9.1.7",
+    "jsdom": "^25.0.1",
+    "marked": "^17.0.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17",
+    "vite": "^7.1.9",
+    "vitest": "^2.1.4"
   },
   "engines": {
     "node": ">=20.19.0"
