@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lume.js Multi-Step Form</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2em;
+    }
+    .container {
+      max-width: 520px;
+      width: 100%;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      padding: 1.5em;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 0.3em;
+      font-size: 1.6em;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 1.2em;
+      font-size: 0.9em;
+    }
+    
+    /* Stepper */
+    .stepper {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 1em;
+    }
+    .step {
+      flex: 1;
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      transition: background 0.3s ease;
+    }
+    .step.active {
+      background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+    .step-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 1.5em;
+      font-size: 0.85em;
+      color: #888;
+    }
+    .step-labels span {
+      transition: color 0.3s ease, font-weight 0.3s ease;
+    }
+    .step-labels span.active {
+      color: #667eea;
+      font-weight: 600;
+    }
+    
+    /* Step containers - use display instead of innerHTML */
+    .step-container {
+      min-height: 320px;
+    }
+    .step-content {
+      display: none;
+    }
+    .step-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Field Groups */
+    .field-group {
+      margin-bottom: 1.2em;
+    }
+    .field-group label {
+      display: block;
+      margin-bottom: 0.5em;
+      font-weight: 500;
+      color: #333;
+      font-size: 0.95em;
+    }
+    .field-group input,
+    .field-group select,
+    .field-group textarea {
+      width: 100%;
+      padding: 0.75em;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 1em;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .field-group input:focus,
+    .field-group select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .field-group input.error-field {
+      border-color: #ef4444;
+    }
+    .field-group input.input-success {
+      border-color: #10b981;
+    }
+    
+    /* Messages */
+    .error {
+      color: #ef4444;
+      font-size: 0.85em;
+      margin-top: 0.4em;
+      display: block;
+      /* min-height: 1.2em; */
+    }
+    .username-status {
+      font-size: 0.85em;
+      margin-top: 0.4em;
+      display: block;
+      /* min-height: 1.2em; */
+    }
+    .username-status.loading {
+      color: #667eea;
+    }
+    .username-status.available {
+      color: #10b981;
+      font-weight: 500;
+    }
+    .username-status.taken {
+      color: #ef4444;
+    }
+    
+    /* Password Strength */
+    .password-strength {
+      margin-top: 0.5em;
+      font-size: 0.85em;
+    }
+    .strength-bar {
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      margin-top: 0.3em;
+      overflow: hidden;
+    }
+    .strength-fill {
+      height: 100%;
+      transition: width 0.3s ease, background 0.3s ease;
+      border-radius: 2px;
+    }
+    .strength-fill.weak { width: 33%; background: #ef4444; }
+    .strength-fill.medium { width: 66%; background: #f59e0b; }
+    .strength-fill.strong { width: 100%; background: #10b981; }
+    
+    /* Radio/Checkbox */
+    .radio-group,
+    .checkbox-group {
+      display: flex;
+      gap: 1.5em;
+      flex-wrap: wrap;
+    }
+    .radio-group label,
+    .checkbox-group label {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0;
+      font-weight: normal;
+      cursor: pointer;
+    }
+    .radio-group input,
+    .checkbox-group input {
+      width: auto;
+      margin-right: 0.5em;
+    }
+    
+    /* Review */
+    .review-list {
+      background: #f9fafb;
+      padding: 1.5em;
+      border-radius: 8px;
+      margin-bottom: 1em;
+    }
+    .review-list h3 {
+      margin-bottom: 1em;
+      color: #333;
+      font-size: 1.1em;
+    }
+    .review-item {
+      padding: 0.5em 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .review-item:last-child {
+      border-bottom: none;
+    }
+    .review-item strong {
+      color: #667eea;
+      margin-right: 0.5em;
+    }
+    
+    /* Actions */
+    .actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 1em;
+      margin-top: 1.5em;
+    }
+    button {
+      flex: 1;
+      padding: 0.9em 1.5em;
+      border: none;
+      border-radius: 6px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #prevBtn {
+      background: #e0e0e0;
+      color: #333;
+    }
+    #prevBtn:hover:not(:disabled) {
+      background: #d0d0d0;
+    }
+    #nextBtn,
+    #submitBtn {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+    }
+    #nextBtn:hover:not(:disabled),
+    #submitBtn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    /* Utility */
+    .hidden { display: none !important; }
+    .success-message {
+      text-align: center;
+      padding: 2em;
+      animation: fadeIn 0.4s ease;
+    }
+    .success-message h2 {
+      color: #10b981;
+      margin-bottom: 0.5em;
+    }
+    .success-message p {
+      margin-bottom: 1.5em;
+    }
+    .success-message button {
+      margin-top: 1em;
+    }
+  </style>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "lume-js": "https://cdn.jsdelivr.net/npm/lume-js/src/index.js",
+        "lume-js/addons": "https://cdn.jsdelivr.net/npm/lume-js/src/addons/index.js",
+        "lume-js/addons/computed": "https://cdn.jsdelivr.net/npm/lume-js/src/addons/computed.js",
+        "lume-js/addons/repeat": "https://cdn.jsdelivr.net/npm/lume-js/src/addons/repeat.js",
+        "lume-js/addons/watch": "https://cdn.jsdelivr.net/npm/lume-js/src/addons/watch.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>Create Your Account</h1>
+    
+    <!-- Stepper -->
+    <div class="stepper">
+      <div class="step" data-step-indicator="1"></div>
+      <div class="step" data-step-indicator="2"></div>
+      <div class="step" data-step-indicator="3"></div>
+      <div class="step" data-step-indicator="4"></div>
+    </div>
+    <div class="step-labels">
+      <span data-step-label="1">Personal</span>
+      <span data-step-label="2">Account</span>
+      <span data-step-label="3">Preferences</span>
+      <span data-step-label="4">Review</span>
+    </div>
+    
+    <form id="multiForm" autocomplete="off">
+      <div class="step-container">
+        <!-- Step 1: Personal Info -->
+        <div id="step1" class="step-content">
+          <div class="field-group">
+            <label for="firstName">First Name *</label>
+            <input id="firstName" type="text" data-bind="personal.firstName" required />
+            <span class="error" data-bind="errors.firstName"></span>
+          </div>
+          <div class="field-group">
+            <label for="lastName">Last Name *</label>
+            <input id="lastName" type="text" data-bind="personal.lastName" required />
+            <span class="error" data-bind="errors.lastName"></span>
+          </div>
+          <div class="field-group">
+            <label for="email">Email *</label>
+            <input id="email" type="email" data-bind="personal.email" required />
+            <span class="error" data-bind="errors.email"></span>
+          </div>
+          <div class="field-group">
+            <label for="phone">Phone (optional)</label>
+            <input id="phone" type="tel" data-bind="personal.phone" placeholder="(555) 123-4567" />
+          </div>
+        </div>
+
+        <!-- Step 2: Account Info -->
+        <div id="step2" class="step-content">
+          <div class="field-group">
+            <label for="username">Username *</label>
+            <input id="username" type="text" data-bind="account.username" required />
+            <span id="usernameStatus" class="username-status"></span>
+            <span class="error" data-bind="errors.username"></span>
+          </div>
+          <div class="field-group">
+            <label for="password">Password *</label>
+            <input id="password" type="password" data-bind="account.password" required />
+            <div id="passwordStrength" class="password-strength"></div>
+            <span class="error" data-bind="errors.password"></span>
+          </div>
+          <div class="field-group">
+            <label for="confirm">Confirm Password *</label>
+            <input id="confirm" type="password" data-bind="account.confirm" required />
+            <span class="error" data-bind="errors.confirm"></span>
+          </div>
+          <div class="field-group">
+            <label>Account Type</label>
+            <div class="radio-group">
+              <label>
+                <input type="radio" name="type" value="free" data-bind="account.type" />
+                Free
+              </label>
+              <label>
+                <input type="radio" name="type" value="premium" data-bind="account.type" />
+                Premium
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Preferences -->
+        <div id="step3" class="step-content">
+          <div class="field-group">
+            <div class="checkbox-group">
+              <label>
+                <input type="checkbox" id="newsletter" data-bind="preferences.newsletter" />
+                Subscribe to newsletter
+              </label>
+            </div>
+          </div>
+          
+          <!-- Premium-only fields -->
+          <div id="premiumFields">
+            <div class="field-group">
+              <label for="billing">Billing Cycle</label>
+              <select id="billing" data-bind="preferences.billing">
+                <option value="monthly">Monthly ($9.99)</option>
+                <option value="yearly">Yearly ($99.99 - Save 17%)</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label>Payment Method</label>
+              <div class="radio-group">
+                <label>
+                  <input type="radio" name="payment" value="credit" data-bind="preferences.payment" />
+                  Credit Card
+                </label>
+                <label>
+                  <input type="radio" name="payment" value="paypal" data-bind="preferences.payment" />
+                  PayPal
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Free-only fields -->
+          <div id="freeFields">
+            <div class="field-group">
+              <label for="referral">Referral Code (optional)</label>
+              <input id="referral" type="text" data-bind="preferences.referral" placeholder="e.g., FRIEND2024" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4: Review -->
+        <div id="step4" class="step-content">
+          <div class="review-list">
+            <h3>Review Your Information</h3>
+            <div class="review-item">
+              <strong>Name:</strong>
+              <span data-bind="personal.firstName"></span>
+              <span data-bind="personal.lastName"></span>
+            </div>
+            <div class="review-item">
+              <strong>Email:</strong>
+              <span data-bind="personal.email"></span>
+            </div>
+            <div class="review-item" id="phoneReview">
+              <strong>Phone:</strong>
+              <span data-bind="personal.phone"></span>
+            </div>
+            <div class="review-item">
+              <strong>Username:</strong>
+              <span data-bind="account.username"></span>
+            </div>
+            <div class="review-item">
+              <strong>Account Type:</strong>
+              <span id="accountTypeDisplay"></span>
+            </div>
+            <div class="review-item" id="billingReview">
+              <strong>Billing:</strong>
+              <span id="billingDisplay"></span>
+            </div>
+            <div class="review-item" id="paymentReview">
+              <strong>Payment:</strong>
+              <span id="paymentDisplay"></span>
+            </div>
+            <div class="review-item" id="referralReview">
+              <strong>Referral:</strong>
+              <span data-bind="preferences.referral"></span>
+            </div>
+            <div class="review-item">
+              <strong>Newsletter:</strong>
+              <span id="newsletterDisplay"></span>
+            </div>
+          </div>
+          <div class="field-group">
+            <div class="checkbox-group">
+              <label>
+                <input type="checkbox" id="terms" data-bind="terms" />
+                I agree to the terms & conditions *
+              </label>
+            </div>
+            <span class="error" data-bind="errors.terms"></span>
+          </div>
+        </div>
+
+        <!-- Success Message (hidden initially) -->
+        <div id="successMessage" class="success-message hidden">
+          <h2>🎉 Registration Successful!</h2>
+          <p>Welcome, <span data-bind="personal.firstName"></span>! Your account has been created.</p>
+          <button type="button" id="resetBtn">Start Over</button>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" id="prevBtn">Previous</button>
+        <button type="button" id="nextBtn">Next</button>
+        <button type="submit" id="submitBtn" class="hidden">Submit</button>
+      </div>
+    </form>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

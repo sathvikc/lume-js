@@ -1,0 +1,57 @@
+name: Deploy GH Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - gh-pages
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'gh-pages'
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-lates
+    steps:
+      - name: Checkou
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Website
+        run: npx vite build -c vite.site.config.js
+
+      - name: Copy Docs
+        run: cp -r docs dist-site/docs
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifac
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-lates
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploymen
+        uses: actions/deploy-pages@v4
