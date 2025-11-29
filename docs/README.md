@@ -9,7 +9,7 @@
 - **No Virtual DOM**: Direct DOM manipulation for maximum performance.
 - **Zero Dependencies**: Just pure JavaScript.
 
-## Quick Star
+## Quick Start
 
 ### 1. Install
 
@@ -36,7 +36,7 @@ npm install lume-js
 ```
 
 **JavaScript:**
-```javascrip
+```javascript
 import { state, bindDom } from 'lume-js';
 
 // 1. Create state

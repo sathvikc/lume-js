@@ -58,7 +58,7 @@
   "bugs": {
     "url": "https://github.com/sathvikc/lume-js/issues"
   },
-  "homepage": "https://github.com/sathvikc/lume-js#readme",
+  "homepage": "https://sathvikc.github.io/lume-js/",
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.17",
     "@tailwindcss/typography": "^0.5.19",
