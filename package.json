@@ -24,7 +24,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
-    "precommit": "npm run size && npm test"
+    "typecheck": "tsc --noEmit",
+    "validate": "npm run size && npm run typecheck && npm test"
   },
   "files": [
     "src",
@@ -71,6 +72,7 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
     "terser": "^5.44.1",
+    "typescript": "^5.9.3",
     "vite": "^7.1.9",
     "vitest": "^2.1.4"
   },

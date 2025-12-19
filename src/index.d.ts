@@ -15,6 +15,94 @@ export type Unsubscribe = () => void;
 export type Subscriber<T> = (value: T) => void;
 
 /**
+ * Plugin interface for extending state behavior
+ * 
+ * All hooks are optional. Hooks execute in the order plugins are registered.
+ * 
+ * @example
+ * ```typescript
+ * const debugPlugin: Plugin = {
+ *   name: 'debug',
+ *   onGet: (key, value) => {
+ *     console.log(`GET ${key}:`, value);
+ *     return value; // Return value to pass to next plugin
+ *   },
+ *   onSet: (key, newValue, oldValue) => {
+ *     console.log(`SET ${key}:`, oldValue, '→', newValue);
+ *     return newValue; // Return value to pass to next plugin
+ *   }
+ * };
+ * 
+ * const store = state({ count: 0 }, { plugins: [debugPlugin] });
+ * ```
+ */
+export interface Plugin {
+  /**
+   * Plugin name (for debugging)
+   */
+  name: string;
+  
+  /**
+   * Called when state object is created
+   * Runs synchronously before Proxy is returned
+   */
+  onInit?(): void;
+  
+  /**
+   * Called when a property is accessed (before value returned)
+   * Can transform the value by returning a new value
+   * 
+   * Chain pattern: Each plugin receives the output of the previous plugin
+   * 
+   * @param key - Property key being accessed
+   * @param value - Current value (possibly transformed by previous plugins)
+   * @returns Transformed value, or undefined to keep current value
+   */
+  onGet?(key: string, value: any): any;
+  
+  /**
+   * Called when a property is updated (before subscribers notified)
+   * Can transform or validate the new value
+   * 
+   * Chain pattern: Each plugin receives the output of the previous plugin
+   * 
+   * @param key - Property key being updated
+   * @param newValue - New value being set (possibly transformed by previous plugins)
+   * @param oldValue - Previous value
+   * @returns Transformed value, or undefined to keep current value
+   */
+  onSet?(key: string, newValue: any, oldValue: any): any;
+  
+  /**
+   * Called when a subscriber is added
+   * Useful for tracking active subscriptions
+   * 
+   * @param key - Property key being subscribed to
+   */
+  onSubscribe?(key: string): void;
+  
+  /**
+   * Called when subscribers are about to be notified
+   * Runs in microtask, before subscribers receive value
+   * 
+   * @param key - Property key that changed
+   * @param value - New value being notified
+   */
+  onNotify?(key: string, value: any): void;
+}
+
+/**
+ * Options for state creation
+ */
+export interface StateOptions {
+  /**
+   * Array of plugins to apply to this state object
+   * Plugins execute in the order they are registered
+   */
+  plugins?: Plugin[];
+}
+
+/**
  * Reactive state object with $subscribe method
  */
 export type ReactiveState<T extends object> = T & {
@@ -55,8 +143,30 @@ export type ReactiveState<T extends object> = T & {
  * // Cleanup
  * unsub();
  * ```
+ * 
+ * @example
+ * ```typescript
+ * // With plugins
+ * const store = state(
+ *   { count: 0 },
+ *   { 
+ *     plugins: [
+ *       {
+ *         name: 'logger',
+ *         onGet: (key, value) => {
+ *           console.log(`GET ${key}:`, value);
+ *           return value;
+ *         }
+ *       }
+ *     ]
+ *   }
+ * );
+ * ```
  */
-export function state<T extends object>(obj: T): ReactiveState<T>;
+export function state<T extends object>(
+  obj: T,
+  options?: StateOptions
+): ReactiveState<T>;
 
 /**
  * Options for bindDom function
