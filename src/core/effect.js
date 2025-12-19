@@ -19,7 +19,7 @@
  * - Automatic dependency collection
  * - Dynamic dependencies (tracks what you actually access)
  * - Returns cleanup function
- * - Plays nicely with per-state batching (no global scheduler)
+ * - Compatible with per-state batching (no global scheduler)
  *
  */
 

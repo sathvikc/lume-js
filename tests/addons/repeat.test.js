@@ -561,7 +561,7 @@ describe('repeat', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
 
       // Focus might be lost (browser default behavior)
-      // We just verify it doesn't throw
+      // Verify no errors thrown
       expect(true).toBe(true);
     });
 
@@ -631,7 +631,7 @@ describe('repeat', () => {
       store.items = [{ id: 2, text: 'New' }];
       await new Promise(resolve => setTimeout(resolve, 0));
 
-      // Just verify it doesn't throw
+      // Verify no errors thrown
       expect(true).toBe(true);
     });
 

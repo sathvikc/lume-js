@@ -207,7 +207,7 @@ describe('computed', () => {
   });
 
   it('throws error when accessing value before initialization completes', () => {
-    // Create a computed that we can manipulate for testing
+    // Create computed for testing initialization
     const store = state({ count: 5 });
     const c = computed(() => store.count * 2);
     
