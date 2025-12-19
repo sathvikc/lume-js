@@ -45,8 +45,8 @@ jobs:
           PR_SIZE=$(grep -oP 'Core Total: \K[0-9.]+' size-output.txt || echo "0")
           echo "pr_size=$PR_SIZE" >> $GITHUB_OUTPUT
           
-          # Check if passed (matches "✅ PASSED:" from script output)
-          if grep -q "✅ PASSED:" size-output.txt; then
+          # Check if passed (matches GitHub Actions output from script)
+          if grep -q "Well done! Core is under 2KB" size-output.txt; then
             echo "passed=true" >> $GITHUB_OUTPUT
           else
             echo "passed=false" >> $GITHUB_OUTPUT
