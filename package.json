@@ -23,7 +23,8 @@
     "size": "node scripts/check-size.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "precommit": "npm run size && npm test"
   },
   "files": [
     "src",
@@ -69,6 +70,7 @@
     "marked": "^17.0.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
+    "terser": "^5.44.1",
     "vite": "^7.1.9",
     "vitest": "^2.1.4"
   },

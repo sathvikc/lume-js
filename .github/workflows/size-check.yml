@@ -1,0 +1,142 @@
+name: Size Check
+
+on:
+  pull_request:
+    branches: [main, feat/**]
+    paths:
+      - 'src/core/**'
+      - 'scripts/check-size.js'
+      - 'package.json'
+  push:
+    branches: [main]
+    paths:
+      - 'src/core/**'
+  workflow_dispatch: # Allow manual runs
+
+jobs:
+  check-size:
+    name: Check Bundle Size
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Check PR size
+        id: pr-size
+        run: |
+          npm run size > size-output.txt 2>&1 || true
+          cat size-output.txt
+          cat size-output.txt >> $GITHUB_STEP_SUMMARY
+          
+          # Extract size for comparison
+          PR_SIZE=$(grep -oP 'Core Total: \K[0-9.]+' size-output.txt || echo "0")
+          echo "pr_size=$PR_SIZE" >> $GITHUB_OUTPUT
+          
+          # Check if passed
+          if grep -q "✅ PASSED" size-output.txt; then
+            echo "passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "passed=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Checkout base branch (for comparison)
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+          path: base
+      
+      - name: Check base size (for comparison)
+        if: github.event_name == 'pull_request'
+        id: base-size
+        run: |
+          cd base
+          npm ci
+          npm run size > ../base-size.txt 2>&1 || true
+          BASE_SIZE=$(grep -oP 'Core Total: \K[0-9.]+' ../base-size.txt || echo "0")
+          echo "base_size=$BASE_SIZE" >> $GITHUB_OUTPUT
+      
+      - name: Comment PR with size comparison
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const prSize = parseFloat('${{ steps.pr-size.outputs.pr_size }}');
+            const baseSize = parseFloat('${{ steps.base-size.outputs.base_size }}');
+            const passed = '${{ steps.pr-size.outputs.passed }}' === 'true';
+            
+            const diff = prSize - baseSize;
+            const diffPercent = baseSize > 0 ? ((diff / baseSize) * 100).toFixed(1) : 0;
+            const diffSymbol = diff > 0 ? '📈' : diff < 0 ? '📉' : '➡️';
+            const diffSign = diff > 0 ? '+' : '';
+            
+            const statusIcon = passed ? '✅' : '❌';
+            const statusText = passed ? 'Passed' : 'Failed';
+            
+            let body = `## ${statusIcon} Bundle Size Check: ${statusText}\n\n`;
+            body += `| Metric | Base | PR | Change |\n`;
+            body += `|--------|------|----|---------|\n`;
+            body += `| Core (gzipped) | ${baseSize.toFixed(2)} KB | ${prSize.toFixed(2)} KB | ${diffSymbol} ${diffSign}${diff.toFixed(2)} KB (${diffSign}${diffPercent}%) |\n`;
+            body += `| Budget | 2.00 KB | 2.00 KB | - |\n\n`;
+            
+            if (passed) {
+              body += `🎉 **Great!** Core bundle is under 2KB.\n\n`;
+            } else {
+              body += `⚠️ **Action required:** Core bundle exceeds 2KB budget.\n\n`;
+              body += `**Suggestions:**\n`;
+              body += `- Move non-essential features to addons\n`;
+              body += `- Simplify complex logic\n`;
+              body += `- Review recent changes\n\n`;
+            }
+            
+            // Add detailed breakdown
+            const output = fs.readFileSync('size-output.txt', 'utf8');
+            body += `<details>\n<summary>📊 Detailed Breakdown</summary>\n\n\`\`\`\n${output}\n\`\`\`\n</details>`;
+            
+            // Find existing comment
+            const comments = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            
+            const botComment = comments.data.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('Bundle Size Check')
+            );
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
+      
+      - name: Fail if size check failed
+        if: steps.pr-size.outputs.passed == 'false'
+        run: exit 1

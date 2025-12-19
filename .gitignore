@@ -2,3 +2,5 @@ node_modules
 coverage
 dist
 gh-pages/public
+archive
+.ai/
