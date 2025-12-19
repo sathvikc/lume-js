@@ -6,7 +6,7 @@ Minimal reactive state management using only standard JavaScript and HTML. No cu
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](package.json)
-[![Tests](https://img.shields.io/badge/tests-114%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-148%20passing-brightgreen.svg)](tests/)
 [![Size](https://img.shields.io/badge/size-%3C2KB-blue.svg)](dist/)
 
 ## Why Lume.js?
@@ -93,7 +93,7 @@ Full documentation is available in the [docs/](docs/) directory:
 - **[Tutorial: Build Tic-Tac-Toe](docs/tutorials/build-tic-tac-toe.md)**
 - **[Working with Arrays](docs/tutorials/working-with-arrays.md)**
 - **API Reference**
-    - [Core (state, bindDom, effect)](docs/api/core/state.md)
+    - [Core (state, bindDom, effect, plugins)](docs/api/core/state.md)
     - [Addons (computed, repeat)](docs/api/addons/computed.md)
 - **[Design Philosophy](docs/design/design-decisions.md)**
 

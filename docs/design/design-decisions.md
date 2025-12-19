@@ -543,9 +543,54 @@ store.$subscribe('text', (value) => {
 
 ---
 
+## Extension Patterns
+
+### Why Plugin System (v2.0+)?
+
+**Decision:** Add optional plugin system with hook-based architecture.
+
+```javascript
+const debugPlugin = {
+  name: 'debug',
+  onGet: (key, value) => {
+    console.log(`GET ${key}:`, value);
+    return value;
+  }
+};
+
+const store = state(
+  { count: 0 },
+  { plugins: [debugPlugin] }
+);
+```
+
+**Reasoning:**
+- **Zero-cost abstraction:** Unused plugins add 0 bytes to bundle
+- **Universal compatibility:** Core state.js works in Node.js, Deno, browsers
+- **Extensibility:** Third-party plugins possible without core changes
+- **Separation of concerns:** Advanced features in addons, not core
+- **Backward compatible:** Optional, doesn't break existing code
+
+**Why not built-in features:**
+- ❌ Adding validation/logging/history to core bloats everyone's bundle
+- ❌ Different apps need different features
+- ❌ Can't predict all use cases
+
+**Plugin architecture benefits:**
+- ✅ Debug tools only in development builds
+- ✅ Validation only where needed
+- ✅ Tree-shakeable by design
+- ✅ Community can create plugins
+
+**Tradeoff:** Slight API verbosity (pass plugins array) for much better modularity.
+
+**Performance:** Typical overhead 10-30% with 1-3 plugins. Acceptable for most use cases.
+
+---
+
 ## Future Considerations
 
-### Features We Might Add Later
+**Features We Might Add Later:**
 
 **After v1.0 stable:**
 - Array-based checkbox bindings (if clean solution found)
@@ -584,6 +629,9 @@ We're open to change, but will prioritize **simplicity and standards** over feat
 
 ## Document History
 
+- **2025-12-19:**
+  - Added plugin system rationale (v2.0)
+  - Updated test coverage to 148 tests
 - **2025-11-28:** 
   - Added `repeat` addon decision and immutable array update reasoning
   - Updated examples count and test coverage stats (114 tests)
