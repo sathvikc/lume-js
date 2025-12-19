@@ -73,10 +73,6 @@
  *   });
  */
 
-// ============================================================================
-// PRESERVATION UTILITIES (Exported for customization)
-// ============================================================================
-
 /**
  * Default focus preservation strategy
  * Saves activeElement and selection state before DOM updates
@@ -157,10 +153,6 @@ export function defaultScrollPreservation(container, context = {}) {
     }
   };
 }
-
-// ============================================================================
-// MAIN REPEAT FUNCTION
-// ============================================================================
 
 /**
  * Efficiently render a list with element reuse

@@ -808,7 +808,7 @@ describe('plugin system', () => {
         name: 'computed',
         onGet: (key, value) => {
           if (key === 'fullName') {
-            // Access underlying state (this is advanced - just demonstration)
+            // Access underlying state for demonstration
             return 'Computed Value';
           }
           return value;
