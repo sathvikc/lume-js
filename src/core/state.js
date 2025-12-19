@@ -81,7 +81,11 @@ export function state(obj, options = {}) {
 
   // Call onInit hooks
   for (const p of plugins) {
-    try { p.onInit?.(); } catch (e) { console.error('[Lume.js] Plugin error:', e); }
+    try { 
+      p.onInit?.(); 
+    } catch (e) { 
+      console.error(`[Lume.js] Plugin "${p.name}" error in onInit:`, e); 
+    }
   }
 
   /**
@@ -107,7 +111,11 @@ export function state(obj, options = {}) {
       // Plugin onNotify hooks (before subscribers)
       for (const [key, value] of pendingNotifications) {
         for (const p of plugins) {
-          try { p.onNotify?.(key, value); } catch (e) {}
+          try { 
+            p.onNotify?.(key, value); 
+          } catch (e) { 
+            console.error(`[Lume.js] Plugin "${p.name}" error in onNotify:`, e); 
+          }
         }
       }
       
@@ -146,7 +154,9 @@ export function state(obj, options = {}) {
         try {
           const r = p.onGet?.(key, value);
           if (r !== undefined) value = r;
-        } catch (e) {}
+        } catch (e) {
+          console.error(`[Lume.js] Plugin "${p.name}" error in onGet:`, e);
+        }
       }
       
       // Support effect tracking
@@ -195,7 +205,9 @@ export function state(obj, options = {}) {
         try {
           const r = p.onSet?.(key, newValue, oldValue);
           if (r !== undefined) newValue = r;
-        } catch (e) {}
+        } catch (e) {
+          console.error(`[Lume.js] Plugin "${p.name}" error in onSet:`, e);
+        }
       }
       
       // Skip update if value unchanged after plugin processing
@@ -227,7 +239,11 @@ export function state(obj, options = {}) {
 
     // Plugin onSubscribe hooks
     for (const p of plugins) {
-      try { p.onSubscribe?.(key); } catch (e) {}
+      try { 
+        p.onSubscribe?.(key); 
+      } catch (e) { 
+        console.error(`[Lume.js] Plugin "${p.name}" error in onSubscribe:`, e); 
+      }
     }
 
     if (!listeners[key]) listeners[key] = [];
