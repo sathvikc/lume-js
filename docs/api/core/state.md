@@ -1,20 +1,29 @@
-# state(initialState)
+# state(initialState, options)
 
-Creates a reactive state object.
+Creates a reactive state object with optional plugin support.
 
 ## Signature
 
 ```typescript
-function state<T extends object>(initialState: T): T;
+function state<T extends object>(
+  initialState: T, 
+  options?: StateOptions
+): ReactiveState<T>;
+
+interface StateOptions {
+  plugins?: Plugin[];
+}
 ```
 
 ## Parameters
 
 - `initialState` (Object): The initial state object. Must be a plain object, not a primitive.
+- `options` (Object, optional): Configuration options
+  - `plugins` (Array): Array of plugins to extend state behavior
 
 ## Returns
 
-- A reactive Proxy of the `initialState`.
+- A reactive Proxy of the `initialState` with `$subscribe` method.
 
 ## Description
 
@@ -70,6 +79,34 @@ const unsub = store.$subscribe('count', (val) => {
 // Later
 unsub();
 ```
+
+### With Plugins (v2.0+)
+
+Extend state with custom behaviors using plugins:
+
+```javascript
+const debugPlugin = {
+  name: 'debug',
+  onGet: (key, value) => {
+    console.log(`GET ${key}:`, value);
+    return value;
+  },
+  onSet: (key, newValue, oldValue) => {
+    console.log(`SET ${key}:`, oldValue, '→', newValue);
+    return newValue;
+  }
+};
+
+const store = state(
+  { count: 0 },
+  { plugins: [debugPlugin] }
+);
+
+store.count = 5; // Logs: SET count: 0 → 5
+console.log(store.count); // Logs: GET count: 5
+```
+
+**See [Plugin Documentation](plugins.md) for full plugin API.**
 
 ---
 
