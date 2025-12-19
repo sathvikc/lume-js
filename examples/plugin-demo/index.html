@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lume.js Plugin System Demo</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6;
+      padding: 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 2rem;
+      font-size: 1.1rem;
+    }
+
+    .demo-section {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .demo-section h2 {
+      color: #2563eb;
+      margin-bottom: 1rem;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .demo-section h2::before {
+      content: '●';
+      font-size: 0.8em;
+    }
+
+    .demo-content {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .control-group {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    label {
+      font-weight: 500;
+      color: #555;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="email"] {
+      padding: 0.5rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 4px;
+      font-size: 1rem;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #2563eb;
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    button.secondary {
+      background: #6b7280;
+    }
+
+    button.secondary:hover {
+      background: #4b5563;
+    }
+
+    button.danger {
+      background: #dc2626;
+    }
+
+    button.danger:hover {
+      background: #b91c1c;
+    }
+
+    .output {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .log-entry {
+      padding: 0.25rem 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+
+    .log-get {
+      color: #059669;
+    }
+
+    .log-set {
+      color: #2563eb;
+    }
+
+    .log-subscribe {
+      color: #7c3aed;
+    }
+
+    .log-notify {
+      color: #dc2626;
+    }
+
+    .log-init {
+      color: #ea580c;
+      font-weight: 600;
+    }
+
+    .history-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .history-list li {
+      padding: 0.5rem;
+      background: #f9fafb;
+      margin-bottom: 0.5rem;
+      border-radius: 4px;
+      border-left: 3px solid #2563eb;
+    }
+
+    .error-message {
+      color: #dc2626;
+      background: #fee2e2;
+      padding: 0.75rem;
+      border-radius: 4px;
+      margin-top: 0.5rem;
+    }
+
+    .success-message {
+      color: #059669;
+      background: #d1fae5;
+      padding: 0.75rem;
+      border-radius: 4px;
+      margin-top: 0.5rem;
+    }
+
+    .code-block {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 1rem;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      overflow-x: auto;
+      margin-top: 0.5rem;
+    }
+
+    .value-display {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      background: #dbeafe;
+      border-radius: 4px;
+      font-weight: 500;
+      color: #1e40af;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔌 Lume.js Plugin System</h1>
+  <p class="subtitle">Real-world examples of extending Lume with plugins</p>
+
+  <div class="demo-section" id="debug-demo">
+    <h2>Debug Plugin</h2>
+    <div class="demo-content">
+      <p>Logs all state operations to help debug your application.</p>
+      
+      <div class="control-group">
+        <label>Name:</label>
+        <input type="text" id="debug-name" data-bind="name" placeholder="Enter name...">
+      </div>
+
+      <div class="control-group">
+        <label>Age:</label>
+        <input type="number" id="debug-age" data-bind="age" placeholder="Enter age...">
+      </div>
+
+      <button id="clear-debug-log">Clear Log</button>
+
+      <div id="debug-output" class="output"></div>
+    </div>
+  </div>
+
+  <div class="demo-section" id="validation-demo">
+    <h2>Validation Plugin</h2>
+    <div class="demo-content">
+      <p>Validates data before it's set, preventing invalid states.</p>
+      
+      <div class="control-group">
+        <label>Email:</label>
+        <input type="email" id="validate-email" placeholder="Enter email...">
+      </div>
+      
+      <div id="email-validation-status"></div>
+
+      <div class="control-group">
+        <label>Age (0-150):</label>
+        <input type="number" id="validate-age" placeholder="Enter age...">
+      </div>
+      
+      <div id="age-validation-status"></div>
+
+      <div class="code-block">
+// Validation rules enforced:<br>
+- Email must contain '@'<br>
+- Age must be 0-150<br>
+- Invalid values are rejected
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-section" id="history-demo">
+    <h2>History Plugin (Undo/Redo)</h2>
+    <div class="demo-content">
+      <p>Track changes and enable undo/redo functionality.</p>
+      
+      <div class="control-group">
+        <label>Counter:</label>
+        <span class="value-display" data-bind="count">0</span>
+      </div>
+
+      <div class="control-group">
+        <button id="increment">Increment</button>
+        <button id="decrement">Decrement</button>
+        <button id="undo" class="secondary">↶ Undo</button>
+        <button id="redo" class="secondary">↷ Redo</button>
+        <button id="clear-history" class="danger">Clear History</button>
+      </div>
+
+      <h3 style="margin-top: 1rem; color: #555;">History:</h3>
+      <ul id="history-list" class="history-list"></ul>
+    </div>
+  </div>
+
+  <div class="demo-section" id="transform-demo">
+    <h2>Transform Plugin</h2>
+    <div class="demo-content">
+      <p>Transform values on get/set (e.g., uppercase text, format numbers).</p>
+      
+      <div class="control-group">
+        <label>Text (auto uppercase):</label>
+        <input type="text" id="transform-text" data-bind="text" placeholder="Type something...">
+      </div>
+
+      <div class="control-group">
+        <label>Internal value:</label>
+        <span class="value-display" id="transform-internal">-</span>
+      </div>
+
+      <div class="code-block">
+// Transform on set: converts to uppercase<br>
+// Transform on get: returns uppercase version
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
