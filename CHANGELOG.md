@@ -1,5 +1,37 @@
 # Changelog
 
+## [2.0.0-alpha.1] - 2025-12-19
+
+### Added
+- **Plugin System (v2.0 Phase 1)**
+  - 5 lifecycle hooks: `onInit`, `onGet`, `onSet`, `onSubscribe`, `onNotify`
+  - Opt-in plugin support via `state(obj, { plugins: [...] })`
+  - Chain pattern for `onGet` and `onSet` hooks (each plugin receives output of previous)
+  - Full TypeScript definitions for plugin interface
+  - Comprehensive plugin documentation at `docs/api/core/plugins.md`
+  - 4 working plugin examples: debug, validation, history, transform
+
+### Improved
+- Test coverage increased to 148 tests (from 114 in v1.0.0)
+- 34 new tests for plugin system covering all hooks and edge cases
+- 100% code coverage maintained
+- Documentation updated with v2.0+ markers
+- Bundle size budget temporarily increased to 2KB (will optimize in Phase 2)
+
+### Technical Details
+- Bundle size: 1.98 KB / 2.00 KB gzipped (99.0% of budget)
+- Backward compatible: All v1.0 code works unchanged
+- Plugin system adds ~200 bytes to core
+- Effects track key access (plugin `onGet` transforms don't affect tracking)
+
+### Notes
+- This is an **alpha release** for early adopters and community feedback
+- Not recommended for production use
+- Plugin system is stable, but bundle size will be optimized in Phase 2
+- Phase 2 will move `effect` and `bindDom` to addons, reducing core size to ~1.8KB
+
+---
+
 ## [1.0.0] - 2025-11-29
 
 ### Major Release
