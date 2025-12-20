@@ -41,11 +41,11 @@ jobs:
           cat size-output.txt
           cat size-output.txt >> $GITHUB_STEP_SUMMARY
           
-          # Extract size for comparison
-          PR_SIZE=$(grep -oP 'Core Total: \K[0-9.]+' size-output.txt || echo "0")
+          # Extract size from markdown table format: | **Core Total** | **1.98 KB** |
+          PR_SIZE=$(grep -oP '\*\*Core Total\*\* \| \*\*\K[0-9.]+' size-output.txt || echo "0")
           echo "pr_size=$PR_SIZE" >> $GITHUB_OUTPUT
           
-          # Check if passed (matches GitHub Actions output from script)
+          # Check if passed
           if grep -q "Well done! Core is under 2KB" size-output.txt; then
             echo "passed=true" >> $GITHUB_OUTPUT
           else
@@ -66,7 +66,7 @@ jobs:
           cd base
           npm ci
           npm run size > ../base-size.txt 2>&1 || true
-          BASE_SIZE=$(grep -oP 'Core Total: \K[0-9.]+' ../base-size.txt || echo "0")
+          BASE_SIZE=$(grep -oP '\*\*Core Total\*\* \| \*\*\K[0-9.]+' ../base-size.txt || echo "0")
           echo "base_size=$BASE_SIZE" >> $GITHUB_OUTPUT
       
       - name: Comment PR with size comparison
