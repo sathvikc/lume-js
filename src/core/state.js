@@ -149,7 +149,7 @@ export function state(obj, options = {}) {
       // Get original value
       let value = target[key];
       
-      // Plugin onGet hooks (chain pattern)
+      // Plugin onGet hooks run first (effects track key, not value)
       for (const p of plugins) {
         try {
           const r = p.onGet?.(key, value);
@@ -159,7 +159,7 @@ export function state(obj, options = {}) {
         }
       }
       
-      // Support effect tracking
+      // Effect tracking
       // Check if we're inside an effect context
       if (typeof globalThis.__LUME_CURRENT_EFFECT__ !== 'undefined') {
         const currentEffect = globalThis.__LUME_CURRENT_EFFECT__;

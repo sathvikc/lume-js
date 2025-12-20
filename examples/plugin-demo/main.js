@@ -115,10 +115,6 @@ function showValidationError(field, message) {
 }
 
 function showValidationSuccess(field, message) {
-  if (message.includes('function') || message.includes('$')) {
-    return;
-  }
-  
   const statusId = field === 'email' ? 'email-validation-status' : 'age-validation-status';
   const status = document.getElementById(statusId);
   if (!status) return;
