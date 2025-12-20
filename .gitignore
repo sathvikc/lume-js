@@ -4,3 +4,4 @@ dist
 gh-pages/public
 archive
 .ai/
+.github/copilot-instructions*.md
