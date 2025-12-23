@@ -3,14 +3,9 @@ name: Deploy GH Pages
 
 on:
   workflow_dispatch:
-    inputs:
-      deploy_branch:
-        description: 'Branch to deploy to GitHub Pages'
-        required: true
-        default: 'gh-pages'
   push:
     branches:
-      - gh-pages
+      - main
 
 permissions:
   contents: read
@@ -28,8 +23,6 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.deploy_branch || 'gh-pages' }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
