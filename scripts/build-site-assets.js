@@ -34,35 +34,34 @@ copyDir(path.join(rootDir, 'examples'), path.join(publicDir, 'examples'));
 
 console.log('Injecting import maps...');
 // Walk through examples and inject import map
-// function injectImportMap(dir) {
-//     const entries = fs.readdirSync(dir, { withFileTypes: true });
-//     for (const entry of entries) {
-//         const fullPath = path.join(dir, entry.name);
-//         if (entry.isDirectory()) {
-//             injectImportMap(fullPath);
-//         } else if (entry.name === 'index.html') {
-//             let content = fs.readFileSync(fullPath, 'utf-8');
+function injectImportMap(dir) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            injectImportMap(fullPath);
+        } else if (entry.name === 'index.html') {
+            let content = fs.readFileSync(fullPath, 'utf-8');
 
-//             // Check if import map already exists
-//             if (!content.includes('<script type="importmap">')) {
-//                 const importMap = `
-//   <script type="importmap">
-//     {
-//       "imports": {
-//         "lume-js": "https://cdn.jsdelivr.net/npm/lume-js/src/index.js",
-//         "lume-js/addons": "https://cdn.jsdelivr.net/npm/lume-js/src/addons/index.js"
-//       }
-//     }
-//   </script>
-// `;
-//                 // Insert before </head>
-//                 content = content.replace('</head>', `${importMap}</head>`);
-//                 fs.writeFileSync(fullPath, content);
-//                 console.log(`Injected import map into ${fullPath}`);
-//             }
-//         }
-//     }
-// }
+            // Check if import map already exists
+            if (!content.includes('<script type="importmap">')) {
+                const importMap = `  <script type="importmap">
+    {
+      "imports": {
+        "lume-js": "https://cdn.jsdelivr.net/npm/lume-js@1.0.0/src/index.js",
+        "lume-js/addons": "https://cdn.jsdelivr.net/npm/lume-js@1.0.0/src/addons/index.js"
+      }
+    }
+  </script>
+`;
+                // Insert before </head>
+                content = content.replace('</head>', `${importMap}</head>`);
+                fs.writeFileSync(fullPath, content);
+                console.log(`Injected import map into ${fullPath}`);
+            }
+        }
+    }
+}
 
-// injectImportMap(path.join(publicDir, 'examples'));
+injectImportMap(path.join(publicDir, 'examples'));
 console.log('Done!');

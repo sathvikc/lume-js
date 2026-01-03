@@ -1,5 +1,4 @@
-name: Deploy GH Pages
-
+name: Deploy GitHub Pages
 
 on:
   workflow_dispatch:
@@ -20,7 +19,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -33,10 +31,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Assets
+      - name: Build site assets
         run: node scripts/build-site-assets.js
 
-      - name: Build Website
+      - name: Build website
         run: npx vite build -c vite.site.config.js
 
       - name: Setup Pages
