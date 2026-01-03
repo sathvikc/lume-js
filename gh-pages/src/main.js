@@ -1,5 +1,6 @@
 // highlight.js is loaded globally from CDN in index.html
 import { bindDom, effect, state } from 'lume-js';
+import { watch } from 'lume-js/addons';
 import { Comparison } from './components/Comparison.js';
 import { DocsViewer } from './components/DocsViewer.js';
 import { ExampleViewer } from './components/ExampleViewer.js';
@@ -10,24 +11,18 @@ import { Hero } from './components/Hero.js';
 import { Sidebar } from './components/Sidebar.js';
 import './style.css';
 
-// --- Store Setup ---
-const store = state({
-  currentPath: window.location.hash.slice(1) || '',
-  theme: 'dark',
+// --- Helper Functions ---
+function getBaseUrl() {
+  const base = import.meta.env.BASE_URL;
+  return base.endsWith('/') ? base : base + '/';
+}
 
-  // Docs state
-  markdownContent: '',
-  loading: false,
-  error: false,
-  prevPage: null,
-  nextPage: null
-});
-
-// Expose store for inline handlers
-window.store = store;
+function isExampleType(type) {
+  return type === 'example' || type === 'external';
+}
 
 // --- Site Navigation Map ---
-const siteMap = [
+const SITE_MAP = [
   // Introduction
   { path: 'docs/', title: 'Introduction', file: 'docs/README.md' },
 
@@ -67,6 +62,50 @@ const siteMap = [
   { path: 'docs/design/design-decisions', title: 'Design Decisions', file: 'docs/design/design-decisions.md' },
 ];
 
+// --- Store Setup ---
+const store = state({
+  currentPath: window.location.hash.slice(1) || '',
+  theme: 'dark',
+  siteMap: SITE_MAP,
+
+  // Docs state
+  markdownContent: '',
+  loading: false,
+  error: false,
+  prevPage: null,
+  nextPage: null,
+
+  // Store methods (functions in state are NOT proxied - no performance penalty)
+  // This pattern keeps related logic cohesive and provides better ergonomics
+  getCurrentEntry() {
+    return this.siteMap.find(e => e.path === this.currentPath);
+  },
+
+  isExample() {
+    const entry = this.getCurrentEntry();
+    return isExampleType(entry?.type) || this.currentPath.startsWith('examples/');
+  },
+
+  isDocs() {
+    const entry = this.getCurrentEntry();
+    return (entry && !entry.type) || this.currentPath.startsWith('docs/');
+  },
+
+  updatePagination() {
+    const currentIndex = this.siteMap.findIndex(d => d.path === this.currentPath);
+    if (currentIndex !== -1) {
+      this.prevPage = currentIndex > 0 ? this.siteMap[currentIndex - 1] : null;
+      this.nextPage = currentIndex < this.siteMap.length - 1 ? this.siteMap[currentIndex + 1] : null;
+    } else {
+      this.prevPage = null;
+      this.nextPage = null;
+    }
+  }
+});
+
+// Expose store for inline handlers (debugging only)
+window.store = store;
+
 // --- Routing Logic ---
 const handleHashChange = (e) => {
   const hash = window.location.hash.slice(1);
@@ -80,23 +119,13 @@ const handleHashChange = (e) => {
 
 window.addEventListener('hashchange', handleHashChange);
 
-// Watch path changes to fetch docs and update pagination
-effect(() => {
-  const path = store.currentPath;
-
+watch(store, 'currentPath', (newPath) => {
   // Update pagination
-  const currentIndex = siteMap.findIndex(d => d.path === path);
-  if (currentIndex !== -1) {
-    store.prevPage = currentIndex > 0 ? siteMap[currentIndex - 1] : null;
-    store.nextPage = currentIndex < siteMap.length - 1 ? siteMap[currentIndex + 1] : null;
-  } else {
-    store.prevPage = null;
-    store.nextPage = null;
-  }
+  store.updatePagination();
 
   // Fetch docs if needed
-  if (path.startsWith('docs')) {
-    loadDocs(path);
+  if (newPath.startsWith('docs')) {
+    loadDocs(newPath);
   }
 });
 
@@ -105,23 +134,18 @@ async function loadDocs(path) {
   store.error = false;
 
   try {
-    // Find doc entry
-    const docEntry = siteMap.find(d => d.path === path);
+    const docEntry = store.siteMap.find(d => d.path === path);
 
     if (!docEntry || !docEntry.file) {
-      if (!docEntry) throw new Error('Doc not found');
+      throw new Error('Doc not found');
     }
 
-    // Use BASE_URL to handle GH Pages subpath
-    const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + '/';
-    let fileToFetch = baseUrl + docEntry.file;
-
+    const fileToFetch = getBaseUrl() + docEntry.file;
     const res = await fetch(fileToFetch);
+    
     if (!res.ok) throw new Error('Doc not found');
 
-    const text = await res.text();
-    store.markdownContent = text;
-
+    store.markdownContent = await res.text();
   } catch (e) {
     console.error(e);
     store.error = true;
@@ -131,9 +155,8 @@ async function loadDocs(path) {
   }
 }
 
-// --- Theme Logic ---
-effect(() => {
-  const theme = store.theme;
+// --- Theme Logic with watch() ---
+watch(store, 'theme', (theme) => {
   const html = document.documentElement;
   const lightStyle = document.getElementById('hljs-light');
   const darkStyle = document.getElementById('hljs-dark');
@@ -151,35 +174,28 @@ effect(() => {
   localStorage.setItem('theme', theme);
 });
 
-// Initialize theme toggle listener
-/*
-document.addEventListener('click', (e) => {
-  const toggleBtn = e.target.closest('#theme-toggle');
-  if (toggleBtn) {
-    store.theme = store.theme === 'dark' ? 'light' : 'dark';
-  }
-});
-*/
+// Initialize theme from localStorage
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme) store.theme = savedTheme;
 
 // --- Main App Component ---
 function App() {
-  const path = store.currentPath;
-  const entry = siteMap.find(e => e.path === path);
-
-  const isExample = (entry?.type === 'example' || entry?.type === 'external') || path.startsWith('examples/');
-  const isDocs = (entry && !entry.type) || path.startsWith('docs/');
+  // Call store methods - clean and cohesive API
+  const currentEntry = store.getCurrentEntry();
+  const isExamplePage = store.isExample();
+  const isDocsPage = store.isDocs();
 
   return `
     <div class="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
       ${Header(store)}
 
       <main>
-        ${(isDocs || isExample) ? `
+        ${(isDocsPage || isExamplePage) ? `
           <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col lg:flex-row">
               ${Sidebar(store)}
               <div class="flex-1 min-w-0 py-10 lg:pl-8">
-                ${isExample ? ExampleViewer(store, siteMap) : DocsViewer(store)}
+                ${isExamplePage ? ExampleViewer(store, currentEntry) : DocsViewer(store)}
               </div>
             </div>
           </div>
