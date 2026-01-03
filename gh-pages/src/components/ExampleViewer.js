@@ -1,8 +1,13 @@
-export function ExampleViewer(store) {
+export function ExampleViewer(store, siteMap) {
   const path = store.currentPath; // e.g., 'examples/counter'
   const exampleId = path.split('/')[1];
-  const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + '/';
-  const src = `${baseUrl}examples/${exampleId}/index.html`;
+  
+  // Check if this is an external example
+  const entry = siteMap?.find(e => e.path === path);
+  const isExternal = entry?.type === 'external';
+  const src = isExternal && entry.url 
+    ? entry.url 
+    : `${import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + '/'}examples/${exampleId}/index.html`;
 
   return `
     <div class="max-w-full mx-auto">

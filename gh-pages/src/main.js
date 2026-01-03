@@ -42,6 +42,7 @@ const siteMap = [
   { path: 'examples/tic-tac-toe', title: 'Tic Tac Toe Example', type: 'example' },
   { path: 'examples/form-heavy', title: 'Form Handling Example', type: 'example' },
   { path: 'examples/repeat-test', title: 'List Rendering Example', type: 'example' },
+  { path: 'examples/linkedin-puzzle', title: 'LinkedIn Zip Puzzle', type: 'external', url: 'https://sathvikc.github.io/linkedin-zip-puzzle/' },
 
   // API: Core
   { path: 'docs/api/core/state', title: 'state()', file: 'docs/api/core/state.md' },
@@ -165,7 +166,7 @@ function App() {
   const path = store.currentPath;
   const entry = siteMap.find(e => e.path === path);
 
-  const isExample = entry?.type === 'example' || path.startsWith('examples/');
+  const isExample = (entry?.type === 'example' || entry?.type === 'external') || path.startsWith('examples/');
   const isDocs = (entry && !entry.type) || path.startsWith('docs/');
 
   return `
@@ -178,7 +179,7 @@ function App() {
             <div class="flex flex-col lg:flex-row">
               ${Sidebar(store)}
               <div class="flex-1 min-w-0 py-10 lg:pl-8">
-                ${isExample ? ExampleViewer(store) : DocsViewer(store)}
+                ${isExample ? ExampleViewer(store, siteMap) : DocsViewer(store)}
               </div>
             </div>
           </div>
