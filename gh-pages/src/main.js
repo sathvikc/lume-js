@@ -103,8 +103,14 @@ const store = state({
   }
 });
 
+const demoStore = state({
+  count: 0,
+  name: 'World'
+});
+
 // Expose store for inline handlers (debugging only)
 window.store = store;
+window.demoStore = demoStore;
 
 // --- Routing Logic ---
 const handleHashChange = (e) => {
@@ -213,6 +219,7 @@ function App() {
 
 // --- Mount ---
 let cleanup;
+let demoCleanup;
 
 // Use effect to re-render app on state changes
 effect(() => {
@@ -220,13 +227,8 @@ effect(() => {
   const sidebar = document.querySelector('aside');
   const scrollTop = sidebar ? sidebar.scrollTop : 0;
 
-  if (cleanup) cleanup();
-
   const app = document.getElementById('app');
   app.innerHTML = App();
-
-  // Bind any data-bind attributes (if used)
-  cleanup = bindDom(app, store);
 
   // Restore sidebar scroll
   const newSidebar = document.querySelector('aside');
@@ -234,6 +236,48 @@ effect(() => {
 
   // Apply syntax highlighting
   hljs.highlightAll();
+});
+
+// Bind main store outside effect to avoid circular deps
+const app = document.getElementById('app');
+cleanup = bindDom(app, store);
+
+// Handle demo store binding separately from DOM recreation
+let isOnHomePage = false;
+const handleDemoBinding = () => {
+  const isHome = store.currentPath === '' || store.currentPath === '/';
+  
+  if (isHome && !isOnHomePage) {
+    // Navigated TO home page - wait for DOM to be ready then bind
+    setTimeout(() => {
+      if (demoCleanup) demoCleanup();
+      demoCleanup = bindDom(app, demoStore);
+    }, 0);
+    isOnHomePage = true;
+  } else if (!isHome && isOnHomePage) {
+    // Navigated AWAY from home page
+    if (demoCleanup) demoCleanup();
+    demoCleanup = null;
+    isOnHomePage = false;
+  }
+};
+
+// Watch for navigation changes to handle demo binding
+watch(store, 'currentPath', handleDemoBinding);
+
+// Initial demo binding check
+handleDemoBinding();
+
+// Cleanup on page unload (good practice)
+window.addEventListener('beforeunload', () => {
+  if (cleanup) cleanup();
+  if (demoCleanup) demoCleanup();
+});
+
+// Cleanup on page unload (good practice)
+window.addEventListener('beforeunload', () => {
+  if (cleanup) cleanup();
+  if (demoCleanup) demoCleanup();
 });
 
 // Initial load

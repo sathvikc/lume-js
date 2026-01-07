@@ -69,20 +69,19 @@ export function Hero() {
             <div class="flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <div class="text-xs text-gray-500 dark:text-gray-400 font-mono uppercase tracking-wider">Live Preview</div>
             </div>
-            <div class="p-8 flex flex-col justify-center flex-1 bg-[#0f172a] min-h-[300px]">
+            <div id="demo-container" class="p-8 flex flex-col justify-center flex-1 bg-[#0f172a] min-h-[300px]">
               <div class="w-full max-w-sm mx-auto space-y-8">
 
                 <!-- Greeting -->
                 <h2 class="text-4xl font-bold text-white tracking-tight">
-                  Hello, <span id="demo-name" class="text-blue-400">World</span>!
+                  Hello, <span data-bind="name" class="text-blue-400"></span>!
                 </h2>
 
                 <div class="space-y-6">
                   <!-- Name Input -->
                   <div class="space-y-2">
                     <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Name</label>
-                    <input type="text" value="World"
-                      oninput="document.getElementById('demo-name').innerText = this.value"
+                    <input type="text" data-bind="name"
                       class="w-full px-4 py-3 rounded-lg bg-[#1e293b] border border-gray-700 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
                       placeholder="Enter name">
                   </div>
@@ -91,16 +90,16 @@ export function Hero() {
                   <div class="space-y-2">
                     <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Counter</label>
                     <div class="flex items-center gap-3">
-                      <button onclick="const el = document.getElementById('demo-count'); el.innerText = parseInt(el.innerText) - 1"
+                      <button onclick="demoStore.count--"
                         class="w-12 h-12 flex items-center justify-center rounded-lg bg-[#1e293b] border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 hover:bg-[#2d3b4e] transition-all active:scale-95">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg>
                       </button>
 
                       <div class="flex-1 h-12 flex items-center justify-center bg-[#1e293b] border border-gray-700 rounded-lg">
-                        <span id="demo-count" class="text-2xl font-bold text-white font-mono">0</span>
+                        <span data-bind="count" class="text-2xl font-bold text-white font-mono"></span>
                       </div>
 
-                      <button onclick="const el = document.getElementById('demo-count'); el.innerText = parseInt(el.innerText) + 1"
+                      <button onclick="demoStore.count++"
                         class="w-12 h-12 flex items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/20 transition-all active:scale-95">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                       </button>
