@@ -52,9 +52,12 @@ export function bindDom(root, store, options = {}) {
     const nodes = root.querySelectorAll("[data-bind]");
     const cleanups = [];
 
+    // Map for event delegation: element → { target, lastKey }
+    const bindingMap = new Map();
+
     nodes.forEach(el => {
       const bindPath = el.getAttribute("data-bind");
-      
+
       if (!bindPath) {
         console.warn('[Lume.js] Empty data-bind attribute found', el);
         return;
@@ -82,18 +85,27 @@ export function bindDom(root, store, options = {}) {
       });
       cleanups.push(unsubscribe);
 
-      // Two-way binding for form inputs
+      // Store binding info for event delegation (form inputs only)
       if (isFormInput(el)) {
-        const handler = e => {
-          target[lastKey] = getInputValue(e.target);
-        };
-        el.addEventListener("input", handler);
-        cleanups.push(() => el.removeEventListener("input", handler));
+        bindingMap.set(el, { target, lastKey });
       }
     });
 
+    // Event delegation: single listener on root for all form inputs
+    const delegatedHandler = e => {
+      const el = e.target;
+      const binding = bindingMap.get(el);
+      if (binding) {
+        binding.target[binding.lastKey] = getInputValue(el);
+      }
+    };
+
+    root.addEventListener("input", delegatedHandler);
+    cleanups.push(() => root.removeEventListener("input", delegatedHandler));
+
     return () => {
       cleanups.forEach(cleanup => cleanup());
+      bindingMap.clear();
     };
   };
 
@@ -104,7 +116,7 @@ export function bindDom(root, store, options = {}) {
       cleanup = performBinding();
     };
     document.addEventListener('DOMContentLoaded', onReady, { once: true });
-    
+
     // Return cleanup function that handles both cases
     return () => {
       if (cleanup) {
@@ -165,7 +177,7 @@ function getInputValue(el) {
  * @private
  */
 function isFormInput(el) {
-  return el.tagName === "INPUT" || 
-         el.tagName === "TEXTAREA" || 
-         el.tagName === "SELECT";
+  return el.tagName === "INPUT" ||
+    el.tagName === "TEXTAREA" ||
+    el.tagName === "SELECT";
 }

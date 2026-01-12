@@ -54,6 +54,16 @@ Scans the `root` element for elements with `data-bind="key"`. It sets up:
 </script>
 ```
 
+## Performance
+
+`bindDom` uses **event delegation** internally for optimal performance:
+
+- Single `input` event listener on the root element (not per-input)
+- O(1) lookup via internal Map for binding resolution
+- Memory efficient: 100 inputs = 1 listener (not 100 listeners)
+
+This is an internal optimization — no API changes required.
+
 ---
 
 **← Previous: [state()](state.md)** | **Next: [effect()](effect.md) →**

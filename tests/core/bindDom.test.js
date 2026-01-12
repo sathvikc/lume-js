@@ -73,7 +73,7 @@ describe('bindDom', () => {
   });
 
   it('ignores invalid paths gracefully', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
     const root = setupDOM(`<div><span data-bind="user.address.city"></span></div>`);
     const store = state({ user: null });
 
@@ -225,7 +225,7 @@ describe('bindDom', () => {
   });
 
   it('skips elements with empty data-bind attribute', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
     const root = setupDOM(`<div><span data-bind=""></span></div>`);
     const store = state({ count: 1 });
 
@@ -248,7 +248,7 @@ describe('bindDom', () => {
   });
 
   it('warns for non-reactive nested targets', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
     const root = setupDOM(`<div><span data-bind="user.name"></span></div>`);
     const store = state({ user: { name: 'plain object' } });
 
@@ -369,7 +369,7 @@ describe('bindDom', () => {
       const store = state({ count: 42 });
 
       const cleanup = bindDom(root, store);
-      
+
       // Should bind immediately since document.readyState !== 'loading'
       expect(root.querySelector('span').textContent).toBe('42');
 
@@ -381,7 +381,7 @@ describe('bindDom', () => {
       const store = state({ count: 99 });
 
       const cleanup = bindDom(root, store, { immediate: true });
-      
+
       // Should bind immediately with immediate flag
       expect(root.querySelector('span').textContent).toBe('99');
 
@@ -486,7 +486,7 @@ describe('bindDom', () => {
 
       // Should bind immediately, not wait for DOMContentLoaded
       expect(root.querySelector('span').textContent).toBe('789');
-      
+
       // Should NOT have added event listener
       expect(addEventListenerSpy).not.toHaveBeenCalledWith(
         'DOMContentLoaded',
@@ -501,6 +501,146 @@ describe('bindDom', () => {
       });
 
       addEventListenerSpy.mockRestore();
+      cleanup();
+    });
+  });
+
+  describe('event delegation', () => {
+    it('handles input events from deeply nested elements', () => {
+      const root = setupDOM(`
+        <div>
+          <section>
+            <form>
+              <div class="form-group">
+                <input data-bind="value" />
+              </div>
+            </form>
+          </section>
+        </div>
+      `);
+      const store = state({ value: '' });
+      const cleanup = bindDom(root, store);
+
+      const input = root.querySelector('input');
+      input.value = 'deeply-nested-value';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(store.value).toBe('deeply-nested-value');
+      cleanup();
+    });
+
+    it('ignores input events from elements without data-bind', () => {
+      const root = setupDOM(`
+        <div>
+          <input id="bound" data-bind="value" />
+          <input id="unbound" />
+        </div>
+      `);
+      const store = state({ value: 'initial' });
+      const cleanup = bindDom(root, store);
+
+      // Unbound input should not affect state
+      const unbound = root.querySelector('#unbound');
+      unbound.value = 'should-be-ignored';
+      unbound.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(store.value).toBe('initial');
+      cleanup();
+    });
+
+    it('handles multiple different input types with single delegated listener', () => {
+      const root = setupDOM(`
+        <div>
+          <input type="text" data-bind="text" />
+          <input type="checkbox" data-bind="checked" />
+          <input type="number" data-bind="num" />
+          <textarea data-bind="area"></textarea>
+          <select data-bind="sel">
+            <option value="a">A</option>
+            <option value="b">B</option>
+          </select>
+        </div>
+      `);
+      const store = state({ text: '', checked: false, num: 0, area: '', sel: 'a' });
+      const cleanup = bindDom(root, store);
+
+      // Text input
+      const textInput = root.querySelector('input[type="text"]');
+      textInput.value = 'hello';
+      textInput.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(store.text).toBe('hello');
+
+      // Checkbox
+      const checkbox = root.querySelector('input[type="checkbox"]');
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(store.checked).toBe(true);
+
+      // Number input
+      const numberInput = root.querySelector('input[type="number"]');
+      numberInput.value = '42';
+      numberInput.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(store.num).toBe(42);
+
+      // Textarea
+      const textarea = root.querySelector('textarea');
+      textarea.value = 'multiline';
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(store.area).toBe('multiline');
+
+      // Select
+      const select = root.querySelector('select');
+      select.value = 'b';
+      select.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(store.sel).toBe('b');
+
+      cleanup();
+    });
+
+    it('stops responding to events after cleanup', () => {
+      const root = setupDOM(`<div><input data-bind="value" /></div>`);
+      const store = state({ value: 'before' });
+      const cleanup = bindDom(root, store);
+
+      const input = root.querySelector('input');
+
+      // Before cleanup - should update
+      input.value = 'during';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(store.value).toBe('during');
+
+      // Cleanup
+      cleanup();
+
+      // After cleanup - should NOT update (delegated listener removed)
+      input.value = 'after';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(store.value).toBe('during'); // Still the old value
+    });
+
+    it('handles events from inputs added to DOM before bindDom was called', () => {
+      // This verifies the standard case - inputs exist when bindDom runs
+      const root = setupDOM(`
+        <div>
+          <input id="first" data-bind="first" />
+          <input id="second" data-bind="second" />
+        </div>
+      `);
+      const store = state({ first: '', second: '' });
+      const cleanup = bindDom(root, store);
+
+      const first = root.querySelector('#first');
+      const second = root.querySelector('#second');
+
+      first.value = 'one';
+      first.dispatchEvent(new Event('input', { bubbles: true }));
+
+      second.value = 'two';
+      second.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(store.first).toBe('one');
+      expect(store.second).toBe('two');
+
       cleanup();
     });
   });
