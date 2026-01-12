@@ -1,5 +1,21 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Event Delegation in `bindDom`**
+  - Single delegated `input` listener on root element instead of per-element listeners
+  - Uses `Map` for element → binding lookup (O(1) performance)
+  - Reduces memory usage for forms with many inputs (N listeners → 1 listener)
+  - 5 new event delegation tests covering deep nesting, cleanup, and edge cases
+  - Internal optimization with no API changes — fully backward compatible
+
+### Improved
+- Test coverage increased to 29 bindDom tests (from 24)
+- Better memory cleanup via `bindingMap.clear()` on cleanup
+
+---
+
 ## [2.0.0-alpha.1] - 2025-12-19
 
 ### Added

@@ -31,7 +31,15 @@ store.count++;
 store.count++;
 ```
 
-## 4. Avoid Deeply Nested State
+## 4. Event Delegation (Automatic)
+
+`bindDom` uses event delegation internally — a single `input` listener on the root element handles all form inputs. This means:
+
+- 100 inputs = 1 event listener (not 100)
+- No extra work needed — it's automatic
+- Efficient memory usage for large forms
+
+## 5. Avoid Deeply Nested State
 
 While supported, deeply nested state can be harder to manage. Try to keep your state flat where possible.
 
