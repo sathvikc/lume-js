@@ -115,19 +115,19 @@ export type ScrollPreservation = (container: HTMLElement, context?: Preservation
 export interface RepeatOptions<T> {
   /** Function to extract unique key from item */
   key: (item: T) => string | number;
-  
+
   /** Function to render/update an item's element */
   render: (item: T, element: HTMLElement, index: number) => void;
-  
+
   /** Element tag name or factory function (default: 'div') */
   element?: string | (() => HTMLElement);
-  
+
   /** 
    * Focus preservation strategy (default: defaultFocusPreservation)
    * Set to null to disable focus preservation
    */
   preserveFocus?: FocusPreservation | null;
-  
+
   /** 
    * Scroll preservation strategy (default: defaultScrollPreservation)
    * Set to null to disable scroll preservation
@@ -256,3 +256,93 @@ export function repeat<T>(
   arrayKey: string,
   options: RepeatOptions<T>
 ): Unsubscribe;
+
+/**
+ * Options for createDebugPlugin
+ */
+export interface DebugPluginOptions {
+  /** Label for log messages (default: 'store') */
+  label?: string;
+  /** Log property reads - can be noisy (default: false) */
+  logGet?: boolean;
+  /** Log property writes (default: true) */
+  logSet?: boolean;
+  /** Log subscriber notifications (default: true) */
+  logNotify?: boolean;
+}
+
+/**
+ * State plugin with lifecycle hooks for debugging
+ */
+export interface DebugPlugin {
+  name: string;
+  onInit?: () => void;
+  onGet?: (key: string, value: any) => any;
+  onSet?: (key: string, newValue: any, oldValue: any) => any;
+  onSubscribe?: (key: string) => void;
+  onNotify?: (key: string, value: any) => void;
+}
+
+/**
+ * Create a debug plugin instance for a reactive state store.
+ * Logs state operations to the console with colored output.
+ * 
+ * @param options - Configuration options
+ * @returns Plugin object for state()
+ * 
+ * @example
+ * ```typescript
+ * import { state } from 'lume-js';
+ * import { createDebugPlugin } from 'lume-js/addons';
+ * 
+ * const store = state({ count: 0 }, { 
+ *   plugins: [createDebugPlugin({ label: 'counter' })] 
+ * });
+ * ```
+ */
+export function createDebugPlugin(options?: DebugPluginOptions): DebugPlugin;
+
+/**
+ * Statistics for a single store
+ */
+export interface DebugStats {
+  gets: Record<string, number>;
+  sets: Record<string, number>;
+  notifies: Record<string, number>;
+}
+
+/**
+ * Global debug controls for Lume.js
+ */
+export interface Debug {
+  /** Enable debug logging globally */
+  enable(): void;
+  /** Disable debug logging globally */
+  disable(): void;
+  /** Check if debug logging is enabled */
+  isEnabled(): boolean;
+  /** Filter logs by key pattern (string, RegExp, or null to clear) */
+  filter(pattern: string | RegExp | null): void;
+  /** Get current filter pattern */
+  getFilter(): string | RegExp | null;
+  /** Show statistics in console and return stats object */
+  stats(): Record<string, DebugStats>;
+  /** Reset all collected statistics */
+  resetStats(): void;
+}
+
+/**
+ * Global debug controls
+ * 
+ * @example
+ * ```typescript
+ * import { debug } from 'lume-js/addons';
+ * 
+ * debug.enable();        // Enable logging
+ * debug.filter('count'); // Only log keys containing 'count'
+ * debug.stats();         // Show statistics
+ * debug.disable();       // Disable logging
+ * ```
+ */
+export const debug: Debug;
+
