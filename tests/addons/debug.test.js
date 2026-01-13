@@ -127,6 +127,24 @@ describe('debug addon', () => {
             // Should not log $ prefixed keys
             expect(consoleSpy.log).not.toHaveBeenCalled();
         });
+
+        it('shows stack trace when trace option is enabled', () => {
+            const traceSpy = vi.spyOn(console, 'trace').mockImplementation(() => { });
+
+            const store = state({ count: 0 }, {
+                plugins: [createDebugPlugin({ label: 'traced', trace: true })]
+            });
+
+            consoleSpy.log.mockClear();
+            store.count = 5;
+
+            expect(traceSpy).toHaveBeenCalled();
+            const traceOutput = traceSpy.mock.calls[0].join(' ');
+            expect(traceOutput).toContain('traced');
+            expect(traceOutput).toContain('count');
+
+            traceSpy.mockRestore();
+        });
     });
 
     describe('debug global controls', () => {
