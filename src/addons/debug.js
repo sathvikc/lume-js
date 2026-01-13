@@ -92,11 +92,18 @@ function formatValue(value) {
  * @param {boolean} [options.logGet=false] - Log property reads (can be noisy)
  * @param {boolean} [options.logSet=true] - Log property writes
  * @param {boolean} [options.logNotify=true] - Log subscriber notifications
+ * @param {boolean} [options.trace=false] - Show stack trace for SET operations
  * @returns {object} Plugin object for state()
  * 
  * @example
  * const store = state({ count: 0 }, { 
  *   plugins: [createDebugPlugin({ label: 'counter' })] 
+ * });
+ * 
+ * @example
+ * // With stack traces for debugging where state changes originate
+ * const store = state({ count: 0 }, { 
+ *   plugins: [createDebugPlugin({ label: 'counter', trace: true })] 
  * });
  */
 export function createDebugPlugin(options = {}) {
@@ -104,7 +111,8 @@ export function createDebugPlugin(options = {}) {
     label = 'store',
     logGet = false,
     logSet = true,
-    logNotify = true
+    logNotify = true,
+    trace = false
   } = options;
 
   return {
@@ -153,6 +161,11 @@ export function createDebugPlugin(options = {}) {
           'color: #2196F3; font-weight: bold',
           'color: inherit'
         );
+
+        // Show stack trace if enabled (helps find where state changes originate)
+        if (trace) {
+          console.trace(`%c[${label}] Stack trace for ${key}`, 'color: #888');
+        }
       }
 
       return newValue;
@@ -261,17 +274,24 @@ export const debug = {
       };
 
       console.group(`%c${label}`, 'color: #2196F3; font-weight: bold');
-      
-      if (data.gets.size > 0) {
-        console.log('Gets:', Object.fromEntries(data.gets));
+
+      // Use console.table for better formatted output
+      const tableData = [];
+      const allKeys = new Set([...data.gets.keys(), ...data.sets.keys(), ...data.notifies.keys()]);
+
+      for (const key of allKeys) {
+        tableData.push({
+          key,
+          gets: data.gets.get(key) || 0,
+          sets: data.sets.get(key) || 0,
+          notifies: data.notifies.get(key) || 0
+        });
       }
-      if (data.sets.size > 0) {
-        console.log('Sets:', Object.fromEntries(data.sets));
+
+      if (tableData.length > 0) {
+        console.table(tableData);
       }
-      if (data.notifies.size > 0) {
-        console.log('Notifies:', Object.fromEntries(data.notifies));
-      }
-      
+
       console.groupEnd();
     }
 

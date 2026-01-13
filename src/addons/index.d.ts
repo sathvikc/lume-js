@@ -269,6 +269,8 @@ export interface DebugPluginOptions {
   logSet?: boolean;
   /** Log subscriber notifications (default: true) */
   logNotify?: boolean;
+  /** Show stack trace for SET operations - helps find where state changes originate (default: false) */
+  trace?: boolean;
 }
 
 /**
