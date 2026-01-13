@@ -147,19 +147,16 @@
     const grid = document.getElementById('examples-grid');
 
     repeat(grid, store, 'examples', {
-      tag: 'li',
+      element: 'li',
       key: ex => ex.slug,
-      render: (ex, el) => {
-        if (!el.dataset.bound) {
-          el.className = 'example-card';
-          const badgeHtml = ex.badge ? `<span class="badge ${ex.badge === 'NEW' ? 'new' : ''}">${ex.badge}</span>` : '';
-          el.innerHTML = `
-            <h3>${ex.title} ${badgeHtml}</h3>
-            <p>${ex.desc}</p>
-            <a href="./${ex.slug}/">View Demo →</a>
-          `;
-          el.dataset.bound = 'true';
-        }
+      create: (ex, el) => {
+        el.className = 'example-card';
+        const badgeHtml = ex.badge ? `<span class="badge ${ex.badge === 'NEW' ? 'new' : ''}">${ex.badge}</span>` : '';
+        el.innerHTML = `
+          <h3>${ex.title} ${badgeHtml}</h3>
+          <p>${ex.desc}</p>
+          <a href="./${ex.slug}/">View Demo →</a>
+        `;
       }
     });
   </script>

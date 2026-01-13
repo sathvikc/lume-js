@@ -16,10 +16,10 @@
   - Reference optimization: `update` is skipped if item object reference unchanged
   - Clean internal storage via Map (no DOM element pollution)
   - Backward compatible: `render` alone still works as before
-  - 7 new tests for create/update API
 
 ### Improved
-- Test coverage increased to 159 tests total
+- Test coverage increased to 29 bindDom tests (from 24)
+- Test coverage increased to 53 repeat tests (from 46)
 - Better memory cleanup via `bindingMap.clear()` on cleanup
 
 ---

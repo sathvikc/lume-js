@@ -18,57 +18,54 @@
  * - Set to null/false to disable, or provide custom functions
  * - Export utilities so you can wrap/extend them
  *
- * Usage:
- *   import { repeat } from "lume-js/addons/repeat.js";
- *   
- *   // ⚠️ IMPORTANT: Arrays must be updated immutably!
- *   // store.items.push(x)      // ❌ Won't trigger update
- *   // store.items = [...items] // ✅ Triggers update
- *   
- *   // Basic usage (focus & scroll preservation enabled by default)
+ * ⚠️ IMPORTANT: Arrays must be updated immutably!
+ * store.items.push(x)      // ❌ Won't trigger update
+ * store.items = [...items] // ✅ Triggers update
+ * 
+ * ═══════════════════════════════════════════════════════════════════════
+ * PATTERN 1: Simple (render only) - for simple cases or backward compat
+ * ═══════════════════════════════════════════════════════════════════════
+ * 
  *   repeat('#list', store, 'todos', {
  *     key: todo => todo.id,
  *     render: (todo, el) => {
- *       if (!el.dataset.init) {
- *         el.innerHTML = `<input value="${todo.text}">`;
- *         el.dataset.init = 'true';
- *       }
+ *       el.textContent = todo.name;  // Called on every update
  *     }
  *   });
- *   
- *   // Disable all preservation (bare-bones repeat)
- *   repeat('#list', store, 'items', {
- *     key: item => item.id,
- *     render: (item, el) => { el.textContent = item.name; },
- *     preserveFocus: null,
- *     preserveScroll: null
- *   });
- *   
- *   // Custom focus preservation
- *   repeat('#list', store, 'items', {
- *     key: item => item.id,
- *     render: (item, el) => { ... },
- *     preserveFocus: (container) => {
- *       // Your custom logic
- *       const state = { focused: document.activeElement };
- *       return () => state.focused?.focus();
+ *
+ * ═══════════════════════════════════════════════════════════════════════
+ * PATTERN 2: Clean separation (create + update) - recommended
+ * ═══════════════════════════════════════════════════════════════════════
+ * 
+ *   repeat('#list', store, 'todos', {
+ *     key: todo => todo.id,
+ *     create: (todo, el) => {
+ *       // Called ONCE when element is created - build DOM structure
+ *       el.innerHTML = `<span class="name"></span><button>Delete</button>`;
+ *       el.querySelector('button').onclick = () => deleteTodo(todo.id);
+ *     },
+ *     update: (todo, el, index, { isFirstRender }) => {
+ *       // Called on every update - bind data
+ *       // isFirstRender = true on initial render, false on subsequent
+ *       // Skipped if same object reference (optimization)
+ *       el.querySelector('.name').textContent = todo.name;
  *     }
  *   });
- *   
- *   // Mix built-in and custom
- *   import { defaultFocusPreservation, defaultScrollPreservation } from "lume-js/addons/repeat.js";
+ *
+ * ═══════════════════════════════════════════════════════════════════════
+ * ADVANCED: Custom preservation strategies
+ * ═══════════════════════════════════════════════════════════════════════
+ * 
+ *   import { defaultFocusPreservation, defaultScrollPreservation } from "lume-js/addons";
  *   
  *   repeat('#list', store, 'items', {
  *     key: item => item.id,
- *     render: (item, el) => { ... },
- *     preserveFocus: defaultFocusPreservation, // use built-in
+ *     create: (item, el) => { ... },
+ *     update: (item, el) => { ... },
+ *     preserveFocus: null, // disable focus preservation
  *     preserveScroll: (container, context) => {
- *       // wrap/extend built-in
  *       const restore = defaultScrollPreservation(container, context);
- *       return () => {
- *         restore();
- *         console.log('Scroll restored!');
- *       };
+ *       return () => { restore(); console.log('Scroll restored!'); };
  *     }
  *   });
  */

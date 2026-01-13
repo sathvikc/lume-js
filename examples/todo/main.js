@@ -50,29 +50,29 @@ const filteredTodos = computed(() => {
 });
 
 // Use repeat to render the filtered todo list with focus preservation
+// Pattern 2: create/update separation - recommended for complex items
 const repeatCleanup = repeat(listEl, filteredTodos, 'value', {
-  tag: 'li',
+  element: 'li',
   key: todo => todo.id,
-  render: (todo, li) => {
-    if (!li.dataset.bound) {
-      li.className = 'todo';
-      li.innerHTML = `
-        <label>
-          <input type="checkbox">
-          <span class="title"></span>
-        </label>
-        <div class="right">
-          <button class="danger">Delete</button>
-        </div>
-      `;
+  create: (todo, li) => {
+    // Called ONCE when element is created - build DOM structure
+    li.className = 'todo';
+    li.innerHTML = `
+      <label>
+        <input type="checkbox">
+        <span class="title"></span>
+      </label>
+      <div class="right">
+        <button class="danger">Delete</button>
+      </div>
+    `;
 
-      li.querySelector('input').addEventListener('input', () => toggleTodo(todo.id));
-      li.querySelector('button').addEventListener('click', () => deleteTodo(todo.id));
-
-      li.dataset.bound = 'true';
-    }
-
-    // Update on every render
+    // Event listeners attached once
+    li.querySelector('input').addEventListener('input', () => toggleTodo(todo.id));
+    li.querySelector('button').addEventListener('click', () => deleteTodo(todo.id));
+  },
+  update: (todo, li) => {
+    // Called on every update - bind data
     const checkbox = li.querySelector('input');
     const titleSpan = li.querySelector('.title');
     checkbox.checked = todo.done;

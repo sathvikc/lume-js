@@ -71,30 +71,23 @@ repeat(listContainer, store, 'todos', {
   // 1. Unique Key (Critical for performance!)
   key: todo => todo.id,
 
-  // 2. Render Function (Creates the DOM element)
-  render: (todo, el) => {
+  // 2. Create Function (DOM structure - called once per element)
+  create: (todo, el) => {
     el.className = 'todo-item';
     el.innerHTML = `
       <input type="checkbox" class="toggle">
       <span class="text"></span>
       <button class="delete">×</button>
     `;
-    
-    // Initial data population
-    const checkbox = el.querySelector('.toggle');
-    const span = el.querySelector('.text');
-    
-    checkbox.checked = todo.done;
-    span.textContent = todo.text;
-    if (todo.done) span.classList.add('done');
   },
 
-  // 3. Update Function (Called when data changes)
+  // 3. Update Function (Data binding - called on every update)
   update: (todo, el) => {
     const checkbox = el.querySelector('.toggle');
     const span = el.querySelector('.text');
     
     checkbox.checked = todo.done;
+    span.textContent = todo.text;
     span.classList.toggle('done', todo.done);
   }
 });
@@ -313,7 +306,7 @@ Now refresh the page. Your todos are still there!
 
     repeat(listContainer, visibleTodos, 'value', {
       key: todo => todo.id,
-      render: (todo, el) => {
+      create: (todo, el) => {
         el.className = 'todo-item';
         el.innerHTML = `
           <input type="checkbox" class="toggle">
@@ -321,7 +314,7 @@ Now refresh the page. Your todos are still there!
           <button class="delete">×</button>
         `;
         
-        // Bind Events
+        // Bind Events (once)
         el.querySelector('.toggle').addEventListener('change', () => {
           store.todos = store.todos.map(t => t.id === todo.id ? { ...t, done: !t.done } : t);
         });
@@ -329,14 +322,10 @@ Now refresh the page. Your todos are still there!
         el.querySelector('.delete').addEventListener('click', () => {
           store.todos = store.todos.filter(t => t.id !== todo.id);
         });
-
-        // Initial State
-        el.querySelector('.toggle').checked = todo.done;
-        el.querySelector('.text').textContent = todo.text;
-        if (todo.done) el.querySelector('.text').classList.add('done');
       },
       update: (todo, el) => {
         el.querySelector('.toggle').checked = todo.done;
+        el.querySelector('.text').textContent = todo.text;
         el.querySelector('.text').classList.toggle('done', todo.done);
       }
     });
