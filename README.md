@@ -10,7 +10,7 @@ Minimal reactive state management using only standard JavaScript and HTML. No cu
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-2.0.0--alpha.1-orange.svg)](package.json)
-[![Tests](https://img.shields.io/badge/tests-153%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-159%20passing-brightgreen.svg)](tests/)
 [![Size](https://img.shields.io/badge/size-%3C2KB-blue.svg)](dist/)
 
 ## Why Lume.js?
