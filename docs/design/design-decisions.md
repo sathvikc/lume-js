@@ -355,7 +355,57 @@ repeat(container, store, 'items', {
 
 **Tradeoff:** Users must learn to use spread syntax (`[...items, new]`) instead of `push()`.
 
----
+### Why `create` + `update` Instead of Just `render`?
+
+**Problem:** A single `render` function forces users to guard one-time setup:
+
+```javascript
+render: (item, el) => {
+  if (!el.dataset.bound) {
+    el.innerHTML = '...';  // DOM setup
+    el.addEventListener('click', ...);  // Event listeners
+    el.dataset.bound = 'true';
+  }
+  el.textContent = item.name;  // Data binding
+}
+```
+
+**Decision:** Explicit separation with `create` and `update` callbacks.
+
+```javascript
+create: (item, el) => {
+  el.innerHTML = '...';  // Once
+  el.addEventListener('click', ...);  // Once
+},
+update: (item, el) => {
+  el.textContent = item.name;  // Every render
+}
+```
+
+**Benefits:**
+- Cleaner code without guards
+- Event listeners attached exactly once
+- Clear intent: structure vs data
+
+### Why Check Both Reference AND Index for Update Skip?
+
+**Problem:** If only checking item reference, reordered items don't update:
+
+```javascript
+// Items: [Alice, Bob] → [Bob, Alice]
+// Same references, different indices
+// Index-dependent rendering (e.g., "Item #1") would be wrong
+```
+
+**Decision:** Skip `update` only when both reference AND index unchanged.
+
+```javascript
+if (prevItem !== item || prevIndex !== i) {
+  update(item, el, i, { isFirstRender });
+}
+```
+
+**Tradeoff:** Slightly more overhead, but correct behavior for index-dependent renders.
 
 ## Binding Patterns
 
@@ -632,6 +682,10 @@ We're open to change, but will prioritize **simplicity and standards** over feat
 
 ## Document History
 
+- **2026-01-12:**
+  - Added `create`/`update` API design rationale
+  - Added reference + index optimization reasoning
+  - Updated test coverage to 162 tests
 - **2025-12-19:**
   - Added plugin system rationale (v2.0)
   - Updated test coverage to 148 tests

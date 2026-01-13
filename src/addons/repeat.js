@@ -161,7 +161,7 @@ export function defaultScrollPreservation(container, context = {}) {
  * @param {Function} options.key - Function to extract unique key: (item) => key
  * @param {Function} [options.render] - Function to render item (called for all items): (item, element, index) => void
  * @param {Function} [options.create] - Function for new elements only: (item, element, index) => void
- * @param {Function} [options.update] - Function for data binding: (item, element, index, { isFirstRender }) => void. Skipped if same item reference.
+ * @param {Function} [options.update] - Function for data binding: (item, element, index, { isFirstRender }) => void. Skipped if same item reference AND same index.
  * @param {string|Function} [options.element='div'] - Element tag name or factory function
  * @param {Function|null} [options.preserveFocus=defaultFocusPreservation] - Focus preservation strategy (null to disable)
  * @param {Function|null} [options.preserveScroll=defaultScrollPreservation] - Scroll preservation strategy (null to disable)
@@ -201,6 +201,8 @@ export function repeat(container, store, arrayKey, options) {
   const elementsByKey = new Map();
   // key -> previous item (for reference comparison)
   const prevItemsByKey = new Map();
+  // key -> previous index (for reorder detection)
+  const prevIndexByKey = new Map();
   const seenKeys = new Set();
 
   function createElement() {
@@ -263,10 +265,11 @@ export function repeat(container, store, arrayKey, options) {
         }
 
         // Call update for data binding (new and existing elements)
-        // Skip if same item reference (optimization)
+        // Skip if same item reference AND same index (optimization)
         const prevItem = prevItemsByKey.get(k);
+        const prevIndex = prevIndexByKey.get(k);
         if (update) {
-          if (prevItem !== item) {
+          if (prevItem !== item || prevIndex !== i) {
             update(item, el, i, { isFirstRender });
           }
         } else if (render) {
@@ -274,8 +277,9 @@ export function repeat(container, store, arrayKey, options) {
           render(item, el, i);
         }
 
-        // Store reference for next comparison
+        // Store reference and index for next comparison
         prevItemsByKey.set(k, item);
+        prevIndexByKey.set(k, i);
 
       } catch (err) {
         console.error(`[Lume.js] repeat(): error rendering key "${k}"`, err);
@@ -311,6 +315,7 @@ export function repeat(container, store, arrayKey, options) {
         if (!nextKeys.has(k)) {
           elementsByKey.delete(k);
           prevItemsByKey.delete(k);
+          prevIndexByKey.delete(k);
         }
       }
     }
@@ -336,6 +341,7 @@ export function repeat(container, store, arrayKey, options) {
       containerEl.replaceChildren();
       elementsByKey.clear();
       prevItemsByKey.clear();
+      prevIndexByKey.clear();
       seenKeys.clear();
     };
   }
@@ -346,6 +352,7 @@ export function repeat(container, store, arrayKey, options) {
     containerEl.replaceChildren();
     elementsByKey.clear();
     prevItemsByKey.clear();
+    prevIndexByKey.clear();
     seenKeys.clear();
   };
 }
