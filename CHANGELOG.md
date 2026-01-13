@@ -13,13 +13,13 @@
 - **Create/Update API for `repeat` addon**
   - New `create` option: called once when element is created (for DOM structure)
   - New `update` option: called on every render (for data binding), receives `{ isFirstRender }` context
-  - Reference optimization: `update` is skipped if item object reference unchanged
+  - Reference + index optimization: `update` skipped if item reference AND index unchanged
   - Clean internal storage via Map (no DOM element pollution)
   - Backward compatible: `render` alone still works as before
 
 ### Improved
 - Test coverage increased to 29 bindDom tests (from 24)
-- Test coverage increased to 53 repeat tests (from 46)
+- Test coverage increased to 56 repeat tests (from 46)
 - Better memory cleanup via `bindingMap.clear()` on cleanup
 
 ---

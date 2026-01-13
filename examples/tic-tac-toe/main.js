@@ -61,22 +61,30 @@ const historyListEl = document.getElementById('history-list');
 const repeatCleanup = repeat(historyListEl, store, 'history', {
   element: 'div',
   key: item => item.id,
-  create: (item, btn, index) => {
+  create: (item, btn) => {
     // Called ONCE - set up DOM structure and event listeners
     btn.className = 'history-item';
     btn.setAttribute('tabindex', '0');
     btn.setAttribute('role', 'button');
 
-    btn.addEventListener('click', () => jumpToMove(index));
+    // Use stable ID lookup instead of captured index (index can become stale on reorder)
+    const handleJump = () => {
+      const moveId = Number(btn.dataset.moveId);
+      const idx = store.history.findIndex(entry => entry.id === moveId);
+      if (idx !== -1) jumpToMove(idx);
+    };
+
+    btn.addEventListener('click', handleJump);
     btn.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        jumpToMove(index);
+        handleJump();
       }
     });
   },
   update: (item, btn, index) => {
     // Called on every update - bind data
+    btn.dataset.moveId = String(item.id);  // Keep stable ID for event handlers
     btn.textContent = item.move;
     btn.classList.toggle('current', index === store.currentMove);
   }

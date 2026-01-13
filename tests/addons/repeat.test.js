@@ -370,6 +370,105 @@ describe('repeat', () => {
       expect(container.children[1].textContent).toBe('Bob');
     });
 
+    it('calls update when items are reordered (index changes)', async () => {
+      const item1 = { id: 1, name: 'Alice' };
+      const item2 = { id: 2, name: 'Bob' };
+      const store = state({ items: [item1, item2] });
+      const updateCalls = [];
+
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        create: () => { },
+        update: (item, el, index) => {
+          updateCalls.push({ id: item.id, index });
+        }
+      });
+
+      // Initial render: both items updated
+      expect(updateCalls).toEqual([
+        { id: 1, index: 0 },
+        { id: 2, index: 1 }
+      ]);
+      updateCalls.length = 0;
+
+      // Reorder: same references, different indices
+      store.items = [item2, item1]; // Swap order, same object references
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Both should be called because indices changed
+      expect(updateCalls).toEqual([
+        { id: 2, index: 0 },
+        { id: 1, index: 1 }
+      ]);
+    });
+
+    it('skips update only when both item reference AND index are unchanged', async () => {
+      const item = { id: 1, name: 'Alice' };
+      const store = state({ items: [item] });
+      const updateSpy = vi.fn();
+
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        create: () => { },
+        update: updateSpy
+      });
+
+      expect(updateSpy).toHaveBeenCalledTimes(1); // Initial
+
+      // Re-assign with same reference at same index
+      store.items = [item];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(updateSpy).toHaveBeenCalledTimes(1); // Still 1 - skipped!
+    });
+
+    it('event listeners using item.id work correctly after reorder (no stale closures)', async () => {
+      // This tests the pattern where create captures item.id (stable) instead of index (stale)
+      const item1 = { id: 101, name: 'Alice' };
+      const item2 = { id: 102, name: 'Bob' };
+      const store = state({ items: [item1, item2] });
+      const clickedIds = [];
+
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        create: (item, el) => {
+          el.className = 'item';
+          // Capture item.id (stable) NOT index (would be stale after reorder)
+          el.addEventListener('click', () => {
+            clickedIds.push(item.id);
+          });
+        },
+        update: (item, el) => {
+          el.dataset.itemId = String(item.id);
+          el.textContent = item.name;
+        }
+      });
+
+      // Initial order: [Alice=101, Bob=102]
+      expect(container.children[0].textContent).toBe('Alice');
+      expect(container.children[1].textContent).toBe('Bob');
+
+      // Click first element (Alice)
+      container.children[0].click();
+      expect(clickedIds).toEqual([101]);
+
+      // Reorder: swap positions
+      store.items = [item2, item1]; // Now [Bob=102, Alice=101]
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Verify DOM order changed
+      expect(container.children[0].textContent).toBe('Bob');
+      expect(container.children[1].textContent).toBe('Alice');
+
+      // Click first element (now Bob) - should still get Bob's id
+      container.children[0].click();
+      expect(clickedIds).toEqual([101, 102]); // Alice's click, then Bob's click
+
+      // Click second element (now Alice) - should still get Alice's id
+      container.children[1].click();
+      expect(clickedIds).toEqual([101, 102, 101]); // Still works correctly!
+    });
+
     it('allows clean separation of DOM creation and data binding', async () => {
       const store = state({ items: [{ id: 1, name: 'Alice' }] });
 

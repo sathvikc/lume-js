@@ -28,7 +28,7 @@ function repeat(
     - `key` (Function): Returns a unique ID for each item. **Critical for performance.**
     - `render` (Function, optional): Called for all items (both new and existing). Use for simple cases.
     - `create` (Function, optional): Called once when a new element is created (for DOM structure).
-    - `update` (Function, optional): `(item, el, index, { isFirstRender }) => void`. Called for data binding. Skipped if same object reference.
+    - `update` (Function, optional): `(item, el, index, { isFirstRender }) => void`. Called for data binding. Skipped if same object reference AND same index.
     - `element` (String or Function, optional): The HTML tag or factory (default: `div`).
 
 ## Returns
