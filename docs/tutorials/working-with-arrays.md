@@ -94,10 +94,19 @@ store.items = [...store.items].reverse();
 When using the `repeat` addon, immutable updates are essential. `repeat` compares the new array to the old one to decide what DOM elements to add, remove, or update.
 
 ```javascript
+// Pattern 1: Simple (render only)
 repeat(list, store, 'items', {
-  key: item => item.id, // Critical for tracking identity
-  render: (item, el) => { ... },
-  update: (item, el) => { ... }
+  key: item => item.id,
+  render: (item, el) => {
+    el.textContent = item.name;  // Called on every update
+  }
+});
+
+// Pattern 2: Clean separation (recommended)
+repeat(list, store, 'items', {
+  key: item => item.id,
+  create: (item, el) => { /* DOM structure once */ },
+  update: (item, el) => { /* Data binding on updates */ }
 });
 ```
 

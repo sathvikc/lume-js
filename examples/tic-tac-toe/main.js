@@ -59,26 +59,24 @@ const historyListEl = document.getElementById('history-list');
 
 // Use repeat for history list with element reuse
 const repeatCleanup = repeat(historyListEl, store, 'history', {
-  tag: 'div',
+  element: 'div',
   key: item => item.id,
-  render: (item, btn, index) => {
-    if (!btn.dataset.bound) {
-      btn.className = 'history-item';
-      btn.setAttribute('tabindex', '0');
-      btn.setAttribute('role', 'button');
+  create: (item, btn, index) => {
+    // Called ONCE - set up DOM structure and event listeners
+    btn.className = 'history-item';
+    btn.setAttribute('tabindex', '0');
+    btn.setAttribute('role', 'button');
 
-      btn.addEventListener('click', () => jumpToMove(index));
-      btn.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          jumpToMove(index);
-        }
-      });
-
-      btn.dataset.bound = 'true';
-    }
-
-    // Update on every render
+    btn.addEventListener('click', () => jumpToMove(index));
+    btn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        jumpToMove(index);
+      }
+    });
+  },
+  update: (item, btn, index) => {
+    // Called on every update - bind data
     btn.textContent = item.move;
     btn.classList.toggle('current', index === store.currentMove);
   }

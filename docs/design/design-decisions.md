@@ -331,7 +331,7 @@ items.forEach(item => {
 The `repeat` addon is available as an **@experimental** feature.
 
 ```javascript
-import { repeat } from 'lume-js/addons/repeat.js';
+import { repeat } from 'lume-js/addons';
 
 // ⚠️ IMPORTANT: Arrays must be updated immutably!
 // store.items.push(newItem);       // ❌ Won't trigger update
@@ -339,8 +339,11 @@ import { repeat } from 'lume-js/addons/repeat.js';
 
 repeat(container, store, 'items', {
   key: item => item.id,
-  render: (item, el) => {
-    el.textContent = item.name;
+  create: (item, el) => {
+    el.innerHTML = '<span class="name"></span>';
+  },
+  update: (item, el) => {
+    el.querySelector('.name').textContent = item.name;
   }
 });
 ```

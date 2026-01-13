@@ -13,7 +13,7 @@ function repeat(
     key: (item: any) => any;
     render?: (item: any, el: HTMLElement, index: number) => void;
     create?: (item: any, el: HTMLElement, index: number) => void;
-    update?: (item: any, el: HTMLElement, index: number) => void;
+    update?: (item: any, el: HTMLElement, index: number, context: { isFirstRender: boolean }) => void;
     element?: string | (() => HTMLElement);
   }
 ): () => void;
@@ -26,9 +26,9 @@ function repeat(
 - `key`: The property name of the array in the state.
 - `options`:
     - `key` (Function): Returns a unique ID for each item. **Critical for performance.**
-    - `render` (Function, optional): Called for all items (both new and existing). Use if you want simple behavior.
+    - `render` (Function, optional): Called for all items (both new and existing). Use for simple cases.
     - `create` (Function, optional): Called once when a new element is created (for DOM structure).
-    - `update` (Function, optional): `(item, el, index, { isFirstRender }) => void`. Called for data binding. **Skipped if same object reference.** The `isFirstRender` flag indicates if this is the initial render for this element.
+    - `update` (Function, optional): `(item, el, index, { isFirstRender }) => void`. Called for data binding. Skipped if same object reference.
     - `element` (String or Function, optional): The HTML tag or factory (default: `div`).
 
 ## Returns
@@ -41,7 +41,9 @@ function repeat(
 
 **Important:** You must use **immutable updates** for the array (e.g., `store.items = [...newItems]`) for `repeat` to detect changes.
 
-## Example: Simple (render only)
+## Pattern 1: Simple (render only)
+
+Best for simple items where you don't need DOM/data separation.
 
 ```javascript
 import { state } from 'lume-js';
@@ -52,23 +54,31 @@ const store = state({ users: [{ id: 1, name: 'Alice' }] });
 repeat('#user-list', store, 'users', {
   key: user => user.id,
   render: (user, el) => {
-    el.textContent = user.name;
+    el.textContent = user.name;  // Called on every update
   }
 });
 ```
 
-## Example: Clean API (create + update)
+## Pattern 2: Clean API (create + update) — Recommended
+
+Best for complex items with event listeners and DOM structure.
 
 ```javascript
 repeat('#user-list', store, 'users', {
   key: user => user.id,
   create: (user, el) => {
-    // Called ONCE - create DOM structure
-    el.innerHTML = '<span class="name"></span><button>X</button>';
+    // Called ONCE - create DOM structure and attach listeners
+    el.innerHTML = '<span class="name"></span><button>Delete</button>';
+    el.querySelector('button').onclick = () => deleteUser(user.id);
   },
-  update: (user, el) => {
+  update: (user, el, index, { isFirstRender }) => {
     // Called on each render - bind data
+    // isFirstRender = true on initial, false on subsequent
     el.querySelector('.name').textContent = user.name;
+    
+    if (!isFirstRender) {
+      el.classList.add('updated');  // Animate only on updates
+    }
   }
 });
 ```
