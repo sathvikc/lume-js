@@ -255,25 +255,168 @@ describe('repeat', () => {
       expect(renderSpy).toHaveBeenCalledWith({ id: 1, name: 'Alice' }, expect.any(HTMLElement), 0);
       expect(renderSpy).toHaveBeenCalledWith({ id: 2, name: 'Bob' }, expect.any(HTMLElement), 1);
     });
+  });
 
-    it('sets __lume_new flag for new elements during render', () => {
-      const store = state({
-        items: [{ id: 1, name: 'Alice' }]
-      });
+  describe('Create/Update API', () => {
+    it('calls create once, update for each render', async () => {
+      const store = state({ items: [{ id: 1, name: 'Alice' }] });
+      const createSpy = vi.fn();
+      const updateSpy = vi.fn();
 
-      let capturedEl;
       repeat(container, store, 'items', {
         key: item => item.id,
-        render: (item, el) => {
-          capturedEl = el;
-          if (el.__lume_new) {
-            el.dataset.wasNew = 'true';
-          }
+        create: createSpy,
+        update: updateSpy
+      });
+
+      expect(createSpy).toHaveBeenCalledTimes(1);
+      expect(updateSpy).toHaveBeenCalledTimes(1); // Called on initial render too
+
+      // Add new item
+      store.items = [...store.items, { id: 2, name: 'Bob' }];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(createSpy).toHaveBeenCalledTimes(2); // Called for new item
+      // Note: update is skipped for first item (same reference)
+      expect(updateSpy).toHaveBeenCalledTimes(2); // Initial + new item only
+    });
+
+    it('calls update for existing elements on data change', async () => {
+      const store = state({ items: [{ id: 1, name: 'Alice' }] });
+      const createSpy = vi.fn();
+      const updateSpy = vi.fn();
+
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        create: createSpy,
+        update: updateSpy
+      });
+
+      // Update item data (new object, same key)
+      store.items = [{ id: 1, name: 'Alice Updated' }];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(createSpy).toHaveBeenCalledTimes(1); // Only initial
+      expect(updateSpy).toHaveBeenCalledTimes(2); // Initial + update
+      expect(updateSpy).toHaveBeenLastCalledWith(
+        { id: 1, name: 'Alice Updated' },
+        expect.any(HTMLElement),
+        0,
+        { isFirstRender: false }
+      );
+    });
+
+    it('skips update if same item reference (optimization)', async () => {
+      const item = { id: 1, name: 'Alice' };
+      const store = state({ items: [item] });
+      const updateSpy = vi.fn();
+
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        create: () => { },
+        update: updateSpy
+      });
+
+      expect(updateSpy).toHaveBeenCalledTimes(1); // Initial render
+
+      // Re-assign same array with same reference
+      store.items = [item]; // Same object reference
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(updateSpy).toHaveBeenCalledTimes(1); // Still 1 - skipped!
+    });
+
+    it('passes isFirstRender flag to update callback', async () => {
+      const store = state({ items: [{ id: 1, name: 'Alice' }] });
+      const isFirstRenderValues = [];
+
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        create: () => { },
+        update: (item, el, index, { isFirstRender }) => {
+          isFirstRenderValues.push(isFirstRender);
         }
       });
 
-      expect(capturedEl.dataset.wasNew).toBe('true');
-      expect(capturedEl.__lume_new).toBeUndefined(); // Cleaned up after render
+      // Initial: isFirstRender should be true
+      expect(isFirstRenderValues).toEqual([true]);
+
+      // Update item data
+      store.items = [{ id: 1, name: 'Alice Updated' }];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Second call: isFirstRender should be false
+      expect(isFirstRenderValues).toEqual([true, false]);
+    });
+
+    it('works with create only (no update)', async () => {
+      const store = state({ items: [{ id: 1, name: 'Alice' }] });
+      const createSpy = vi.fn((item, el) => {
+        el.textContent = item.name;
+      });
+
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        create: createSpy
+      });
+
+      expect(container.children[0].textContent).toBe('Alice');
+
+      // Add new item
+      store.items = [...store.items, { id: 2, name: 'Bob' }];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(createSpy).toHaveBeenCalledTimes(2);
+      expect(container.children[1].textContent).toBe('Bob');
+    });
+
+    it('allows clean separation of DOM creation and data binding', async () => {
+      const store = state({ items: [{ id: 1, name: 'Alice' }] });
+
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        create: (item, el) => {
+          // Create DOM structure once
+          el.innerHTML = '<span class="name"></span><button>X</button>';
+        },
+        update: (item, el) => {
+          // Update data only
+          el.querySelector('.name').textContent = item.name;
+        }
+      });
+
+      // Verify initial render
+      expect(container.children[0].querySelector('.name').textContent).toBe('Alice');
+      expect(container.children[0].querySelector('button')).toBeTruthy();
+
+      // Update item
+      store.items = [{ id: 1, name: 'Alice Updated' }];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // DOM structure should be preserved, only data updated
+      expect(container.children[0].querySelector('.name').textContent).toBe('Alice Updated');
+      expect(container.children[0].querySelector('button')).toBeTruthy();
+    });
+
+    it('backward compatible: render still works without create/update', async () => {
+      const store = state({ items: [{ id: 1, name: 'Alice' }] });
+      const renderSpy = vi.fn((item, el) => {
+        el.textContent = item.name;
+      });
+
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        render: renderSpy
+      });
+
+      // Initial render + subscription callback = may be 2 calls
+      expect(renderSpy.mock.calls.length).toBeGreaterThanOrEqual(1);
+      expect(container.children[0].textContent).toBe('Alice');
+
+      store.items = [{ id: 1, name: 'Updated' }];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(container.children[0].textContent).toBe('Updated');
     });
   });
 
@@ -430,15 +573,14 @@ describe('repeat', () => {
       }).toThrow('options.key must be a function');
     });
 
-    it('throws if render is not a function', () => {
+    it('throws if render/create is not provided', () => {
       const store = state({ items: [] });
 
       expect(() => {
         repeat(container, store, 'items', {
-          key: item => item.id,
-          render: 'not-a-function'
+          key: item => item.id
         });
-      }).toThrow('options.render must be a function');
+      }).toThrow('options.render or options.create must be a function');
     });
 
     it('warns if arrayKey is not an array', async () => {

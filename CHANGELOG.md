@@ -10,8 +10,16 @@
   - 5 new event delegation tests covering deep nesting, cleanup, and edge cases
   - Internal optimization with no API changes — fully backward compatible
 
+- **Create/Update API for `repeat` addon**
+  - New `create` option: called once when element is created (for DOM structure)
+  - New `update` option: called on every render (for data binding), receives `{ isFirstRender }` context
+  - Reference optimization: `update` is skipped if item object reference unchanged
+  - Clean internal storage via Map (no DOM element pollution)
+  - Backward compatible: `render` alone still works as before
+  - 7 new tests for create/update API
+
 ### Improved
-- Test coverage increased to 29 bindDom tests (from 24)
+- Test coverage increased to 159 tests total
 - Better memory cleanup via `bindingMap.clear()` on cleanup
 
 ---

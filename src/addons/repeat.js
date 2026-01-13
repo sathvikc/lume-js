@@ -162,7 +162,9 @@ export function defaultScrollPreservation(container, context = {}) {
  * @param {string} arrayKey - Key in store containing the array
  * @param {Object} options - Configuration
  * @param {Function} options.key - Function to extract unique key: (item) => key
- * @param {Function} options.render - Function to render item: (item, element, index) => void
+ * @param {Function} [options.render] - Function to render item (called for all items): (item, element, index) => void
+ * @param {Function} [options.create] - Function for new elements only: (item, element, index) => void
+ * @param {Function} [options.update] - Function for data binding: (item, element, index, { isFirstRender }) => void. Skipped if same item reference.
  * @param {string|Function} [options.element='div'] - Element tag name or factory function
  * @param {Function|null} [options.preserveFocus=defaultFocusPreservation] - Focus preservation strategy (null to disable)
  * @param {Function|null} [options.preserveScroll=defaultScrollPreservation] - Scroll preservation strategy (null to disable)
@@ -172,6 +174,8 @@ export function repeat(container, store, arrayKey, options) {
   const {
     key,
     render,
+    create,
+    update,
     element = 'div',
     preserveFocus = defaultFocusPreservation,
     preserveScroll = defaultScrollPreservation
@@ -192,12 +196,14 @@ export function repeat(container, store, arrayKey, options) {
     throw new Error('[Lume.js] repeat(): options.key must be a function');
   }
 
-  if (typeof render !== 'function') {
-    throw new Error('[Lume.js] repeat(): options.render must be a function');
+  if (typeof render !== 'function' && typeof create !== 'function') {
+    throw new Error('[Lume.js] repeat(): options.render or options.create must be a function');
   }
 
   // key -> HTMLElement
   const elementsByKey = new Map();
+  // key -> previous item (for reference comparison)
+  const prevItemsByKey = new Map();
   const seenKeys = new Set();
 
   function createElement() {
@@ -246,24 +252,36 @@ export function repeat(container, store, arrayKey, options) {
       nextKeys.add(k);
 
       let el = elementsByKey.get(k);
-      const isNew = !el;
+      const isFirstRender = !el;
 
-      if (isNew) {
+      if (isFirstRender) {
         el = createElement();
         elementsByKey.set(k, el);
       }
 
       try {
-        if (isNew) {
-          el.__lume_new = true;
+        // Call create for new elements (DOM structure)
+        if (isFirstRender && create) {
+          create(item, el, i);
         }
 
-        render(item, el, i);
+        // Call update for data binding (new and existing elements)
+        // Skip if same item reference (optimization)
+        const prevItem = prevItemsByKey.get(k);
+        if (update) {
+          if (prevItem !== item) {
+            update(item, el, i, { isFirstRender });
+          }
+        } else if (render) {
+          // Backward compatibility: render handles both create and update
+          render(item, el, i);
+        }
+
+        // Store reference for next comparison
+        prevItemsByKey.set(k, item);
 
       } catch (err) {
         console.error(`[Lume.js] repeat(): error rendering key "${k}"`, err);
-      } finally {
-        delete el.__lume_new;
       }
 
       nextEls.push(el);
@@ -290,12 +308,12 @@ export function repeat(container, store, arrayKey, options) {
       ptr = next;
     }
 
-    // Clean map: remove keys not in nextKeys
-    // Iterate over elementsByKey entries and delete if not in nextKeys
+    // Clean maps: remove keys not in nextKeys
     if (elementsByKey.size !== nextKeys.size) {
       for (const k of elementsByKey.keys()) {
         if (!nextKeys.has(k)) {
           elementsByKey.delete(k);
+          prevItemsByKey.delete(k);
         }
       }
     }
@@ -320,6 +338,7 @@ export function repeat(container, store, arrayKey, options) {
     return () => {
       containerEl.replaceChildren();
       elementsByKey.clear();
+      prevItemsByKey.clear();
       seenKeys.clear();
     };
   }
@@ -329,6 +348,7 @@ export function repeat(container, store, arrayKey, options) {
     // Clear DOM elements (replaceChildren is faster than loop)
     containerEl.replaceChildren();
     elementsByKey.clear();
+    prevItemsByKey.clear();
     seenKeys.clear();
   };
 }
