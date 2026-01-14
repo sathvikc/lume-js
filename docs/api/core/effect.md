@@ -1,26 +1,31 @@
-# effect(callback)
+# effect(callback, deps?)
 
-Runs a function immediately and re-runs it whenever its dependencies change.
+Runs a function immediately and re-runs it whenever dependencies change.
 
 ## Signature
 
 ```typescript
+// Auto-tracking mode (default)
 function effect(callback: () => void): () => void;
+
+// Explicit deps mode (no magic)
+function effect(callback: () => void, deps: [store, key][]): () => void;
 ```
 
 ## Parameters
 
-- `callback` (Function): The function to run.
+- `callback` (Function): The function to run reactively.
+- `deps` (Optional Array): Explicit dependencies as `[store, 'key']` tuples.
 
 ## Returns
 
-- A cleanup function that stops the effect from running again.
+- A cleanup function that stops the effect.
 
-## Description
+---
 
-`effect()` tracks which reactive state properties are accessed during the execution of `callback`. If any of those properties change later, `callback` is scheduled to run again (batched in a microtask).
+## Auto-Tracking Mode (Default)
 
-## Example
+Tracks dependencies automatically by detecting which state properties are accessed.
 
 ```javascript
 const store = state({ count: 0, name: 'Alice' });
@@ -30,17 +35,53 @@ const cleanup = effect(() => {
   console.log(`The count is ${store.count}`);
 });
 
-store.count++; // Logs: "The count is 1"
-store.name = 'Bob'; // Does NOT trigger effect (name was not accessed)
+store.count++; // ✓ Logs: "The count is 1"
+store.name = 'Bob'; // ✗ Does NOT trigger (name not accessed)
 ```
+
+**Best for:** UI updates, rendering logic.
+
+---
+
+## Explicit Deps Mode (No Magic)
+
+You specify exactly what triggers re-runs. No auto-tracking occurs.
+
+```javascript
+const store = state({ count: 0, name: 'Alice' });
+
+const cleanup = effect(() => {
+  // Accessing store.name does NOT create a dependency
+  analytics.track('count', store.count, store.name);
+}, [[store, 'count']]);  // Only re-runs when count changes
+
+store.count++; // ✓ Effect re-runs
+store.name = 'Bob'; // ✗ Effect does NOT re-run
+```
+
+**Best for:** Side-effects, logging, analytics, API calls.
+
+---
+
+## Multiple Dependencies
+
+```javascript
+effect(() => {
+  console.log(store.a, store.b);
+}, [[store, 'a'], [store, 'b']]);
+```
+
+---
 
 ## Notes
 
 - Effects run asynchronously (microtask) to batch updates.
-- Do not mutate state inside an effect that depends on that same state (infinite loop).
+- In explicit mode, `globalThis.__LUME_CURRENT_EFFECT__` is NOT set.
+- Clean up effects when done to prevent memory leaks.
 
 ---
 
 **← Previous: [bindDom()](bindDom.md)** | **Next: [computed()](../addons/computed.md) →**
 
-> **Deep Dive:** Why microtask batching? Read the [Design Decision](../../design/design-decisions.md#why-microtask-batching-instead-of-synchronous-updates).
+> **Deep Dive:** [Design Decision: Why two modes?](../../design/design-decisions.md#why-support-explicit-dependencies-in-effect)
+

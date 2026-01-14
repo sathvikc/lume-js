@@ -1,100 +1,137 @@
 /**
  * Lume-JS Effect
  * 
- * Automatic dependency tracking for reactive effects.
- * Tracks which state properties are accessed during execution
- * and automatically re-runs when those properties change.
+ * Reactive effects with two modes:
+ * 1. Auto-tracking (default): Tracks dependencies automatically
+ * 2. Explicit deps: You specify exactly what triggers re-runs
  * 
  * Part of core because it's fundamental to modern reactivity.
  * 
  * Usage:
  *   import { effect } from "lume-js";
  *   
+ *   // Auto-tracking mode (existing behavior)
  *   effect(() => {
  *     console.log('Count is:', store.count);
  *     // Automatically re-runs when store.count changes
  *   });
+ *   
+ *   // Explicit deps mode (new - no magic)
+ *   effect(() => {
+ *     console.log('Count is:', store.count);
+ *   }, [[store, 'count']]);  // Only re-runs when store.count changes
  * 
  * Features:
- * - Automatic dependency collection
- * - Dynamic dependencies (tracks what you actually access)
+ * - Automatic dependency collection (default)
+ * - Explicit dependencies for side-effects
  * - Returns cleanup function
- * - Compatible with per-state batching (no global scheduler)
- *
+ * - Compatible with per-state batching
  */
 
 /**
- * Creates an effect that automatically tracks dependencies
+ * Creates an effect that runs reactively
  *
- * The effect runs immediately and collects dependencies by tracking
- * which state properties are accessed. When any dependency changes,
- * the effect re-runs automatically.
- * 
  * @param {function} fn - Function to run reactively
+ * @param {Array<[object, string]>} [deps] - Optional explicit dependencies as [store, key] tuples
  * @returns {function} Cleanup function to stop the effect
  * 
  * @example
- * const store = state({ count: 0, name: 'Alice' });
- * 
- * const cleanup = effect(() => {
- *   // Only tracks 'count' (name not accessed)
+ * // Auto-tracking (default)
+ * const store = state({ count: 0 });
+ * effect(() => {
  *   document.title = `Count: ${store.count}`;
  * });
  * 
- * store.count = 5;  // Effect re-runs
- * store.name = 'Bob'; // Effect does NOT re-run
- * 
- * cleanup(); // Stop tracking
+ * @example
+ * // Explicit deps (no magic)
+ * effect(() => {
+ *   analytics.log(store.count);  // Won't track store.count automatically
+ * }, [[store, 'count']]);        // Explicit: only re-run on store.count
  */
-export function effect(fn) {
+export function effect(fn, deps) {
   if (typeof fn !== 'function') {
     throw new Error('effect() requires a function');
   }
 
   const cleanups = [];
-  let isRunning = false; // Prevent infinite recursion
-  
+  let isRunning = false;
+
   /**
-   * Execute the effect function and collect dependencies
-   *
-   * The execution re-tracks accessed keys on every run. Subscriptions
-   * are cleaned up and re-established so the effect always reflects
-   * current dependencies.
+   * Execute the effect function
    */
   const execute = () => {
-    if (isRunning) return; // Prevent re-entry
-    
-    // Clean up previous subscriptions
-    cleanups.forEach(cleanup => cleanup());
-    cleanups.length = 0;
-    
-    // Create effect context for tracking
-    const effectContext = {
-      fn,
-      cleanups,
-      execute, // Reference to this execute function
-      tracking: {} // Map of tracked keys
-    };
-    
-    // Set as current effect (for state.js to detect)
-    globalThis.__LUME_CURRENT_EFFECT__ = effectContext;
+    if (isRunning) return;
     isRunning = true;
-    
+
     try {
-      // Run the effect function (this triggers state getters)
       fn();
     } catch (error) {
       console.error('[Lume.js effect] Error in effect:', error);
       throw error;
     } finally {
-      // Always clean up, even if error
-      globalThis.__LUME_CURRENT_EFFECT__ = undefined;
       isRunning = false;
     }
   };
-  
-  // Run immediately to collect initial dependencies
-  execute();
+
+  // EXPLICIT DEPS MODE: deps array provided
+  if (Array.isArray(deps)) {
+    // Subscribe to each [store, key] pair explicitly
+    for (const dep of deps) {
+      if (Array.isArray(dep) && dep.length === 2) {
+        const [store, key] = dep;
+        if (store && typeof store.$subscribe === 'function') {
+          // $subscribe calls immediately, then on changes
+          // We want: call execute immediately once, then on changes
+          let isFirst = true;
+          const unsub = store.$subscribe(key, () => {
+            if (isFirst) {
+              isFirst = false;
+              return; // Skip first call, we'll run execute() below
+            }
+            execute();
+          });
+          cleanups.push(unsub);
+        }
+      }
+    }
+    // Run immediately
+    execute();
+  }
+  // AUTO-TRACKING MODE: no deps (existing behavior)
+  else {
+    const executeWithTracking = () => {
+      if (isRunning) return;
+
+      // Clean up previous subscriptions
+      cleanups.forEach(cleanup => cleanup());
+      cleanups.length = 0;
+
+      // Create effect context for tracking
+      const effectContext = {
+        fn,
+        cleanups,
+        execute: executeWithTracking,
+        tracking: {}
+      };
+
+      // Set as current effect (for state.js to detect)
+      globalThis.__LUME_CURRENT_EFFECT__ = effectContext;
+      isRunning = true;
+
+      try {
+        fn();
+      } catch (error) {
+        console.error('[Lume.js effect] Error in effect:', error);
+        throw error;
+      } finally {
+        globalThis.__LUME_CURRENT_EFFECT__ = undefined;
+        isRunning = false;
+      }
+    };
+
+    // Run immediately to collect initial dependencies
+    executeWithTracking();
+  }
 
   // Return cleanup function
   return () => {
