@@ -664,6 +664,48 @@ const store = state(
 
 ---
 
+### Why Support Explicit Dependencies in `effect()`?
+
+**Decision:** Support two modes for `effect()`:
+1. **Auto-tracking (Default):** Dependencies collected by property access
+2. **Explicit Deps:** Dependencies passed as `[[store, 'key']]` array
+
+```javascript
+// Mode 1: Auto-tracking (Magic) - Good for Views
+effect(() => {
+  el.textContent = store.count; 
+});
+
+// Mode 2: Explicit (No Magic) - Good for Logic/Side-Effects
+effect(() => {
+  analytics.log(store.count);
+}, [[store, 'count']]);
+```
+
+**Reasoning:**
+- **Honest Admission:** Auto-tracking relies on global state magic (`globalThis...`). In hindsight, this violates Lume's "no magic" philosophy.
+- **Why Keep Auto-tracking?**
+  1. **Backward Compatibility:** Converting existing code would be painful.
+  2. **Simplicity:** It's still the easiest way to write simple View logic (`el.textContent = store.count`).
+- **Why Explicit Deps?**
+  - **Philosophy Alignment:** Fits "explicit over magic". You know exactly what triggers the effect.
+  - **Safety:** Prevents infinite loops and accidental tracking (e.g., reading a value for logging shouldn't trigger a re-run).
+
+**Why `[store, key]` tuple syntax?**
+- Lume.js uses proxies, not "refs" or "signals" as values.
+- `store.count` is just a number/string value, not a reference.
+- To subscribe explicitly, we need both the *object* (`store`) and the *property key* (`'count'`).
+- Tuples are concise and typed: `Array<[ReactiveState, ...keys]>`.
+
+**Alternatives considered:**
+- ❌ React-style `[store.count]` → Passes value (5), not ref. Can't track changes.
+- ❌ Strings `'store.count'` → Requires parsing, no type safety.
+- ❌ Object `{ store, key: 'count' }` → Too verbose.
+
+**Tradeoff:** Two ways to do one thing, but serves two distinct mental models (View vs Logic).
+
+---
+
 ## Future Considerations
 
 **Features We Might Add Later:**
@@ -706,6 +748,7 @@ We're open to change, but will prioritize **simplicity and standards** over feat
 ## Document History
 
 - **2026-01-14:**
+  - Added explicit effect dependencies decision (auto-tracking vs explicit tradeoff)
   - Added debug addon design decision (why in addons, why stats tracking)
 - **2026-01-12:**
   - Added `create`/`update` API design rationale
