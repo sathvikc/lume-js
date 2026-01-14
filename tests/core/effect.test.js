@@ -279,5 +279,30 @@ describe('effect', () => {
       // In explicit mode, no global effect context should be set
       expect(capturedEffect).toBeUndefined();
     });
+
+    it('should support multi-key tuple syntax [store, key1, key2]', async () => {
+      const store = state({ a: 0, b: 0, c: 0 });
+      const fn = vi.fn();
+
+      // Track 'a' and 'b' in single tuple
+      effect(() => {
+        fn(store.a, store.b);
+      }, [[store, 'a', 'b']]);
+
+      expect(fn).toHaveBeenCalledTimes(1);
+
+      store.a = 1;
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(fn).toHaveBeenCalledTimes(2);
+
+      store.b = 2;
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(fn).toHaveBeenCalledTimes(3);
+
+      // c is not tracked
+      store.c = 3;
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(fn).toHaveBeenCalledTimes(3);
+    });
   });
 });

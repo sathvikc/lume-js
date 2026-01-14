@@ -219,9 +219,9 @@ export function bindDom(
 
 /**
  * Dependency tuple for explicit effect tracking
- * Format: [store, key] where store is a ReactiveState and key is a property name
+ * Format: [store, key1, key2, ...] where store is a ReactiveState and keys are property names
  */
-export type EffectDependency = [ReactiveState<any>, string];
+export type EffectDependency = [ReactiveState<any>, ...string[]];
 
 /**
  * Create an effect with auto-tracking (default mode)

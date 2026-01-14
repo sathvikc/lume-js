@@ -75,22 +75,25 @@ export function effect(fn, deps) {
 
   // EXPLICIT DEPS MODE: deps array provided
   if (Array.isArray(deps)) {
-    // Subscribe to each [store, key] pair explicitly
+    // Subscribe to each [store, key1, key2, ...] tuple explicitly
     for (const dep of deps) {
-      if (Array.isArray(dep) && dep.length === 2) {
-        const [store, key] = dep;
+      if (Array.isArray(dep) && dep.length >= 2) {
+        const [store, ...keys] = dep;
         if (store && typeof store.$subscribe === 'function') {
-          // $subscribe calls immediately, then on changes
-          // We want: call execute immediately once, then on changes
-          let isFirst = true;
-          const unsub = store.$subscribe(key, () => {
-            if (isFirst) {
-              isFirst = false;
-              return; // Skip first call, we'll run execute() below
-            }
-            execute();
-          });
-          cleanups.push(unsub);
+          // Subscribe to each key in this tuple
+          for (const key of keys) {
+            // $subscribe calls immediately, then on changes
+            // We want: call execute immediately once, then on changes
+            let isFirst = true;
+            const unsub = store.$subscribe(key, () => {
+              if (isFirst) {
+                isFirst = false;
+                return; // Skip first call, we'll run execute() below
+              }
+              execute();
+            });
+            cleanups.push(unsub);
+          }
         }
       }
     }
