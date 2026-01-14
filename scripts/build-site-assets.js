@@ -28,6 +28,12 @@ function copyDir(src, dest) {
     }
 }
 
+const packageJsonPath = path.resolve(rootDir, 'package.json');
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+const version = packageJson.version;
+
+console.log(`Using version: ${version}`);
+
 console.log('Copying assets...');
 copyDir(path.join(rootDir, 'docs'), path.join(publicDir, 'docs'));
 copyDir(path.join(rootDir, 'examples'), path.join(publicDir, 'examples'));
@@ -48,8 +54,8 @@ function injectImportMap(dir) {
                 const importMap = `  <script type="importmap">
     {
       "imports": {
-        "lume-js": "https://cdn.jsdelivr.net/npm/lume-js@1.0.0/src/index.js",
-        "lume-js/addons": "https://cdn.jsdelivr.net/npm/lume-js@1.0.0/src/addons/index.js"
+        "lume-js": "https://cdn.jsdelivr.net/npm/lume-js@${version}/src/index.js",
+        "lume-js/addons": "https://cdn.jsdelivr.net/npm/lume-js@${version}/src/addons/index.js"
       }
     }
   </script>
