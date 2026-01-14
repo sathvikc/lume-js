@@ -533,7 +533,21 @@
           <button id="reset-stats" class="outline">Reset</button>
         </div>
         <div id="stats-container">
-          <div class="stats-empty">Interact with stores to see stats</div>
+          <table class="stats-table">
+            <thead>
+              <tr>
+                <th>Store</th>
+                <th>Key</th>
+                <th>G</th>
+                <th>S</th>
+                <th>N</th>
+              </tr>
+            </thead>
+            <tbody id="stats-body">
+              <!-- Rows rendered by repeat() -->
+            </tbody>
+          </table>
+          <div id="stats-empty" class="stats-empty" style="display: none;">Interact with stores to see stats</div>
         </div>
       </div>
 

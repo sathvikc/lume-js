@@ -125,22 +125,19 @@ console.trace = (...args) => {
 // LIVE STATS
 // ============================================================================
 
-const statsContainer = document.getElementById('stats-container');
+// LIVE STATS - Using repeat() for fine-grained table updates
+// ============================================================================
+
+const statsStore = state({
+    rows: [] // [{ id, store, key, gets, sets, notifies }]
+});
 
 function updateStatsQuiet() {
     // stats() is silent - no console output
     const stats = debug.stats();
-    renderStats(stats);
-}
 
-function renderStats(stats) {
-    if (Object.keys(stats).length === 0) {
-        statsContainer.innerHTML = '<div class="stats-empty">Interact with stores to see stats</div>';
-        return;
-    }
-
-    let html = '<table class="stats-table"><tr><th>Store</th><th>Key</th><th>G</th><th>S</th><th>N</th></tr>';
-
+    // Flatten stats into array for repeat()
+    const rows = [];
     for (const [label, data] of Object.entries(stats)) {
         const allKeys = new Set([
             ...Object.keys(data.gets || {}),
@@ -149,19 +146,56 @@ function renderStats(stats) {
         ]);
 
         for (const key of allKeys) {
-            html += `<tr>
-        <td class="store">${label}</td>
-        <td class="key">${key}</td>
-        <td class="num">${data.gets?.[key] || 0}</td>
-        <td class="num">${data.sets?.[key] || 0}</td>
-        <td class="num">${data.notifies?.[key] || 0}</td>
-      </tr>`;
+            rows.push({
+                id: `${label}:${key}`, // Unique key for repeat
+                store: label,
+                key,
+                gets: data.gets?.[key] || 0,
+                sets: data.sets?.[key] || 0,
+                notifies: data.notifies?.[key] || 0
+            });
         }
     }
 
-    html += '</table>';
-    statsContainer.innerHTML = html;
+    // Sort by store then key
+    rows.sort((a, b) => {
+        if (a.store !== b.store) return a.store.localeCompare(b.store);
+        return a.key.localeCompare(b.key);
+    });
+
+    statsStore.rows = rows;
 }
+
+// Render table rows efficiently reuse DOM elements
+repeat('#stats-body', statsStore, 'rows', {
+    key: row => row.id,
+    create: (row, el) => {
+        el.innerHTML = `
+            <td class="store">${row.store}</td>
+            <td class="key">${row.key}</td>
+            <td class="num gets">${row.gets}</td>
+            <td class="num sets">${row.sets}</td>
+            <td class="num notifies">${row.notifies}</td>
+        `;
+    },
+    update: (row, el) => {
+        // Only update numbers (store/key are immutable part of ID)
+        el.querySelector('.gets').textContent = row.gets;
+        el.querySelector('.sets').textContent = row.sets;
+        el.querySelector('.notifies').textContent = row.notifies;
+    },
+    element: 'tr'
+});
+
+// Toggle empty message
+effect(() => {
+    const isEmpty = statsStore.rows.length === 0;
+    const emptyMsg = document.getElementById('stats-empty');
+    const table = document.querySelector('.stats-table');
+
+    if (emptyMsg) emptyMsg.style.display = isEmpty ? 'block' : 'none';
+    if (table) table.style.display = isEmpty ? 'none' : 'table';
+});
 
 // ============================================================================
 // LOG OPTIONS - Using effect() for reactive UI sync
