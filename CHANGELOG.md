@@ -25,7 +25,15 @@
   - Dynamic options via getters for runtime UI toggling
   - TypeScript definitions and comprehensive documentation
 
+- **Explicit Effect Dependencies**
+  - New `deps` argument in `effect(fn, deps)` for manual dependency control
+  - Dual-mode support: Auto-tracking (default) vs Explicit tuples `[store, key]`
+  - Prevents accidental infinite loops and enables safe side-effects (logging, analytics)
+  - Full TypeScript support with `EffectDependency` type
+  - "Explicit over Magic" philosophy alignment
+
 ### Improved
+- Test coverage increased to 15 for effect tests (from 9) with explicit dependency mode checks
 - Test coverage increased to 29 for bindDom tests (from 24)
 - Test coverage increased to 56 for repeat tests (from 46)
 - 24 tests added for debug addon (new)
