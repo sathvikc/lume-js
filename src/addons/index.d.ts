@@ -327,8 +327,10 @@ export interface Debug {
   filter(pattern: string | RegExp | null): void;
   /** Get current filter pattern */
   getFilter(): string | RegExp | null;
-  /** Show statistics in console and return stats object */
+  /** Get statistics data (silent - no console output) */
   stats(): Record<string, DebugStats>;
+  /** Log statistics to console with table formatting */
+  logStats(): Record<string, DebugStats>;
   /** Reset all collected statistics */
   resetStats(): void;
 }

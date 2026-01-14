@@ -17,9 +17,18 @@
   - Clean internal storage via Map (no DOM element pollution)
   - Backward compatible: `render` alone still works as before
 
+- **Debug Addon (`createDebugPlugin`, `debug`)**
+  - Per-store debug plugin with colored console output (GET/SET/NOTIFY/SUBSCRIBE)
+  - Global controls: `debug.enable()`, `debug.disable()`, `debug.filter(pattern)`
+  - Statistics tracking: `debug.stats()` (silent), `debug.logStats()` (console table)
+  - Stack traces for SET operations (`trace: true`)
+  - Dynamic options via getters for runtime UI toggling
+  - TypeScript definitions and comprehensive documentation
+
 ### Improved
-- Test coverage increased to 29 bindDom tests (from 24)
-- Test coverage increased to 56 repeat tests (from 46)
+- Test coverage increased to 29 for bindDom tests (from 24)
+- Test coverage increased to 56 for repeat tests (from 46)
+- 24 tests added for debug addon (new)
 - Better memory cleanup via `bindingMap.clear()` on cleanup
 
 ---
