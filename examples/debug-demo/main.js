@@ -1,5 +1,5 @@
 import { state, effect, bindDom } from 'lume-js';
-import { createDebugPlugin, debug, repeat } from 'lume-js/addons';
+import { createDebugPlugin, debug, repeat, watch } from 'lume-js/addons';
 
 // ============================================================================
 // CONFIGURATION - Single source of truth (reactive)
@@ -75,9 +75,6 @@ function addLog(type, message) {
     // Keep last 50 logs (immutable update for repeat)
     const logs = [...logsStore.logs, newLog].slice(-50);
     logsStore.logs = logs;
-
-    // Auto-update stats
-    updateStatsQuiet();
 }
 
 // Use repeat() to render logs
@@ -211,6 +208,11 @@ effect(() => {
     if (table) table.style.display = isEmpty ? 'none' : 'table';
 });
 
+// Reactively update stats when logs change
+watch(logsStore, 'logs', () => {
+    updateStatsQuiet();
+});
+
 // ============================================================================
 // LOG OPTIONS - Using effect() for reactive UI sync
 // Config is the single source of truth - UI reflects config state
@@ -268,7 +270,6 @@ repeat('#filter-tags', filterStore, 'tags', {
 });
 
 // Sync debug.filter() when tags change
-// Sync debug.filter() when tags change
 function syncDebugFilter() {
     if (filterStore.tags.length === 0) {
         debug.filter(null);
@@ -282,7 +283,7 @@ function syncDebugFilter() {
 syncDebugFilter();
 
 // Explicit subscription prevents accidental dependency tracking
-filterStore.$subscribe('tags', syncDebugFilter);
+watch(filterStore, 'tags', syncDebugFilter);
 
 function addFilter(text) {
     const trimmed = text.trim();
@@ -306,31 +307,25 @@ filterInput.addEventListener('keydown', (e) => {
 // COUNTER STORE
 // ============================================================================
 
-const countDisplay = document.getElementById('count-display');
-
 document.getElementById('increment').addEventListener('click', () => counterStore.count++);
 document.getElementById('decrement').addEventListener('click', () => counterStore.count--);
 document.getElementById('add-ten').addEventListener('click', () => counterStore.count += 10);
 document.getElementById('reset').addEventListener('click', () => counterStore.count = 0);
 
-counterStore.$subscribe('count', (val) => {
-    countDisplay.textContent = val;
-});
+// Use bindDom for reactive display
+bindDom(document.querySelector('.store-value'), counterStore);
 
 // ============================================================================
 // USER STORE
 // ============================================================================
-
-const nameDisplay = document.getElementById('name-display');
-const ageDisplay = document.getElementById('age-display');
 
 document.getElementById('update-user').addEventListener('click', () => {
     userStore.name = document.getElementById('name-input').value;
     userStore.age = parseInt(document.getElementById('age-input').value) || 0;
 });
 
-userStore.$subscribe('name', (val) => nameDisplay.textContent = `"${val}"`);
-userStore.$subscribe('age', (val) => ageDisplay.textContent = val);
+// Use bindDom for reactive display
+bindDom(document.querySelector('.user-display'), userStore);
 
 // ============================================================================
 // OTHER CONTROLS
