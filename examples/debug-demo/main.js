@@ -1,16 +1,16 @@
-import { state } from 'lume-js';
+import { state, effect, bindDom } from 'lume-js';
 import { createDebugPlugin, debug } from 'lume-js/addons';
 
 // ============================================================================
-// CONFIGURATION - Synced with UI defaults (all true except trace)
+// CONFIGURATION - Single source of truth (reactive)
 // ============================================================================
 
-const config = {
+const config = state({
     logGet: true,
     logSet: true,
     logNotify: true,
     trace: false
-};
+});
 
 // ============================================================================
 // STORES
@@ -141,27 +141,35 @@ function renderStats(stats) {
 }
 
 // ============================================================================
-// LOG OPTIONS - Synced with config defaults
+// LOG OPTIONS - Using effect() for reactive UI sync
+// Config is the single source of truth - UI reflects config state
 // ============================================================================
 
-function setupOption(id, configKey, initialActive) {
+function setupOption(id, configKey) {
     const el = document.getElementById(id);
-    if (initialActive) {
-        el.classList.add('active');
-        el.querySelector('.icon').textContent = '✓';
-    }
+
+    // Effect: sync UI to config state (reactive)
+    effect(() => {
+        const isActive = config[configKey];
+        if (isActive) {
+            el.classList.add('active');
+            el.querySelector('.icon').textContent = '✓';
+        } else {
+            el.classList.remove('active');
+            el.querySelector('.icon').textContent = '';
+        }
+    });
+
+    // Click handler: toggle config (which triggers effect above)
     el.addEventListener('click', () => {
-        el.classList.toggle('active');
-        const isActive = el.classList.contains('active');
-        el.querySelector('.icon').textContent = isActive ? '✓' : '';
-        config[configKey] = isActive;
+        config[configKey] = !config[configKey];
     });
 }
 
-setupOption('opt-get', 'logGet', config.logGet);
-setupOption('opt-set', 'logSet', config.logSet);
-setupOption('opt-notify', 'logNotify', config.logNotify);
-setupOption('opt-trace', 'trace', config.trace);
+setupOption('opt-get', 'logGet');
+setupOption('opt-set', 'logSet');
+setupOption('opt-notify', 'logNotify');
+setupOption('opt-trace', 'trace');
 
 // ============================================================================
 // FILTER - Tag/Chip Style
