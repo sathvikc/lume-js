@@ -4,13 +4,13 @@
 
 Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required, no framework lock-in.
 
-> **Current Release:** v1.0.0 (stable) | **Next Release:** v2.0.0-alpha.1  
+> **Current Release:** v1.0.0 (stable) | **Next Release:** v2.0.0-alpha.2  
 > Install stable: `npm install lume-js@1.0.0`  
 > Install next: `npm install lume-js@next`
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.0.0--alpha.1-orange.svg)](package.json)
-[![Tests](https://img.shields.io/badge/tests-162%20passing-brightgreen.svg)](tests/)
+[![Version](https://img.shields.io/badge/version-2.0.0--alpha.2-orange.svg)](package.json)
+[![Tests](https://img.shields.io/badge/tests-193%20passing-brightgreen.svg)](tests/)
 [![Size](https://img.shields.io/badge/size-%3C2KB-blue.svg)](dist/)
 
 ## Why Lume.js?
@@ -97,9 +97,10 @@ Full documentation is available in the [docs/](docs/) directory:
 - **[Tutorial: Build Tic-Tac-Toe](docs/tutorials/build-tic-tac-toe.md)**
 - **[Working with Arrays](docs/tutorials/working-with-arrays.md)**
 - **API Reference**
-    - [Core (state, bindDom, effect)](docs/api/core/state.md)
+    - [Core (state, bindDom)](docs/api/core/state.md)
+    - [Effect System](docs/api/core/effect.md)
     - [Plugins (v2.0+)](docs/api/core/plugins.md)
-    - [Addons (computed, repeat)](docs/api/addons/computed.md)
+    - [Addons (computed, repeat, debug)](docs/api/addons/computed.md)
 - **[Design Philosophy](docs/design/design-decisions.md)**
 
 ---

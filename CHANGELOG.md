@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [2.0.0-alpha.2] - 2026-01-14
 
 ### Added
 - **Event Delegation in `bindDom`**
