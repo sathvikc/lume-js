@@ -45,7 +45,14 @@ window.debug = debug;
 // CONSOLE PREVIEW - Using repeat() for log list
 // ============================================================================
 
-
+// Helper to escape HTML and prevent XSS
+function escapeHtml(str) {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
 
 const consolePreview = document.getElementById('console-preview');
 const originalLog = console.log.bind(console);
@@ -61,7 +68,10 @@ function addLog(type, message) {
     // Clean formatting codes
     const clean = message.replace(/%c/g, '').replace(/color:[^;]+;?/g, '').replace(/font-weight:[^;]+;?/g, '').trim();
 
-    const html = clean
+    // Escape HTML to prevent XSS before adding decorative spans
+    const escaped = escapeHtml(clean);
+
+    const html = escaped
         .replace(/\[(counter|user)\]/g, '<span class="log-key">[$1]</span>')
         .replace(/(SET|GET|NOTIFY|SUBSCRIBE)/g, '<span class="log-$1" style="text-transform: lowercase">$1</span>');
 
@@ -182,8 +192,8 @@ repeat('#stats-body', statsStore, 'rows', {
     key: row => row.id,
     create: (row, el) => {
         el.innerHTML = `
-            <td class="store">${row.store}</td>
-            <td class="key">${row.key}</td>
+            <td class="store">${escapeHtml(row.store)}</td>
+            <td class="key">${escapeHtml(row.key)}</td>
             <td class="num gets">${row.gets}</td>
             <td class="num sets">${row.sets}</td>
             <td class="num notifies">${row.notifies}</td>
@@ -259,9 +269,14 @@ repeat('#filter-tags', filterStore, 'tags', {
     key: tag => tag.id,
     create: (tag, el) => {
         el.className = 'filter-tag';
-        el.innerHTML = `${tag.text}<span class="remove">✕</span>`;
-        // Use event delegation or closure for click handler
-        el.querySelector('.remove').addEventListener('click', () => removeFilter(tag.id));
+        // Use textContent for user input to prevent XSS
+        const textNode = document.createTextNode(tag.text);
+        const removeBtn = document.createElement('span');
+        removeBtn.className = 'remove';
+        removeBtn.textContent = '✕';
+        removeBtn.addEventListener('click', () => removeFilter(tag.id));
+        el.appendChild(textNode);
+        el.appendChild(removeBtn);
     },
     update: (tag, el) => {
         el.firstChild.textContent = tag.text;
