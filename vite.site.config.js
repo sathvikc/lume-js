@@ -4,6 +4,8 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 
 const projectRoot = resolve(__dirname);
+const packageJson = JSON.parse(fs.readFileSync(resolve(projectRoot, 'package.json'), 'utf-8'));
+const version = packageJson.version;
 
 export default defineConfig({
     plugins: [
@@ -25,8 +27,8 @@ export default defineConfig({
     base: '/lume-js/', // GitHub Pages repo name
     resolve: {
         alias: {
-            'lume-js/addons': 'https://cdn.jsdelivr.net/npm/lume-js/src/addons/index.js',
-            'lume-js': 'https://cdn.jsdelivr.net/npm/lume-js/src/index.js'
+            'lume-js/addons': `https://cdn.jsdelivr.net/npm/lume-js@${version}/src/addons/index.js`,
+            'lume-js': `https://cdn.jsdelivr.net/npm/lume-js@${version}/src/index.js`
         }
     },
     css: {
