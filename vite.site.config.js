@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/postcss';
 import autoprefixer from 'autoprefixer';
-import { resolve } from "path";
+import fs from 'node:fs';
+import { resolve } from "node:path";
 import { defineConfig } from "vite";
 
 const projectRoot = resolve(__dirname);

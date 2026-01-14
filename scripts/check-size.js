@@ -11,11 +11,11 @@
  *   npm run size
  */
 
-import { gzip } from 'zlib';
-import { promisify } from 'util';
-import { readFile, readdir } from 'fs/promises';
-import { resolve, extname } from 'path';
-import { fileURLToPath } from 'url';
+import { gzip } from 'node:zlib';
+import { promisify } from 'node:util';
+import { readFile, readdir } from 'node:fs/promises';
+import { resolve, extname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { minify } from 'terser';
 
 const gzipAsync = promisify(gzip);
@@ -47,7 +47,7 @@ async function minifyCode(code) {
       comments: false,
     },
   });
-  
+
   return result.code;
 }
 
@@ -57,10 +57,10 @@ async function minifyCode(code) {
 async function scanDirectory(dir, baseDir) {
   const entries = await readdir(dir, { withFileTypes: true });
   const files = [];
-  
+
   for (const entry of entries) {
     const fullPath = resolve(dir, entry.name);
-    
+
     if (entry.isDirectory()) {
       files.push(...await scanDirectory(fullPath, baseDir));
     } else if (entry.isFile() && extname(entry.name) === '.js') {
@@ -68,7 +68,7 @@ async function scanDirectory(dir, baseDir) {
       files.push({ path: relativePath, fullPath });
     }
   }
-  
+
   return files;
 }
 
@@ -79,7 +79,7 @@ async function getFileSize(filePath, name) {
   const originalCode = await readFile(filePath, 'utf-8');
   const minifiedCode = await minifyCode(originalCode);
   const gzipped = await gzipAsync(Buffer.from(minifiedCode));
-  
+
   return {
     name,
     original: Buffer.byteLength(originalCode),
@@ -106,18 +106,18 @@ function printTerminalOutput(coreResults, coreGzipped, passed) {
   console.log('🔍 Lume.js Size Check');
   console.log('=====================\n');
   console.log('Core Budget: <2KB gzipped\n');
-  
+
   console.log('📦 Core Files:');
   for (const file of coreResults) {
     console.log(`   ${file.name.padEnd(25)} ${formatSize(file.gzipped)}`);
   }
-  
+
   const percentage = ((coreGzipped / CORE_BUDGET) * 100).toFixed(1);
-  
+
   console.log('\n=====================');
   console.log(`Core Total: ${formatSize(coreGzipped)} / ${formatSize(CORE_BUDGET)} (${percentage}%)`);
   console.log('=====================\n');
-  
+
   if (passed) {
     console.log(`✅ PASSED: Core is under 2KB!`);
   } else {
@@ -132,19 +132,19 @@ function printTerminalOutput(coreResults, coreGzipped, passed) {
 function printGitHubOutput(coreResults, coreGzipped, passed) {
   const percentage = ((coreGzipped / CORE_BUDGET) * 100).toFixed(1);
   const overBy = coreGzipped - CORE_BUDGET;
-  
+
   // GitHub Actions Step Summary
   console.log('\n## 📦 Lume.js Bundle Size Report\n');
   console.log('| File | Gzipped |');
   console.log('|------|---------|');
-  
+
   for (const file of coreResults) {
     console.log(`| ${file.name} | ${formatSize(file.gzipped)} |`);
   }
-  
+
   console.log(`| **Core Total** | **${formatSize(coreGzipped)}** |`);
   console.log(`\n**Budget:** ${formatSize(CORE_BUDGET)} gzipped\n`);
-  
+
   if (passed) {
     console.log(`### ✅ Size Check Passed\n`);
     console.log(`Core bundle is **${formatSize(coreGzipped)}** (${percentage}% of budget)\n`);
@@ -168,25 +168,25 @@ async function main() {
     // Scan core directory
     const coreDir = resolve(srcDir, 'core');
     const coreFiles = await scanDirectory(coreDir, srcDir);
-    
+
     // Get sizes
     const coreResults = [];
     for (const file of coreFiles) {
       const size = await getFileSize(file.fullPath, file.path);
       coreResults.push(size);
     }
-    
+
     // Calculate total
     const coreGzipped = coreResults.reduce((sum, r) => sum + r.gzipped, 0);
     const passed = coreGzipped <= CORE_BUDGET;
-    
+
     // Output based on environment
     if (isGitHubActions) {
       printGitHubOutput(coreResults, coreGzipped, passed);
     } else {
       printTerminalOutput(coreResults, coreGzipped, passed);
     }
-    
+
     process.exit(passed ? 0 : 1);
   } catch (error) {
     console.error('\n❌ Error during size check:', error.message);
