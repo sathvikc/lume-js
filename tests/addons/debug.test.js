@@ -145,6 +145,34 @@ describe('debug addon', () => {
 
             traceSpy.mockRestore();
         });
+
+        it('supports dynamic options with getters for runtime toggling', () => {
+            // This tests that options are read dynamically, not destructured at creation time
+            const config = { logGet: false };
+
+            const store = state({ count: 0 }, {
+                plugins: [createDebugPlugin({
+                    label: 'dynamic',
+                    get logGet() { return config.logGet; }
+                })]
+            });
+
+            // Initially logGet is false, should NOT log GET
+            consoleSpy.log.mockClear();
+            let _ = store.count;
+            let logOutput = consoleSpy.log.mock.calls.map(c => c.join(' ')).join(' ');
+            expect(logOutput).not.toContain('GET');
+
+            // Toggle config at runtime
+            config.logGet = true;
+
+            // Now should log GET
+            consoleSpy.log.mockClear();
+            _ = store.count;
+            logOutput = consoleSpy.log.mock.calls.map(c => c.join(' ')).join(' ');
+            expect(logOutput).toContain('GET');
+            expect(logOutput).toContain('count');
+        });
     });
 
     describe('debug global controls', () => {
@@ -270,6 +298,55 @@ describe('debug addon', () => {
             expect(stats).toHaveProperty('store2');
             expect(stats.store1.sets.a).toBe(1);
             expect(stats.store2.sets.b).toBe(1);
+        });
+
+        it('stats() is silent - does not log to console', () => {
+            const store = state({ count: 0 }, {
+                plugins: [createDebugPlugin({ label: 'test' })]
+            });
+
+            store.count = 1;
+            consoleSpy.log.mockClear();
+
+            // Call stats() - should NOT log anything
+            const stats = debug.stats();
+
+            // Verify no console output from stats()
+            const statsLogs = consoleSpy.log.mock.calls.filter(c =>
+                c.join(' ').includes('Statistics') || c.join(' ').includes('No stats')
+            );
+            expect(statsLogs).toHaveLength(0);
+            expect(stats).toHaveProperty('test');
+        });
+
+        it('logStats() logs to console when empty', () => {
+            debug.resetStats();
+            consoleSpy.log.mockClear();
+
+            debug.logStats();
+
+            const logOutput = consoleSpy.log.mock.calls.map(c => c.join(' ')).join(' ');
+            expect(logOutput).toContain('No stats collected yet');
+        });
+
+        it('logStats() logs formatted table when has data', () => {
+            const tableSpy = vi.spyOn(console, 'table').mockImplementation(() => { });
+
+            const store = state({ count: 0 }, {
+                plugins: [createDebugPlugin({ label: 'test' })]
+            });
+
+            store.count = 1;
+            consoleSpy.log.mockClear();
+            consoleSpy.group.mockClear();
+
+            debug.logStats();
+
+            // Should use console.group and console.table
+            expect(consoleSpy.group).toHaveBeenCalled();
+            expect(tableSpy).toHaveBeenCalled();
+
+            tableSpy.mockRestore();
         });
     });
 

@@ -107,13 +107,16 @@ function formatValue(value) {
  * });
  */
 export function createDebugPlugin(options = {}) {
-  const {
-    label = 'store',
-    logGet = false,
-    logSet = true,
-    logNotify = true,
-    trace = false
-  } = options;
+  const label = options.label ?? 'store';
+
+  // IMPORTANT: Do NOT destructure options here!
+  // Options may contain getters for dynamic runtime toggling (e.g., from UI).
+  // Destructuring would copy values once at creation time, breaking reactivity.
+  // Use getOpt() helper to read options dynamically in each hook.
+  const getOpt = (name, defaultVal) => {
+    const val = options[name];
+    return val !== undefined ? val : defaultVal;
+  };
 
   return {
     name: `debug:${label}`,
@@ -132,7 +135,7 @@ export function createDebugPlugin(options = {}) {
 
       incrementStat(label, 'gets', key);
 
-      if (globalEnabled && logGet && matchesFilter(key)) {
+      if (globalEnabled && getOpt('logGet', false) && matchesFilter(key)) {
         console.log(
           `%c[${label}]%c GET %c${key}%c = ${formatValue(value)}`,
           'color: #888; font-weight: bold',
@@ -153,7 +156,7 @@ export function createDebugPlugin(options = {}) {
 
       incrementStat(label, 'sets', key);
 
-      if (globalEnabled && logSet && matchesFilter(key)) {
+      if (globalEnabled && getOpt('logSet', true) && matchesFilter(key)) {
         console.log(
           `%c[${label}]%c SET %c${key}%c: ${formatValue(oldValue)} → ${formatValue(newValue)}`,
           'color: #888; font-weight: bold',
@@ -163,7 +166,7 @@ export function createDebugPlugin(options = {}) {
         );
 
         // Show stack trace if enabled (helps find where state changes originate)
-        if (trace) {
+        if (getOpt('trace', false)) {
           console.trace(`%c[${label}] Stack trace for ${key}`, 'color: #888');
         }
       }
@@ -190,7 +193,7 @@ export function createDebugPlugin(options = {}) {
 
       incrementStat(label, 'notifies', key);
 
-      if (globalEnabled && logNotify && matchesFilter(key)) {
+      if (globalEnabled && getOpt('logNotify', true) && matchesFilter(key)) {
         console.log(
           `%c[${label}]%c NOTIFY %c${key}%c = ${formatValue(value)}`,
           'color: #888; font-weight: bold',
@@ -253,18 +256,12 @@ export const debug = {
   },
 
   /**
-   * Show statistics summary in console
+   * Get statistics data (silent - no console output)
+   * Use logStats() if you want to see stats in console.
    * @returns {object} Stats object for programmatic access
    */
   stats() {
     const result = {};
-
-    if (stats.size === 0) {
-      console.log('%c[lume-debug]%c No stats collected yet', 'color: #888; font-weight: bold', 'color: inherit');
-      return result;
-    }
-
-    console.group('%c[lume-debug] Statistics', 'color: #888; font-weight: bold');
 
     for (const [label, data] of stats) {
       result[label] = {
@@ -272,19 +269,42 @@ export const debug = {
         sets: Object.fromEntries(data.sets),
         notifies: Object.fromEntries(data.notifies)
       };
+    }
 
+    return result;
+  },
+
+  /**
+   * Log statistics summary to console (with formatting)
+   * @returns {object} Stats object for programmatic access
+   */
+  logStats() {
+    const result = this.stats();
+
+    if (Object.keys(result).length === 0) {
+      console.log('%c[lume-debug]%c No stats collected yet', 'color: #888; font-weight: bold', 'color: inherit');
+      return result;
+    }
+
+    console.group('%c[lume-debug] Statistics', 'color: #888; font-weight: bold');
+
+    for (const [label, data] of Object.entries(result)) {
       console.group(`%c${label}`, 'color: #2196F3; font-weight: bold');
 
       // Use console.table for better formatted output
       const tableData = [];
-      const allKeys = new Set([...data.gets.keys(), ...data.sets.keys(), ...data.notifies.keys()]);
+      const allKeys = new Set([
+        ...Object.keys(data.gets),
+        ...Object.keys(data.sets),
+        ...Object.keys(data.notifies)
+      ]);
 
       for (const key of allKeys) {
         tableData.push({
           key,
-          gets: data.gets.get(key) || 0,
-          sets: data.sets.get(key) || 0,
-          notifies: data.notifies.get(key) || 0
+          gets: data.gets[key] || 0,
+          sets: data.sets[key] || 0,
+          notifies: data.notifies[key] || 0
         });
       }
 
