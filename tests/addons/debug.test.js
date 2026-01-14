@@ -159,7 +159,7 @@ describe('debug addon', () => {
 
             // Initially logGet is false, should NOT log GET
             consoleSpy.log.mockClear();
-            let _ = store.count;
+            void store.count; // Trigger GET
             let logOutput = consoleSpy.log.mock.calls.map(c => c.join(' ')).join(' ');
             expect(logOutput).not.toContain('GET');
 
@@ -168,7 +168,7 @@ describe('debug addon', () => {
 
             // Now should log GET
             consoleSpy.log.mockClear();
-            _ = store.count;
+            void store.count; // Trigger GET
             logOutput = consoleSpy.log.mock.calls.map(c => c.join(' ')).join(' ');
             expect(logOutput).toContain('GET');
             expect(logOutput).toContain('count');
@@ -267,9 +267,9 @@ describe('debug addon', () => {
             });
 
             // Perform operations
-            store.count = 1;
+            store.count = 2; // SET twice (2 operations)
             store.count = 2;
-            const _ = store.count;
+            void store.count; // Trigger GET
 
             // Wait for notifications
             await new Promise(resolve => setTimeout(resolve, 0));

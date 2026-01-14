@@ -641,6 +641,29 @@ const store = state(
 
 ---
 
+### Why Debug Addon in Addons (Not Core)?
+
+**Decision:** The debug addon (`createDebugPlugin`, `debug.stats()`, `debug.filter()`) lives in `/addons`, not core.
+
+**Reasoning:**
+- **Zero production cost:** Debug tools are development-only; bundling them in core wastes bytes in production.
+- **Tree-shakeable:** Users who don't need debugging pay nothing.
+- **Plugin architecture showcase:** Demonstrates how plugins extend Lume.js without core changes.
+- **Critical for adoption:** Hard to debug = hard to adopt. But it's still opt-in.
+
+**Why include stats tracking?**
+- **Visibility:** Developers need to see what's reactive (GETs, SETs, NOTIFYs).
+- **Performance debugging:** Identify over-reactive properties causing unnecessary re-renders.
+- **Educational:** Helps users understand fine-grained reactivity.
+
+**Alternatives considered:**
+- ❌ Built into core → Bloats production bundles
+- ❌ External-only tools (devtools extension) → Higher barrier, less portable
+
+**Tradeoff:** Requires explicit import for dev tooling, but keeps production lean.
+
+---
+
 ## Future Considerations
 
 **Features We Might Add Later:**
@@ -682,6 +705,8 @@ We're open to change, but will prioritize **simplicity and standards** over feat
 
 ## Document History
 
+- **2026-01-14:**
+  - Added debug addon design decision (why in addons, why stats tracking)
 - **2026-01-12:**
   - Added `create`/`update` API design rationale
   - Added reference + index optimization reasoning
