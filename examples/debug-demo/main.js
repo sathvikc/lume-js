@@ -1,5 +1,5 @@
 import { state, effect, bindDom } from 'lume-js';
-import { createDebugPlugin, debug } from 'lume-js/addons';
+import { createDebugPlugin, debug, repeat } from 'lume-js/addons';
 
 // ============================================================================
 // CONFIGURATION - Single source of truth (reactive)
@@ -42,40 +42,63 @@ window.userStore = userStore;
 window.debug = debug;
 
 // ============================================================================
-// CONSOLE PREVIEW
+// CONSOLE PREVIEW - Using repeat() for log list
 // ============================================================================
+
+
 
 const consolePreview = document.getElementById('console-preview');
 const originalLog = console.log.bind(console);
 const originalTrace = console.trace.bind(console);
 
+// Logs stored in reactive state - repeat() will render them
+let logIdCounter = 0;
+const logsStore = state({
+    logs: []  // { id, type, message, html }
+});
+
 function addLog(type, message) {
-
-    const log = document.createElement('div');
-    log.className = `log log-${type}`;
-
     // Clean formatting codes
     const clean = message.replace(/%c/g, '').replace(/color:[^;]+;?/g, '').replace(/font-weight:[^;]+;?/g, '').trim();
 
-    log.innerHTML = clean
+    const html = clean
         .replace(/\[(counter|user)\]/g, '<span class="log-key">[$1]</span>')
         .replace(/(SET|GET|NOTIFY|SUBSCRIBE)/g, '<span class="log-$1" style="text-transform: lowercase">$1</span>');
 
-    // Remove placeholder
-    const empty = consolePreview.querySelector('.empty');
-    if (empty) empty.remove();
+    const newLog = {
+        id: ++logIdCounter,
+        type,
+        message: clean,
+        html
+    };
 
-    consolePreview.appendChild(log);
-    consolePreview.scrollTop = consolePreview.scrollHeight;
-
-    // Keep last 50 logs
-    while (consolePreview.children.length > 50) {
-        consolePreview.removeChild(consolePreview.firstChild);
-    }
+    // Keep last 50 logs (immutable update for repeat)
+    const logs = [...logsStore.logs, newLog].slice(-50);
+    logsStore.logs = logs;
 
     // Auto-update stats
     updateStatsQuiet();
 }
+
+// Use repeat() to render logs
+repeat(consolePreview, logsStore, 'logs', {
+    key: log => log.id,
+    create: (log, el) => {
+        el.className = `log log-${log.type}`;
+    },
+    update: (log, el) => {
+        el.className = `log log-${log.type}`;
+        el.innerHTML = log.html;
+    }
+});
+
+// Auto-scroll when logs change
+effect(() => {
+    const count = logsStore.logs.length;
+    if (count > 0) {
+        consolePreview.scrollTop = consolePreview.scrollHeight;
+    }
+});
 
 console.log = (...args) => {
     originalLog(...args);
@@ -266,7 +289,7 @@ document.getElementById('reset-stats').addEventListener('click', () => {
 });
 
 document.getElementById('clear-console').addEventListener('click', () => {
-    consolePreview.innerHTML = '<div class="log empty">Console cleared</div>';
+    logsStore.logs = [];  // Clear reactive logs array - repeat() will update DOM
 });
 
 // ============================================================================
