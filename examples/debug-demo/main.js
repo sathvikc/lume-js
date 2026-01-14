@@ -101,15 +101,29 @@ effect(() => {
 });
 
 console.log = (...args) => {
+    // Always log to browser console first
     originalLog(...args);
-    const msg = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
-    if (msg.includes('[counter]') || msg.includes('[user]') || msg.includes('[lume-debug]')) {
-        let type = 'info';
-        if (msg.includes('SET')) type = 'set';
-        else if (msg.includes('GET')) type = 'get';
-        else if (msg.includes('NOTIFY')) type = 'notify';
-        else if (msg.includes('SUBSCRIBE')) type = 'subscribe';
-        addLog(type, msg);
+
+    try {
+        const msg = args.map(a => {
+            if (typeof a === 'string') return a;
+            try {
+                return JSON.stringify(a);
+            } catch (e) {
+                return String(a);
+            }
+        }).join(' ');
+
+        if (msg.includes('[counter]') || msg.includes('[user]') || msg.includes('[lume-debug]')) {
+            let type = 'info';
+            if (msg.includes('SET')) type = 'set';
+            else if (msg.includes('GET')) type = 'get';
+            else if (msg.includes('NOTIFY')) type = 'notify';
+            else if (msg.includes('SUBSCRIBE')) type = 'subscribe';
+            addLog(type, msg);
+        }
+    } catch (e) {
+        originalLog('Error in debug log handler:', e);
     }
 };
 
@@ -229,51 +243,56 @@ setupOption('opt-notify', 'logNotify');
 setupOption('opt-trace', 'trace');
 
 // ============================================================================
-// FILTER - Tag/Chip Style
+// FILTER - Tag/Chip Style (Reactive)
 // ============================================================================
 
-const filterInput = document.getElementById('filter-input');
-const filterTagsContainer = document.getElementById('filter-tags');
-let activeFilters = [];
+const filterStore = state({
+    tags: [] // { id, text }
+});
 
-function updateFilter() {
-    if (activeFilters.length === 0) {
+const filterInput = document.getElementById('filter-input');
+
+// Render filter tags efficiently
+repeat('#filter-tags', filterStore, 'tags', {
+    key: tag => tag.id,
+    create: (tag, el) => {
+        el.className = 'filter-tag';
+        el.innerHTML = `${tag.text}<span class="remove">✕</span>`;
+        // Use event delegation or closure for click handler
+        el.querySelector('.remove').addEventListener('click', () => removeFilter(tag.id));
+    },
+    update: (tag, el) => {
+        el.firstChild.textContent = tag.text;
+    },
+    element: 'span'
+});
+
+// Sync debug.filter() when tags change
+// Sync debug.filter() when tags change
+function syncDebugFilter() {
+    if (filterStore.tags.length === 0) {
         debug.filter(null);
     } else {
-        // Create regex that matches any filter
-        const pattern = new RegExp(activeFilters.join('|'));
+        const pattern = new RegExp(filterStore.tags.map(t => t.text).join('|'));
         debug.filter(pattern);
     }
-    renderFilterTags();
 }
 
-function addFilter(key) {
-    const trimmed = key.trim();
-    if (trimmed && !activeFilters.includes(trimmed)) {
-        activeFilters.push(trimmed);
-        updateFilter();
+// Initial sync
+syncDebugFilter();
+
+// Explicit subscription prevents accidental dependency tracking
+filterStore.$subscribe('tags', syncDebugFilter);
+
+function addFilter(text) {
+    const trimmed = text.trim();
+    if (trimmed && !filterStore.tags.some(t => t.text === trimmed)) {
+        filterStore.tags = [...filterStore.tags, { id: Date.now(), text: trimmed }];
     }
 }
 
-function removeFilter(key) {
-    activeFilters = activeFilters.filter(f => f !== key);
-    updateFilter();
-}
-
-function renderFilterTags() {
-    if (activeFilters.length === 0) {
-        filterTagsContainer.innerHTML = '';
-        return;
-    }
-
-    filterTagsContainer.innerHTML = activeFilters.map(f =>
-        `<span class="filter-tag">${f}<span class="remove" data-filter="${f}">✕</span></span>`
-    ).join('');
-
-    // Add click handlers
-    filterTagsContainer.querySelectorAll('.remove').forEach(btn => {
-        btn.addEventListener('click', () => removeFilter(btn.dataset.filter));
-    });
+function removeFilter(id) {
+    filterStore.tags = filterStore.tags.filter(t => t.id !== id);
 }
 
 filterInput.addEventListener('keydown', (e) => {
