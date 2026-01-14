@@ -279,6 +279,23 @@
       color: var(--accent);
     }
 
+    .hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 10px;
+      padding: 6px 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 4px;
+      border-left: 2px solid var(--accent);
+    }
+
+    .hint code {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 10px;
+    }
+
     .user-form {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -507,8 +524,9 @@
         </div>
         <div class="store-value">
           <div class="label">count</div>
-          <div class="val" id="count-display">0</div>
+          <div class="val" data-bind="count">0</div>
         </div>
+        <div class="hint">💡 <code>count++</code> triggers GET + SET (reads current value first)</div>
       </div>
 
       <div class="card store-card">
@@ -519,9 +537,10 @@
         </div>
         <button id="update-user" style="width: 100%; margin-bottom: 8px;">Update</button>
         <div class="user-display">
-          <div class="row"><span class="key">name:</span> <span class="val" id="name-display">""</span></div>
-          <div class="row"><span class="key">age:</span> <span class="val" id="age-display">0</span></div>
+          <div class="row"><span class="key">name:</span> <span class="val" data-bind="name">""</span></div>
+          <div class="row"><span class="key">age:</span> <span class="val" data-bind="age">0</span></div>
         </div>
+        <div class="hint">💡 Direct assignment (<code>name = x</code>) is SET only, no GET</div>
       </div>
     </div>
 
