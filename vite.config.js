@@ -1,6 +1,6 @@
 // vite.config.js
-import fs from "fs";
-import { resolve } from "path";
+import fs from "node:fs";
+import { resolve } from "node:path";
 import { defineConfig } from "vite";
 
 const projectRoot = resolve(__dirname);
