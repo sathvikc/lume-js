@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lume.js - Debug Addon Demo</title>
+  <style>
+    :root {
+      --bg: #0f0f23;
+      --card-bg: #1a1a2e;
+      --fg: #eee;
+      --muted: #888;
+      --border: #2a2a4a;
+      --accent: #4CAF50;
+      --secondary: #2196F3;
+      --warning: #FF9800;
+      --danger: #F44336;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      margin: 0;
+      padding: 16px;
+      line-height: 1.5;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin: 0 0 4px;
+      color: var(--accent);
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* 3-Column Layout */
+    .layout {
+      display: grid;
+      grid-template-columns: 220px 1fr 280px;
+      gap: 12px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .column {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .card h3 {
+      font-size: 11px;
+      margin: 0 0 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Option buttons */
+    .option-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-size: 13px;
+    }
+
+    .option-btn:hover {
+      border-color: var(--accent);
+    }
+
+    .option-btn.active {
+      border-color: var(--accent);
+      background: rgba(76, 175, 80, 0.1);
+    }
+
+    .option-btn .icon {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .option-btn.active .icon {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .option-btn .text {
+      flex: 1;
+    }
+
+    .option-btn .hint {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* Filter with tags */
+    .filter-input-row {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .filter-input-row input {
+      flex: 1;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--bg);
+      color: var(--fg);
+      font-size: 12px;
+    }
+
+    .filter-input-row input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .filter-input-row input::placeholder {
+      color: var(--muted);
+    }
+
+    .filter-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .filter-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 6px;
+      background: var(--secondary);
+      color: white;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    .filter-tag .remove {
+      cursor: pointer;
+      opacity: 0.7;
+    }
+
+    .filter-tag .remove:hover {
+      opacity: 1;
+    }
+
+    .filter-hint {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* Console commands */
+    .commands {
+      font-size: 11px;
+      font-family: monospace;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .commands span {
+      color: var(--accent);
+    }
+
+    /* Store cards */
+    .store-card h3 {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+
+    .badge.blue {
+      background: var(--secondary);
+    }
+
+    .store-buttons {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    button {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 5px;
+      background: var(--accent);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover {
+      filter: brightness(1.1);
+    }
+
+    button.danger {
+      background: var(--danger);
+    }
+
+    button.warning {
+      background: var(--warning);
+    }
+
+    button.outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--fg);
+    }
+
+    .store-value {
+      background: var(--bg);
+      padding: 10px;
+      border-radius: 6px;
+      font-family: monospace;
+      text-align: center;
+    }
+
+    .store-value .label {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .store-value .val {
+      font-size: 20px;
+      color: var(--accent);
+    }
+
+    .user-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .user-form input {
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--bg);
+      color: var(--fg);
+      font-size: 12px;
+    }
+
+    .user-form input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .user-display {
+      background: var(--bg);
+      padding: 8px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .user-display .row {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .user-display .key {
+      color: var(--secondary);
+    }
+
+    .user-display .val {
+      color: var(--accent);
+    }
+
+    /* Right column - Stats + Console */
+    .right-column {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .stats-card {
+      flex-shrink: 0;
+    }
+
+    .console-card {
+      flex: 1;
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .card-header h3 {
+      margin: 0;
+    }
+
+    .card-header button {
+      padding: 3px 6px;
+      font-size: 10px;
+    }
+
+    .stats-table {
+      width: 100%;
+      font-size: 11px;
+      border-collapse: collapse;
+    }
+
+    .stats-table th {
+      text-align: left;
+      padding: 4px 6px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .stats-table td {
+      padding: 4px 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stats-table .store {
+      color: var(--secondary);
+      font-weight: 600;
+    }
+
+    .stats-table .key {
+      color: var(--accent);
+    }
+
+    .stats-table .num {
+      text-align: center;
+      font-family: monospace;
+    }
+
+    .stats-empty {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      padding: 10px;
+    }
+
+    .console-preview {
+      flex: 1;
+      background: #1e1e1e;
+      border-radius: 6px;
+      padding: 8px;
+      font-family: monospace;
+      font-size: 10px;
+      overflow-y: auto;
+      min-height: 150px;
+    }
+
+    .console-preview .log {
+      padding: 2px 0;
+      border-bottom: 1px solid #2a2a2a;
+    }
+
+    .console-preview .log:last-child {
+      border-bottom: 0;
+    }
+
+    .console-preview .log-set {
+      color: #FF9800;
+    }
+
+    .console-preview .log-get {
+      color: #4CAF50;
+    }
+
+    .console-preview .log-notify {
+      color: #E91E63;
+    }
+
+    .console-preview .log-key {
+      color: #2196F3;
+      font-weight: bold;
+    }
+
+    .console-preview .empty {
+      color: var(--muted);
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>🔍 Debug Addon Demo</h1>
+    <p class="sub">Interactive debugging for reactive state • Open DevTools (F12) for full logs</p>
+  </header>
+
+  <div class="layout">
+    <!-- Left Column: Options -->
+    <div class="column">
+      <div class="card">
+        <h3>Log Options</h3>
+
+        <div class="option-btn active" id="opt-get">
+          <div class="icon">✓</div>
+          <div class="text">GET<div class="hint">Log property reads</div>
+          </div>
+        </div>
+
+        <div class="option-btn active" id="opt-set">
+          <div class="icon">✓</div>
+          <div class="text">SET<div class="hint">Log property writes</div>
+          </div>
+        </div>
+
+        <div class="option-btn active" id="opt-notify">
+          <div class="icon">✓</div>
+          <div class="text">NOTIFY<div class="hint">Log notifications</div>
+          </div>
+        </div>
+
+        <div class="option-btn" id="opt-trace">
+          <div class="icon"></div>
+          <div class="text">Stack Trace<div class="hint">Show in DevTools</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Filter Logs</h3>
+        <div class="filter-input-row">
+          <input type="text" id="filter-input" placeholder="Type key, press Enter">
+        </div>
+        <div class="filter-tags" id="filter-tags"></div>
+        <div class="filter-hint">Press Enter to add filter. Click ✕ to remove.</div>
+      </div>
+
+      <div class="card">
+        <h3>Console Commands</h3>
+        <div class="commands">
+          <div><span>debug</span>.stats()</div>
+          <div><span>debug</span>.filter('key')</div>
+          <div><span>counterStore</span>.count = 99</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Middle Column: Stores -->
+    <div class="column">
+      <div class="card store-card">
+        <h3><span class="badge">counter</span> Counter Store</h3>
+        <div class="store-buttons">
+          <button id="decrement" class="danger">−</button>
+          <button id="increment">+</button>
+          <button id="add-ten" class="outline">+10</button>
+          <button id="reset" class="warning">Reset</button>
+        </div>
+        <div class="store-value">
+          <div class="label">count</div>
+          <div class="val" id="count-display">0</div>
+        </div>
+      </div>
+
+      <div class="card store-card">
+        <h3><span class="badge blue">user</span> User Store</h3>
+        <div class="user-form">
+          <input type="text" id="name-input" placeholder="Name">
+          <input type="number" id="age-input" placeholder="Age">
+        </div>
+        <button id="update-user" style="width: 100%; margin-bottom: 8px;">Update</button>
+        <div class="user-display">
+          <div class="row"><span class="key">name:</span> <span class="val" id="name-display">""</span></div>
+          <div class="row"><span class="key">age:</span> <span class="val" id="age-display">0</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Stats + Console -->
+    <div class="column right-column">
+      <div class="card stats-card">
+        <div class="card-header">
+          <h3>📊 Live Stats</h3>
+          <button id="reset-stats" class="outline">Reset</button>
+        </div>
+        <div id="stats-container">
+          <div class="stats-empty">Interact with stores to see stats</div>
+        </div>
+      </div>
+
+      <div class="card console-card">
+        <div class="card-header">
+          <h3>🖥️ Console</h3>
+          <button id="clear-console" class="outline">Clear</button>
+        </div>
+        <div id="console-preview" class="console-preview">
+          <div class="log empty">Logs appear here...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+
+</html>

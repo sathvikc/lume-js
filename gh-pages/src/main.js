@@ -49,6 +49,7 @@ const SITE_MAP = [
   { path: 'docs/api/addons/computed', title: 'computed()', file: 'docs/api/addons/computed.md' },
   { path: 'docs/api/addons/repeat', title: 'repeat()', file: 'docs/api/addons/repeat.md' },
   { path: 'docs/api/addons/watch', title: 'watch()', file: 'docs/api/addons/watch.md' },
+  { path: 'docs/api/addons/debug', title: 'createDebugPlugin()', file: 'docs/api/addons/debug.md' },
 
   // Guides
   { path: 'docs/guides', title: 'Guides', file: 'docs/guides/README.md' },
@@ -148,7 +149,7 @@ async function loadDocs(path) {
 
     const fileToFetch = getBaseUrl() + docEntry.file;
     const res = await fetch(fileToFetch);
-    
+
     if (!res.ok) throw new Error('Doc not found');
 
     store.markdownContent = await res.text();
@@ -246,7 +247,7 @@ cleanup = bindDom(app, store);
 let isOnHomePage = false;
 const handleDemoBinding = () => {
   const isHome = store.currentPath === '' || store.currentPath === '/';
-  
+
   if (isHome && !isOnHomePage) {
     // Navigated TO home page - wait for DOM to be ready then bind
     setTimeout(() => {
