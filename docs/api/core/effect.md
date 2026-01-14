@@ -9,13 +9,13 @@ Runs a function immediately and re-runs it whenever dependencies change.
 function effect(callback: () => void): () => void;
 
 // Explicit deps mode (no magic)
-function effect(callback: () => void, deps: [store, key][]): () => void;
+function effect(callback: () => void, deps: [store, ...keys][]): () => void;
 ```
 
 ## Parameters
 
 - `callback` (Function): The function to run reactively.
-- `deps` (Optional Array): Explicit dependencies as `[store, 'key']` tuples.
+- `deps` (Optional Array): Explicit dependencies as `[store, 'key1', 'key2', ...]` tuples.
 
 ## Returns
 
@@ -66,9 +66,27 @@ store.name = 'Bob'; // ✗ Effect does NOT re-run
 ## Multiple Dependencies
 
 ```javascript
+// Multiple keys from same store
 effect(() => {
-  console.log(store.a, store.b);
-}, [[store, 'a'], [store, 'b']]);
+  console.log(store.a, store.b, store.c);
+}, [[store, 'a', 'b', 'c']]);
+
+// Multiple stores
+const userStore = state({ name: 'Alice' });
+const cartStore = state({ total: 0 });
+
+effect(() => {
+  console.log(`${userStore.name}'s cart: $${cartStore.total}`);
+}, [[userStore, 'name'], [cartStore, 'total']]);
+
+// Nested stores
+const app = state({ 
+  user: state({ profile: state({ name: 'Alice' }) }) 
+});
+
+effect(() => {
+  console.log(app.user.profile.name);
+}, [[app.user.profile, 'name']]);  // Reference the nested store directly
 ```
 
 ---
