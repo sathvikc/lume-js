@@ -41,13 +41,13 @@ export interface Plugin {
    * Plugin name (for debugging)
    */
   name: string;
-  
+
   /**
    * Called when state object is created
    * Runs synchronously before Proxy is returned
    */
   onInit?(): void;
-  
+
   /**
    * Called when a property is accessed (before value returned)
    * Can transform the value by returning a new value
@@ -59,7 +59,7 @@ export interface Plugin {
    * @returns Transformed value, or undefined to keep current value
    */
   onGet?(key: string, value: any): any;
-  
+
   /**
    * Called when a property is updated (before subscribers notified)
    * Can transform or validate the new value
@@ -72,7 +72,7 @@ export interface Plugin {
    * @returns Transformed value, or undefined to keep current value
    */
   onSet?(key: string, newValue: any, oldValue: any): any;
-  
+
   /**
    * Called when a subscriber is added
    * Useful for tracking active subscriptions
@@ -80,7 +80,7 @@ export interface Plugin {
    * @param key - Property key being subscribed to
    */
   onSubscribe?(key: string): void;
-  
+
   /**
    * Called when subscribers are about to be notified
    * Runs in microtask, before subscribers receive value
@@ -218,7 +218,13 @@ export function bindDom(
 ): Unsubscribe;
 
 /**
- * Create an effect that automatically tracks dependencies
+ * Dependency tuple for explicit effect tracking
+ * Format: [store, key] where store is a ReactiveState and key is a property name
+ */
+export type EffectDependency = [ReactiveState<any>, string];
+
+/**
+ * Create an effect with auto-tracking (default mode)
  * 
  * The effect runs immediately and re-runs when any accessed state properties change.
  * Only tracks properties that are actually accessed during execution.
@@ -243,6 +249,31 @@ export function bindDom(
  * ```
  */
 export function effect(fn: () => void): Unsubscribe;
+
+/**
+ * Create an effect with explicit dependencies (no magic)
+ * 
+ * The effect runs immediately and re-runs ONLY when specified dependencies change.
+ * Does not auto-track any state access. Ideal for side-effects like logging.
+ * 
+ * @param fn - Function to run reactively
+ * @param deps - Array of [store, key] tuples specifying exact dependencies
+ * @returns Cleanup function to stop the effect
+ * @throws {Error} If fn is not a function
+ * 
+ * @example
+ * ```typescript
+ * const store = state({ count: 0 });
+ * 
+ * // Explicit: only re-runs when store.count changes
+ * const cleanup = effect(() => {
+ *   analytics.track('count', store.count);
+ * }, [[store, 'count']]);
+ * 
+ * cleanup(); // Stop the effect
+ * ```
+ */
+export function effect(fn: () => void, deps: EffectDependency[]): Unsubscribe;
 
 /**
  * Check if a value is a Lume reactive proxy produced by state().
