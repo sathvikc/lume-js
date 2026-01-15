@@ -105,9 +105,8 @@ export function effect(fn, deps) {
     const executeWithTracking = () => {
       if (isRunning) return;
 
-      // Clean up previous subscriptions
-      cleanups.forEach(cleanup => cleanup());
-      cleanups.length = 0;
+      // Clean up previous subscriptions (while/pop is faster than forEach)
+      while (cleanups.length) cleanups.pop()();
 
       // Create effect context for tracking
       const effectContext = {
@@ -138,7 +137,7 @@ export function effect(fn, deps) {
 
   // Return cleanup function
   return () => {
-    cleanups.forEach(cleanup => cleanup());
-    cleanups.length = 0;
+    // while/pop is faster than forEach
+    while (cleanups.length) cleanups.pop()();
   };
 }
