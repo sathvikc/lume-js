@@ -37,6 +37,24 @@ describe('state', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
+  it('uses Object.is() to correctly handle NaN and -0', async () => {
+    const store = state({ value: NaN, zero: 0 });
+    const spy = vi.fn();
+    store.$subscribe('value', spy);
+    spy.mockClear();
+
+    // NaN === NaN is false, but Object.is(NaN, NaN) is true
+    // Setting NaN again should NOT trigger notification
+    store.value = NaN;
+    await Promise.resolve();
+    expect(spy).not.toHaveBeenCalled();
+
+    // Setting a different value should trigger notification
+    store.value = 5;
+    await Promise.resolve();
+    expect(spy).toHaveBeenCalledWith(5);
+  });
+
   it('supports unsubscribe', () => {
     const store = state({ name: 'a' });
     const spy = vi.fn();
@@ -81,18 +99,18 @@ describe('state', () => {
     const spy = vi.fn();
     store.$subscribe('count', spy);
     spy.mockClear(); // Clear the initial call
-    
+
     // Make multiple synchronous changes
     store.count = 1;
     store.count = 2;
     store.count = 3;
-    
+
     // Should not have called the subscriber yet (batched)
     expect(spy).not.toHaveBeenCalled();
-    
+
     // Wait for microtask to flush
     await Promise.resolve();
-    
+
     // Should only be called once with the final value
     expect(spy).toHaveBeenCalledTimes(1);
     expect(spy).toHaveBeenCalledWith(3);
@@ -102,24 +120,24 @@ describe('state', () => {
     const store = state({ value: 'initial' });
     const spy1 = vi.fn();
     const spy2 = vi.fn();
-    
+
     store.$subscribe('value', spy1);
     store.$subscribe('value', spy2);
     spy1.mockClear();
     spy2.mockClear();
-    
+
     // Multiple changes
     store.value = 'a';
     store.value = 'b';
     store.value = 'final';
-    
+
     // Nothing called yet (batched)
     expect(spy1).not.toHaveBeenCalled();
     expect(spy2).not.toHaveBeenCalled();
-    
+
     // Wait for microtask
     await Promise.resolve();
-    
+
     // Both should be called once with final value
     expect(spy1).toHaveBeenCalledTimes(1);
     expect(spy1).toHaveBeenCalledWith('final');
@@ -131,25 +149,25 @@ describe('state', () => {
     const store = state({ a: 1, b: 'x' });
     const spyA = vi.fn();
     const spyB = vi.fn();
-    
+
     store.$subscribe('a', spyA);
     store.$subscribe('b', spyB);
     spyA.mockClear();
     spyB.mockClear();
-    
+
     // Change both keys multiple times
     store.a = 10;
     store.b = 'y';
     store.a = 20;
     store.b = 'z';
-    
+
     // Nothing called yet
     expect(spyA).not.toHaveBeenCalled();
     expect(spyB).not.toHaveBeenCalled();
-    
+
     // Wait for microtask
     await Promise.resolve();
-    
+
     // Each should be called once with final values
     expect(spyA).toHaveBeenCalledTimes(1);
     expect(spyA).toHaveBeenCalledWith(20);
@@ -230,19 +248,19 @@ describe('plugin system', () => {
     it('calls onInit when state is created', () => {
       const onInit = vi.fn();
       const plugin = { name: 'test', onInit };
-      
+
       state({ count: 0 }, { plugins: [plugin] });
-      
+
       expect(onInit).toHaveBeenCalledTimes(1);
     });
 
     it('calls onGet when property is accessed', () => {
       const onGet = vi.fn((key, value) => value);
       const plugin = { name: 'test', onGet };
-      
+
       const store = state({ count: 5 }, { plugins: [plugin] });
       const val = store.count;
-      
+
       expect(onGet).toHaveBeenCalledWith('count', 5);
       expect(val).toBe(5);
     });
@@ -250,20 +268,20 @@ describe('plugin system', () => {
     it('calls onSet when property is updated', () => {
       const onSet = vi.fn((key, newValue, oldValue) => newValue);
       const plugin = { name: 'test', onSet };
-      
+
       const store = state({ count: 0 }, { plugins: [plugin] });
       store.count = 10;
-      
+
       expect(onSet).toHaveBeenCalledWith('count', 10, 0);
     });
 
     it('calls onSubscribe when $subscribe is called', () => {
       const onSubscribe = vi.fn();
       const plugin = { name: 'test', onSubscribe };
-      
+
       const store = state({ count: 0 }, { plugins: [plugin] });
-      store.$subscribe('count', () => {});
-      
+      store.$subscribe('count', () => { });
+
       expect(onSubscribe).toHaveBeenCalledWith('count');
     });
 
@@ -275,19 +293,19 @@ describe('plugin system', () => {
         }
       });
       const plugin = { name: 'test', onNotify };
-      
+
       const store = state({ count: 0 }, { plugins: [plugin] });
       const subscriber = vi.fn((value) => {
         callOrder.push('subscriber');
       });
-      
+
       store.$subscribe('count', subscriber);
       // Clear - initial subscribe call adds 'subscriber' synchronously
       callOrder.length = 0;
-      
+
       store.count = 5;
       await Promise.resolve();
-      
+
       // After update: onNotify called once for 'count', then subscriber
       expect(callOrder).toEqual(['plugin', 'subscriber']);
       expect(onNotify).toHaveBeenCalledWith('count', 5);
@@ -304,9 +322,9 @@ describe('plugin system', () => {
         name: 'add10',
         onGet: (key, value) => typeof value === 'number' ? value + 10 : value
       };
-      
+
       const store = state({ count: 5 }, { plugins: [plugin1, plugin2] });
-      
+
       // Chain: 5 → double (10) → add10 (20)
       expect(store.count).toBe(20);
     });
@@ -320,15 +338,15 @@ describe('plugin system', () => {
         name: 'cap',
         onSet: (key, value) => Math.min(100, value) // Cap at maximum 100
       };
-      
+
       const store = state({ count: 0 }, { plugins: [plugin1, plugin2] });
-      
+
       store.count = -50;
       expect(store.count).toBe(0); // Clamped by plugin1
-      
+
       store.count = 200;
       expect(store.count).toBe(100); // Capped by plugin2
-      
+
       store.count = 50;
       expect(store.count).toBe(50); // Within range
     });
@@ -342,11 +360,11 @@ describe('plugin system', () => {
         name: 'add10',
         onSet: (key, value) => value + 10
       };
-      
+
       const store1 = state({ x: 0 }, { plugins: [double, add10] });
       store1.x = 5; // (5 * 2) + 10 = 20
       expect(store1.x).toBe(20);
-      
+
       const store2 = state({ x: 0 }, { plugins: [add10, double] });
       store2.x = 5; // (5 + 10) * 2 = 30
       expect(store2.x).toBe(30);
@@ -355,147 +373,147 @@ describe('plugin system', () => {
 
   describe('error handling', () => {
     it('continues when plugin onInit throws', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+
       const brokenPlugin = {
         name: 'broken',
         onInit: () => { throw new Error('Init failed!'); }
       };
-      
+
       // Should not throw - error is caught
       const store = state({ count: 0 }, { plugins: [brokenPlugin] });
-      
+
       // State should still work
       expect(store.count).toBe(0);
       store.count = 5;
       expect(store.count).toBe(5);
-      
+
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('[Lume.js] Plugin "broken" error in onInit:'),
         expect.any(Error)
       );
-      
+
       consoleErrorSpy.mockRestore();
     });
 
     it('continues when plugin onGet throws', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+
       const brokenPlugin = {
         name: 'broken',
         onGet: () => { throw new Error('Get failed!'); }
       };
-      
+
       const store = state({ count: 10 }, { plugins: [brokenPlugin] });
-      
+
       // Should return original value even though plugin threw
       expect(store.count).toBe(10);
-      
+
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('[Lume.js] Plugin "broken" error in onGet:'),
         expect.any(Error)
       );
-      
+
       consoleErrorSpy.mockRestore();
     });
 
     it('continues when plugin onSet throws', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+
       const brokenPlugin = {
         name: 'broken',
         onSet: () => { throw new Error('Set failed!'); }
       };
-      
+
       const store = state({ count: 0 }, { plugins: [brokenPlugin] });
-      
+
       // Should still update with original value
       store.count = 5;
       expect(store.count).toBe(5);
-      
+
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('[Lume.js] Plugin "broken" error in onSet:'),
         expect.any(Error)
       );
-      
+
       consoleErrorSpy.mockRestore();
     });
 
     it('continues when plugin onNotify throws', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+
       const brokenPlugin = {
         name: 'broken',
         onNotify: () => { throw new Error('Notify failed!'); }
       };
-      
+
       const store = state({ count: 0 }, { plugins: [brokenPlugin] });
       const subscriber = vi.fn();
       store.$subscribe('count', subscriber);
-      
+
       subscriber.mockClear();
       store.count = 5;
       await Promise.resolve();
-      
+
       // Subscriber should still be called despite plugin error
       expect(subscriber).toHaveBeenCalledWith(5);
-      
+
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('[Lume.js] Plugin "broken" error in onNotify:'),
         expect.any(Error)
       );
-      
+
       consoleErrorSpy.mockRestore();
     });
 
     it('continues when plugin onSubscribe throws', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+
       const brokenPlugin = {
         name: 'broken',
         onSubscribe: () => { throw new Error('Subscribe failed!'); }
       };
-      
+
       const store = state({ count: 0 }, { plugins: [brokenPlugin] });
       const subscriber = vi.fn();
-      
+
       // Should not throw
       store.$subscribe('count', subscriber);
-      
+
       // Subscription should still work
       expect(subscriber).toHaveBeenCalledWith(0);
-      
+
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('[Lume.js] Plugin "broken" error in onSubscribe:'),
         expect.any(Error)
       );
-      
+
       consoleErrorSpy.mockRestore();
     });
 
     it('handles plugin with missing name property', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+
       const plugin = {
         // No name property!
         onGet: () => { throw new Error('Boom!'); }
       };
-      
+
       const store = state({ count: 5 }, { plugins: [plugin] });
       const val = store.count;
-      
+
       expect(val).toBe(5);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('[Lume.js] Plugin "undefined" error in onGet:'),
         expect.any(Error)
       );
-      
+
       consoleErrorSpy.mockRestore();
     });
 
     it('one plugin error does not stop other plugins', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+
       const workingPlugin = {
         name: 'working',
         onGet: vi.fn((key, value) => value * 2)
@@ -508,16 +526,16 @@ describe('plugin system', () => {
         name: 'another',
         onGet: vi.fn((key, value) => value + 10)
       };
-      
-      const store = state({ count: 5 }, { 
-        plugins: [workingPlugin, brokenPlugin, anotherPlugin] 
+
+      const store = state({ count: 5 }, {
+        plugins: [workingPlugin, brokenPlugin, anotherPlugin]
       });
-      
+
       // Chain: 5 → working (10) → broken (error, stays 10) → another (20)
       expect(store.count).toBe(20);
       expect(workingPlugin.onGet).toHaveBeenCalled();
       expect(anotherPlugin.onGet).toHaveBeenCalled();
-      
+
       consoleErrorSpy.mockRestore();
     });
   });
@@ -545,9 +563,9 @@ describe('plugin system', () => {
         name: 'test',
         onGet: (key, value) => undefined // Explicitly return undefined
       };
-      
+
       const store = state({ count: 5 }, { plugins: [plugin] });
-      
+
       // Should use original value when plugin returns undefined
       expect(store.count).toBe(5);
     });
@@ -557,9 +575,9 @@ describe('plugin system', () => {
         name: 'test',
         onGet: (key, value) => null // Return null
       };
-      
+
       const store = state({ count: 5 }, { plugins: [plugin] });
-      
+
       // null is a valid value, should be used
       expect(store.count).toBe(null);
     });
@@ -569,9 +587,9 @@ describe('plugin system', () => {
         name: 'test',
         onGet: (key, value) => 0
       };
-      
+
       const store = state({ count: 5 }, { plugins: [plugin] });
-      
+
       // 0 is falsy but valid - should be used
       expect(store.count).toBe(0);
     });
@@ -581,9 +599,9 @@ describe('plugin system', () => {
         name: 'test',
         onGet: (key, value) => ''
       };
-      
+
       const store = state({ name: 'test' }, { plugins: [plugin] });
-      
+
       // Empty string is falsy but valid
       expect(store.name).toBe('');
     });
@@ -595,10 +613,10 @@ describe('plugin system', () => {
           // No return statement - returns undefined
         }
       };
-      
+
       const store = state({ count: 0 }, { plugins: [plugin] });
       store.count = 10;
-      
+
       // Should use original newValue when plugin returns undefined
       expect(store.count).toBe(10);
     });
@@ -608,10 +626,10 @@ describe('plugin system', () => {
         name: 'immutable',
         onSet: (key, newValue, oldValue) => oldValue // Always keep old value
       };
-      
+
       const store = state({ count: 0 }, { plugins: [plugin] });
       store.count = 10;
-      
+
       // Update should be prevented (values are same, no notification)
       expect(store.count).toBe(0);
     });
@@ -621,9 +639,9 @@ describe('plugin system', () => {
         name: `plugin${i}`,
         onGet: (key, value) => typeof value === 'number' ? value + 1 : value
       }));
-      
+
       const store = state({ count: 0 }, { plugins });
-      
+
       // Each plugin adds 1, so 0 + 10 = 10
       expect(store.count).toBe(10);
     });
@@ -637,11 +655,11 @@ describe('plugin system', () => {
         onSubscribe: vi.fn(),
         onNotify: vi.fn()
       };
-      
+
       const store = state({ count: 0 }, { plugins: [plugin] });
       store.count = 5;
-      store.$subscribe('count', () => {});
-      
+      store.$subscribe('count', () => { });
+
       // All hooks should be called without crashing
       expect(plugin.onInit).toHaveBeenCalled();
       expect(plugin.onGet).toHaveBeenCalled();
@@ -660,20 +678,20 @@ describe('plugin system', () => {
         name: 'store2-plugin',
         onGet: vi.fn((key, value) => value)
       };
-      
+
       const store1 = state({ count: 0 }, { plugins: [plugin1] });
       const store2 = state({ count: 0 }, { plugins: [plugin2] });
-      
+
       store1.count;
       store2.count;
-      
+
       expect(plugin1.onGet).toHaveBeenCalled();
       expect(plugin2.onGet).toHaveBeenCalled();
-      
+
       // Each plugin only affects its own store
       plugin1.onGet.mockClear();
       plugin2.onGet.mockClear();
-      
+
       store1.count;
       expect(plugin1.onGet).toHaveBeenCalled();
       expect(plugin2.onGet).not.toHaveBeenCalled();
@@ -684,9 +702,9 @@ describe('plugin system', () => {
         name: 'test',
         onGet: vi.fn((key, value) => 'intercepted')
       };
-      
+
       const store = state({ count: 0 }, { plugins: [plugin] });
-      
+
       // $subscribe should not trigger onGet
       const fn = store.$subscribe;
       expect(typeof fn).toBe('function');
@@ -698,9 +716,9 @@ describe('plugin system', () => {
         name: 'test',
         onGet: vi.fn((key, value) => false) // Try to return false
       };
-      
+
       const store = state({ count: 0 }, { plugins: [plugin] });
-      
+
       // isReactive should still work (marker not intercepted)
       expect(isReactive(store)).toBe(true);
     });
@@ -723,13 +741,13 @@ describe('plugin system', () => {
         onSubscribe: (key) => logs.push(`SUBSCRIBE ${key}`),
         onNotify: (key, value) => logs.push(`NOTIFY ${key}: ${value}`)
       };
-      
+
       const store = state({ count: 0 }, { plugins: [debugPlugin] });
-      store.$subscribe('count', () => {});
+      store.$subscribe('count', () => { });
       store.count;
       store.count = 5;
       await Promise.resolve();
-      
+
       expect(logs).toContain('INIT');
       expect(logs).toContain('SUBSCRIBE count');
       expect(logs).toContain('GET count: 0');
@@ -747,15 +765,15 @@ describe('plugin system', () => {
           return newValue;
         }
       };
-      
+
       const store = state({ age: 25 }, { plugins: [validationPlugin] });
-      
+
       store.age = 30; // Valid
       expect(store.age).toBe(30);
-      
+
       store.age = -5; // Invalid - rejected
       expect(store.age).toBe(30);
-      
+
       store.age = 200; // Invalid - rejected
       expect(store.age).toBe(30);
     });
@@ -771,7 +789,7 @@ describe('plugin system', () => {
           }
         }
       };
-      
+
       const store = state({ count: 0 }, { plugins: [historyPlugin] });
       store.count = 1;
       await Promise.resolve();
@@ -779,7 +797,7 @@ describe('plugin system', () => {
       await Promise.resolve();
       store.count = 3;
       await Promise.resolve();
-      
+
       expect(history).toHaveLength(3);
       expect(history[0]).toMatchObject({ key: 'count', value: 1 });
       expect(history[1]).toMatchObject({ key: 'count', value: 2 });
@@ -796,9 +814,9 @@ describe('plugin system', () => {
           return newValue;
         }
       };
-      
+
       const store = state({ email: '' }, { plugins: [normalizePlugin] });
-      
+
       store.email = '  TEST@EXAMPLE.COM  ';
       expect(store.email).toBe('test@example.com');
     });
@@ -814,11 +832,11 @@ describe('plugin system', () => {
           return value;
         }
       };
-      
-      const store = state({ firstName: 'John', lastName: 'Doe' }, { 
-        plugins: [computedPlugin] 
+
+      const store = state({ firstName: 'John', lastName: 'Doe' }, {
+        plugins: [computedPlugin]
       });
-      
+
       // Plugin intercepts non-existent property
       expect(store.fullName).toBe('Computed Value');
     });

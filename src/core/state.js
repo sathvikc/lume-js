@@ -73,18 +73,20 @@ export function state(obj, options = {}) {
 
   // Extract plugins (minimal validation)
   const plugins = options.plugins || [];
+  const hasPlugins = plugins.length > 0; // Fast path flag
 
-  const listeners = {};
+  // Object.create(null) - no prototype chain lookups
+  const listeners = Object.create(null);
   const pendingNotifications = new Map(); // Per-state pending changes
   const pendingEffects = new Set(); // Dedupe effects per state
   let flushScheduled = false;
 
   // Call onInit hooks
   for (const p of plugins) {
-    try { 
-      p.onInit?.(); 
-    } catch (e) { 
-      console.error(`[Lume.js] Plugin "${p.name}" error in onInit:`, e); 
+    try {
+      p.onInit?.();
+    } catch (e) {
+      console.error(`[Lume.js] Plugin "${p.name}" error in onInit:`, e);
     }
   }
 
@@ -103,35 +105,39 @@ export function state(obj, options = {}) {
    */
   function scheduleFlush() {
     if (flushScheduled) return;
-    
+
     flushScheduled = true;
     queueMicrotask(() => {
       flushScheduled = false;
-      
-      // Plugin onNotify hooks (before subscribers)
-      for (const [key, value] of pendingNotifications) {
-        for (const p of plugins) {
-          try { 
-            p.onNotify?.(key, value); 
-          } catch (e) { 
-            console.error(`[Lume.js] Plugin "${p.name}" error in onNotify:`, e); 
+
+      // Plugin onNotify hooks (before subscribers) - skip if no plugins
+      if (hasPlugins) {
+        for (const [key, value] of pendingNotifications) {
+          for (const p of plugins) {
+            try {
+              p.onNotify?.(key, value);
+            } catch (e) {
+              console.error(`[Lume.js] Plugin "${p.name}" error in onNotify:`, e);
+            }
           }
         }
       }
-      
+
       // Notify all subscribers of changed keys
       // Snapshot listeners array to handle unsubscribes during iteration
       for (const [key, value] of pendingNotifications) {
         if (listeners[key]) {
-          const subscribersSnapshot = Array.from(listeners[key]);
+          // Spread operator is faster than Array.from()
+          const subscribersSnapshot = [...listeners[key]];
           subscribersSnapshot.forEach(fn => fn(value));
         }
       }
-      
+
       pendingNotifications.clear();
-      
+
       // Run each effect exactly once (Set deduplicates)
-      const effects = Array.from(pendingEffects);
+      // Spread operator is faster than Array.from()
+      const effects = [...pendingEffects];
       pendingEffects.clear();
       effects.forEach(effect => effect());
     });
@@ -145,41 +151,43 @@ export function state(obj, options = {}) {
       if (typeof key === 'string' && key.startsWith('$')) {
         return target[key];
       }
-      
+
       // Get original value
       let value = target[key];
-      
-      // Plugin onGet hooks run first (effects track key, not value)
-      for (const p of plugins) {
-        try {
-          const r = p.onGet?.(key, value);
-          if (r !== undefined) value = r;
-        } catch (e) {
-          console.error(`[Lume.js] Plugin "${p.name}" error in onGet:`, e);
+
+      // Plugin onGet hooks - skip entire loop if no plugins (fast path)
+      if (hasPlugins) {
+        for (const p of plugins) {
+          try {
+            const r = p.onGet?.(key, value);
+            if (r !== undefined) value = r;
+          } catch (e) {
+            console.error(`[Lume.js] Plugin "${p.name}" error in onGet:`, e);
+          }
         }
       }
-      
+
       // Effect tracking
       // Check if we're inside an effect context
       if (typeof globalThis.__LUME_CURRENT_EFFECT__ !== 'undefined') {
         const currentEffect = globalThis.__LUME_CURRENT_EFFECT__;
-        
+
         if (currentEffect && !currentEffect.tracking[key]) {
           // Mark as tracked
           currentEffect.tracking[key] = true;
-          
+
           // Subscribe to changes for this key (skip initial call for effects)
           const unsubscribe = (() => {
             if (!listeners[key]) listeners[key] = [];
-            
+
             const effectFn = () => {
               // Queue effect in this state's pending set
               // Set deduplicates - effect runs once even if multiple keys change
               pendingEffects.add(currentEffect.execute);
             };
-            
+
             listeners[key].push(effectFn);
-            
+
             // Return unsubscribe function (no initial call for effects)
             return () => {
               if (listeners[key]) {
@@ -187,38 +195,40 @@ export function state(obj, options = {}) {
               }
             };
           })();
-          
+
           // Store cleanup function
           currentEffect.cleanups.push(unsubscribe);
         }
       }
-      
+
       return value;
     },
-    
+
     set(target, key, value) {
       const oldValue = target[key];
       let newValue = value;
-      
-      // Plugin onSet hooks (chain pattern)
-      for (const p of plugins) {
-        try {
-          const r = p.onSet?.(key, newValue, oldValue);
-          if (r !== undefined) newValue = r;
-        } catch (e) {
-          console.error(`[Lume.js] Plugin "${p.name}" error in onSet:`, e);
+
+      // Plugin onSet hooks (chain pattern) - skip if no plugins
+      if (hasPlugins) {
+        for (const p of plugins) {
+          try {
+            const r = p.onSet?.(key, newValue, oldValue);
+            if (r !== undefined) newValue = r;
+          } catch (e) {
+            console.error(`[Lume.js] Plugin "${p.name}" error in onSet:`, e);
+          }
         }
       }
-      
-      // Skip update if value unchanged after plugin processing
-      if (oldValue === newValue) return true;
-      
+
+      // Skip update if value unchanged - Object.is() handles NaN and -0 correctly
+      if (Object.is(oldValue, newValue)) return true;
+
       target[key] = newValue;
-      
+
       // Batch notifications at the state level (per-state, not global)
       pendingNotifications.set(key, newValue);
       scheduleFlush();
-      
+
       return true;
     }
   });
@@ -237,18 +247,20 @@ export function state(obj, options = {}) {
       throw new Error('Subscriber must be a function');
     }
 
-    // Plugin onSubscribe hooks
-    for (const p of plugins) {
-      try { 
-        p.onSubscribe?.(key); 
-      } catch (e) { 
-        console.error(`[Lume.js] Plugin "${p.name}" error in onSubscribe:`, e); 
+    // Plugin onSubscribe hooks - skip if no plugins
+    if (hasPlugins) {
+      for (const p of plugins) {
+        try {
+          p.onSubscribe?.(key);
+        } catch (e) {
+          console.error(`[Lume.js] Plugin "${p.name}" error in onSubscribe:`, e);
+        }
       }
     }
 
     if (!listeners[key]) listeners[key] = [];
     listeners[key].push(fn);
-    
+
     // Call immediately with current value (NOT batched)
     fn(proxy[key]);
 
