@@ -52,8 +52,9 @@ export function bindDom(root, store, options = {}) {
     const nodes = root.querySelectorAll("[data-bind]");
     const cleanups = [];
 
-    // Map for event delegation: element → { target, lastKey }
-    const bindingMap = new Map();
+    // WeakMap for event delegation: element → { target, lastKey }
+    // WeakMap allows GC of DOM elements when removed
+    const bindingMap = new WeakMap();
 
     nodes.forEach(el => {
       const bindPath = el.getAttribute("data-bind");
@@ -105,7 +106,7 @@ export function bindDom(root, store, options = {}) {
 
     return () => {
       cleanups.forEach(cleanup => cleanup());
-      bindingMap.clear();
+      // WeakMap doesn't need explicit clear - GC handles it
     };
   };
 
