@@ -110,14 +110,37 @@ export type FocusPreservation = (container: HTMLElement) => (() => void) | null;
 export type ScrollPreservation = (container: HTMLElement, context?: PreservationContext) => () => void;
 
 /**
+ * Context passed to update callback
+ */
+export interface UpdateContext {
+  /** True on initial render, false on subsequent updates */
+  isFirstRender: boolean;
+}
+
+/**
  * Options for the repeat() function
  */
 export interface RepeatOptions<T> {
   /** Function to extract unique key from item */
   key: (item: T) => string | number;
 
-  /** Function to render/update an item's element */
-  render: (item: T, element: HTMLElement, index: number) => void;
+  /** 
+   * Function to render/update an item's element (called for all items on every update)
+   * Use for simple cases. For complex cases, prefer create + update pattern.
+   */
+  render?: (item: T, element: HTMLElement, index: number) => void;
+
+  /**
+   * Function called ONCE when element is created (for DOM structure setup)
+   * Recommended for event listeners and innerHTML setup
+   */
+  create?: (item: T, element: HTMLElement, index: number) => void;
+
+  /**
+   * Function called on every update for data binding
+   * Skipped if same item reference AND same index (optimization)
+   */
+  update?: (item: T, element: HTMLElement, index: number, context: UpdateContext) => void;
 
   /** Element tag name or factory function (default: 'div') */
   element?: string | (() => HTMLElement);
