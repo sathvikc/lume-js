@@ -92,6 +92,35 @@ export interface Plugin {
 }
 
 /**
+ * Type-safe plugin interface for when you know the state shape.
+ * Provides better intellisense for key names and value types.
+ * 
+ * @example
+ * ```typescript
+ * interface AppState {
+ *   count: number;
+ *   name: string;
+ * }
+ * 
+ * const myPlugin: TypedPlugin<AppState> = {
+ *   name: 'typed',
+ *   onSet: (key, newValue, oldValue) => {
+ *     // key is 'count' | 'name', values are properly typed
+ *     return newValue;
+ *   }
+ * };
+ * ```
+ */
+export interface TypedPlugin<T extends object> {
+  name: string;
+  onInit?(): void;
+  onGet?<K extends keyof T>(key: K, value: T[K]): T[K] | undefined;
+  onSet?<K extends keyof T>(key: K, newValue: T[K], oldValue: T[K]): T[K] | undefined;
+  onSubscribe?<K extends keyof T>(key: K): void;
+  onNotify?<K extends keyof T>(key: K, value: T[K]): void;
+}
+
+/**
  * Options for state creation
  */
 export interface StateOptions {
@@ -116,6 +145,12 @@ export type ReactiveState<T extends object> = T & {
     key: K,
     callback: Subscriber<T[K]>
   ): Unsubscribe;
+
+  /**
+   * Brand to identify reactive state objects at the type level
+   * @internal
+   */
+  readonly __reactive?: unique symbol;
 };
 
 /**
@@ -224,6 +259,26 @@ export function bindDom(
 export type EffectDependency = [ReactiveState<any>, ...string[]];
 
 /**
+ * Type-safe dependency tuple that validates keys against the state type.
+ * Use this when you want compile-time validation of dependency keys.
+ * 
+ * @example
+ * ```typescript
+ * const store = state({ count: 0, name: 'Alice' });
+ * 
+ * // Type-safe: 'count' is validated as a key of store
+ * const deps: TypedEffectDependency<typeof store>[] = [[store, 'count']];
+ * 
+ * // Error: 'invalid' is not a key of store
+ * const badDeps: TypedEffectDependency<typeof store>[] = [[store, 'invalid']];
+ * ```
+ */
+export type TypedEffectDependency<T extends ReactiveState<any>> =
+  T extends ReactiveState<infer U>
+  ? [T, ...(keyof U & string)[]]
+  : never;
+
+/**
  * Create an effect with auto-tracking (default mode)
  * 
  * The effect runs immediately and re-runs when any accessed state properties change.
@@ -277,7 +332,62 @@ export function effect(fn: () => void, deps: EffectDependency[]): Unsubscribe;
 
 /**
  * Check if a value is a Lume reactive proxy produced by state().
- * Returns true only for objects created by state().
+ * This is a type guard that narrows the type to ReactiveState.
+ * 
  * @param obj - Value to check
+ * @returns true if obj is a ReactiveState, with type narrowing
+ * 
+ * @example
+ * ```typescript
+ * function process(data: unknown) {
+ *   if (isReactive(data)) {
+ *     // data is now typed as ReactiveState<object>
+ *     data.$subscribe('key', () => {});
+ *   }
+ * }
+ * ```
  */
-export function isReactive(obj: any): boolean;
+export function isReactive(obj: unknown): obj is ReactiveState<object>;
+
+// ============================================================================
+// Utility Types
+// ============================================================================
+
+/**
+ * Extract the underlying state type from a ReactiveState
+ * 
+ * @example
+ * ```typescript
+ * const store = state({ count: 0, name: 'Alice' });
+ * type Store = UnwrapReactive<typeof store>;
+ * // Store = { count: number; name: string }
+ * ```
+ */
+export type UnwrapReactive<T> = T extends ReactiveState<infer U> ? U : never;
+
+/**
+ * Get all subscribable keys from a reactive state
+ * 
+ * @example
+ * ```typescript
+ * const store = state({ count: 0, name: 'Alice' });
+ * type Keys = ReactiveKeys<typeof store>;
+ * // Keys = 'count' | 'name'
+ * ```
+ */
+export type ReactiveKeys<T> = T extends ReactiveState<infer U> ? keyof U : never;
+
+/**
+ * Make all properties of T required and non-nullable.
+ * Useful for ensuring complete state initialization.
+ */
+export type RequiredState<T> = {
+  [K in keyof T]-?: NonNullable<T[K]>;
+};
+
+/**
+ * Deep readonly type for immutable state snapshots
+ */
+export type DeepReadonly<T> = T extends object
+  ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
+  : T;
