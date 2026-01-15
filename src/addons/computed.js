@@ -59,17 +59,17 @@ export function computed(fn) {
   let cachedValue;
   let isInitialized = false;
   const subscribers = [];
-  
+
   // Use effect to automatically track dependencies
   const cleanupEffect = effect(() => {
     try {
       const newValue = fn();
-      
-      // Check if value actually changed
-      if (!isInitialized || newValue !== cachedValue) {
+
+      // Check if value actually changed - Object.is() handles NaN and -0
+      if (!isInitialized || !Object.is(newValue, cachedValue)) {
         cachedValue = newValue;
         isInitialized = true;
-        
+
         // Notify all subscribers
         subscribers.forEach(callback => callback(cachedValue));
       }
@@ -79,13 +79,13 @@ export function computed(fn) {
       if (!isInitialized || cachedValue !== undefined) {
         cachedValue = undefined;
         isInitialized = true;
-        
+
         // Notify subscribers of error state
         subscribers.forEach(callback => callback(cachedValue));
       }
     }
   });
-  
+
   return {
     /**
      * Get the current computed value
@@ -96,7 +96,7 @@ export function computed(fn) {
       }
       return cachedValue;
     },
-    
+
     /**
      * Subscribe to changes in computed value
      * 
@@ -107,14 +107,14 @@ export function computed(fn) {
       if (typeof callback !== 'function') {
         throw new Error('subscribe() requires a function');
       }
-      
+
       subscribers.push(callback);
-      
+
       // Call immediately with current value
       if (isInitialized) {
         callback(cachedValue);
       }
-      
+
       // Return unsubscribe function
       return () => {
         const index = subscribers.indexOf(callback);
@@ -123,7 +123,7 @@ export function computed(fn) {
         }
       };
     },
-    
+
     /**
      * Clean up computed value and stop tracking
      */
