@@ -217,33 +217,38 @@ export interface BindDomOptions {
 /**
  * Bind reactive state to DOM elements
  * 
- * Automatically waits for DOMContentLoaded if the document is still loading,
- * ensuring safe binding regardless of when the function is called.
+ * Supported attributes:
+ * - `data-bind` - Two-way binding for inputs, textContent for others
+ * - `data-hidden` - Toggles hidden (truthy = hidden)
+ * - `data-disabled` - Toggles disabled (truthy = disabled)
+ * - `data-checked` - Toggles checked (for checkboxes/radios)
+ * - `data-required` - Toggles required (truthy = required)
+ * - `data-aria-expanded` - Sets aria-expanded to "true"/"false"
+ * - `data-aria-hidden` - Sets aria-hidden to "true"/"false"
  * 
- * @param root - Root element to scan for [data-bind] attributes
+ * @param root - Root element to scan
  * @param store - Reactive state object
  * @param options - Optional configuration
  * @returns Cleanup function to remove all bindings
- * @throws {Error} If root is not an HTMLElement
- * @throws {Error} If store is not a reactive state object
  * 
  * @example
  * ```typescript
- * // Default: Auto-waits for DOM (safe anywhere)
- * const store = state({ count: 0 });
+ * const store = state({ 
+ *   name: 'Alice',
+ *   isHidden: false,
+ *   isDisabled: false,
+ *   menuOpen: false
+ * });
+ * 
  * const cleanup = bindDom(document.body, store);
- * 
- * // Advanced: Force immediate binding (no auto-wait)
- * const cleanup = bindDom(myElement, store, { immediate: true });
- * 
- * // Later: cleanup all bindings
- * cleanup();
  * ```
  * 
  * HTML:
  * ```html
- * <span data-bind="count"></span>
  * <input data-bind="name">
+ * <div data-hidden="isHidden">Content</div>
+ * <button data-disabled="isDisabled">Submit</button>
+ * <button data-aria-expanded="menuOpen">Menu</button>
  * ```
  */
 export function bindDom(

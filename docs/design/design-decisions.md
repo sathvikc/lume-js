@@ -706,6 +706,52 @@ effect(() => {
 
 ---
 
+### Why `data-{attr}` for Reactive HTML Attributes?
+
+**Decision:** Make HTML attributes reactive by prefixing with `data-`. Use explicit selector list (not dynamic scanning) for performance.
+
+```html
+<!-- Reactive visibility and form controls -->
+<div data-hidden="isLoading">Content</div>
+<button data-disabled="isSubmitting">Submit</button>
+<input data-checked="isAgreed" type="checkbox">
+<input data-required="fieldRequired">
+
+<!-- Reactive ARIA -->
+<button data-aria-expanded="menuOpen">Menu</button>
+```
+
+```js
+// Implementation: Array-based config, explicit selectors
+const BOOLEAN_ATTRS = ['hidden', 'disabled', 'checked', 'required'];
+const ARIA_ATTRS = ['aria-expanded', 'aria-hidden'];
+
+// Boolean attrs use DOM properties (el.hidden = true)
+// ARIA attrs use setAttribute ('aria-expanded', 'true'/'false')
+```
+
+**Reasoning:**
+1. **Extends `data-bind` naturally:** Same pattern users already know (`data-{thing}="stateKey"`)
+2. **Standards-based:** `data-*` is valid HTML5, works with validators
+3. **Explicit mapping:** `data-hidden` → `hidden`, no interpretation needed
+4. **Performance:** Explicit selectors are `O(n)`, dynamic scanning is `O(n × m)`
+5. **Easy to extend:** Adding new attr = add to array, selector rebuilds automatically
+
+**Alternatives considered:**
+- ❌ Custom directives (`x-hidden`, `v-if`, `x-bind:hidden`) → Breaks standards-only philosophy
+- ❌ Generic syntax `data-attr="hidden:isLoading"` → More complex, harder to scan
+
+**What we deferred:**
+- Dynamic pattern (any `data-*` → attr) — Needs benchmarks for O(n × m) concern
+- `data-class` — Replace-all is destructive. Needs toggle pattern like `data-class-active="isActive"`
+- `data-href`, `data-src`, `data-style` — Security implications need careful design
+- Expressions (`data-hidden="count > 5"`) — Violates explicit philosophy
+- Negation (`data-hidden="!isVisible"`) — Use inverted state or future `data-show`
+
+**Tradeoff:** Explicit selector list means we support specific attrs, not any attr. But this gives us performance and safety while remaining easy to extend.
+
+---
+
 ## Future Considerations
 
 **Features We Might Add Later:**
@@ -747,6 +793,11 @@ We're open to change, but will prioritize **simplicity and standards** over feat
 
 ## Document History
 
+- **2026-01-23:**
+  - Added reactive data-* attributes design decision
+  - Documented DOM properties vs setAttribute for boolean attrs
+  - Added ARIA handling rationale
+  - Updated supported/deferred attribute lists
 - **2026-01-14:**
   - Added explicit effect dependencies decision (auto-tracking vs explicit tradeoff)
   - Added debug addon design decision (why in addons, why stats tracking)

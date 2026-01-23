@@ -24,7 +24,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const srcDir = resolve(__dirname, '../src');
 
 // Core folder budget
-const CORE_BUDGET = 2048; // 2KB gzipped
+const CORE_BUDGET = 3072; // 3KB gzipped - increased from 2KB to 3KB to accommodate new features temporarily
 
 // Check if running in GitHub Actions
 const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';

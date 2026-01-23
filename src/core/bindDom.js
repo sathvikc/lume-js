@@ -2,158 +2,182 @@
 /**
  * Lume-JS DOM Binding
  *
- * Binds reactive state to DOM elements using [data-bind].
- * Supports two-way binding for INPUT/TEXTAREA/SELECT.
+ * Binds reactive state to DOM elements using data-* attributes.
  * 
- * Automatically waits for DOMContentLoaded if the document is still loading,
- * ensuring safe binding regardless of when the function is called.
+ * Supported attributes:
+ *   data-bind="key"           → Two-way binding for inputs, textContent for others
+ *   data-hidden="key"         → Toggles hidden (truthy = hidden)
+ *   data-disabled="key"       → Toggles disabled (truthy = disabled)
+ *   data-checked="key"        → Toggles checked (for checkboxes/radios)
+ *   data-required="key"       → Toggles required (truthy = required)
+ *   data-aria-expanded="key"  → Sets aria-expanded to "true"/"false"
+ *   data-aria-hidden="key"    → Sets aria-hidden to "true"/"false"
  *
  * Usage:
  *   import { bindDom } from "lume-js";
- *   
- *   // Default: Auto-waits for DOM (safe anywhere)
  *   const cleanup = bindDom(document.body, store);
- *   
- *   // Advanced: Force immediate binding (no auto-wait)
- *   const cleanup = bindDom(myElement, store, { immediate: true });
- *   
- *   // Later: cleanup();
- *
- * HTML:
- *   <span data-bind="count"></span>
- *   <input data-bind="user.name">
- *   <select data-bind="theme"></select>
  */
 
 import { resolvePath } from "./utils.js";
 
+// HTML boolean properties (use el[prop] = true/false)
+const BOOLEAN_ATTRS = ['hidden', 'disabled', 'checked', 'required'];
+
+// ARIA boolean attributes (set "true"/"false" string)
+const ARIA_ATTRS = ['aria-expanded', 'aria-hidden'];
+
+// Build selector from supported attrs
+const SELECTORS = [
+  '[data-bind]',
+  ...BOOLEAN_ATTRS.map(a => `[data-${a}]`),
+  ...ARIA_ATTRS.map(a => `[data-${a}]`)
+].join(', ');
+
 /**
  * DOM binding for reactive state
- * 
- * @param {HTMLElement} root - Root element to scan for [data-bind]
- * @param {object} store - Reactive state object
- * @param {object} [options] - Optional configuration
- * @param {boolean} [options.immediate=false] - Skip auto-wait, bind immediately
- * @returns {function} Cleanup function to remove all bindings
  */
 export function bindDom(root, store, options = {}) {
   if (!(root instanceof HTMLElement)) {
     throw new Error('bindDom() requires a valid HTMLElement as root');
   }
-
   if (!store || typeof store !== 'object') {
     throw new Error('bindDom() requires a reactive state object');
   }
 
   const { immediate = false } = options;
 
-  // Core binding logic extracted to separate function
   const performBinding = () => {
-    const nodes = root.querySelectorAll("[data-bind]");
     const cleanups = [];
-
-    // WeakMap for event delegation: element → { target, lastKey }
-    // WeakMap allows GC of DOM elements when removed
     const bindingMap = new WeakMap();
+    const elements = root.querySelectorAll(SELECTORS);
 
-    nodes.forEach(el => {
-      const bindPath = el.getAttribute("data-bind");
-
-      if (!bindPath) {
-        console.warn('[Lume.js] Empty data-bind attribute found', el);
-        return;
+    for (const el of elements) {
+      // data-bind (two-way)
+      if (el.hasAttribute('data-bind')) {
+        const c = handleDataBind(el, store, el.getAttribute('data-bind'), bindingMap);
+        if (c) cleanups.push(c);
       }
 
-      const pathArr = bindPath.split(".");
-      const lastKey = pathArr.pop();
-
-      let target;
-      try {
-        target = resolvePath(store, pathArr);
-      } catch (err) {
-        console.warn(`[Lume.js] Invalid binding path "${bindPath}":`, err.message);
-        return;
+      // Boolean attrs (hidden, disabled, checked, required)
+      for (const attr of BOOLEAN_ATTRS) {
+        const dataAttr = `data-${attr}`;
+        if (el.hasAttribute(dataAttr)) {
+          const c = handleBooleanProp(el, store, el.getAttribute(dataAttr), attr);
+          if (c) cleanups.push(c);
+        }
       }
 
-      if (!target || typeof target.$subscribe !== 'function') {
-        console.warn(`[Lume.js] Target for "${bindPath}" is not a reactive state object`);
-        return;
+      // ARIA attrs (aria-expanded, aria-hidden)
+      for (const attr of ARIA_ATTRS) {
+        const dataAttr = `data-${attr}`;
+        if (el.hasAttribute(dataAttr)) {
+          const c = handleAriaAttr(el, store, el.getAttribute(dataAttr), attr);
+          if (c) cleanups.push(c);
+        }
       }
+    }
 
-      // Subscribe to changes - receives already-batched notifications
-      const unsubscribe = target.$subscribe(lastKey, val => {
-        updateElement(el, val);
-      });
-      cleanups.push(unsubscribe);
-
-      // Store binding info for event delegation (form inputs only)
-      if (isFormInput(el)) {
-        bindingMap.set(el, { target, lastKey });
-      }
-    });
-
-    // Event delegation: single listener on root for all form inputs
-    const delegatedHandler = e => {
-      const el = e.target;
-      const binding = bindingMap.get(el);
-      if (binding) {
-        binding.target[binding.lastKey] = getInputValue(el);
-      }
+    // Event delegation for two-way bindings
+    const handler = e => {
+      const binding = bindingMap.get(e.target);
+      if (binding) binding.target[binding.key] = getInputValue(e.target);
     };
+    root.addEventListener("input", handler);
+    cleanups.push(() => root.removeEventListener("input", handler));
 
-    root.addEventListener("input", delegatedHandler);
-    cleanups.push(() => root.removeEventListener("input", delegatedHandler));
-
-    return () => {
-      cleanups.forEach(cleanup => cleanup());
-      // WeakMap doesn't need explicit clear - GC handles it
-    };
+    return () => cleanups.forEach(c => c());
   };
 
-  // Auto-wait for DOM if needed (unless immediate flag is set)
+  // Auto-wait for DOM if needed
   if (!immediate && document.readyState === 'loading') {
     let cleanup = null;
-    const onReady = () => {
-      cleanup = performBinding();
-    };
+    const onReady = () => { cleanup = performBinding(); };
     document.addEventListener('DOMContentLoaded', onReady, { once: true });
-
-    // Return cleanup function that handles both cases
-    return () => {
-      if (cleanup) {
-        cleanup();
-      } else {
-        // If cleanup hasn't been created yet, remove the event listener
-        document.removeEventListener('DOMContentLoaded', onReady);
-      }
-    };
+    return () => cleanup ? cleanup() : document.removeEventListener('DOMContentLoaded', onReady);
   }
 
-  // Immediate binding (DOM already ready or immediate flag set)
   return performBinding();
 }
 
 /**
- * Update DOM element with new value
- * @private
+ * Handle data-bind (two-way for inputs, textContent for others)
+ */
+function handleDataBind(el, store, path, bindingMap) {
+  const result = resolveProp(store, path);
+  if (!result) return null;
+
+  const { target, key } = result;
+  const unsub = target.$subscribe(key, val => updateElement(el, val));
+
+  if (isFormInput(el)) {
+    bindingMap.set(el, { target, key });
+  }
+
+  return unsub;
+}
+
+/**
+ * Handle boolean properties (hidden, disabled, checked, required)
+ */
+function handleBooleanProp(el, store, path, propName) {
+  const result = resolveProp(store, path);
+  if (!result) return null;
+
+  const { target, key } = result;
+
+  return target.$subscribe(key, val => {
+    el[propName] = Boolean(val);
+  });
+}
+
+/**
+ * Handle ARIA attributes (aria-expanded, aria-hidden)
+ */
+function handleAriaAttr(el, store, path, attrName) {
+  const result = resolveProp(store, path);
+  if (!result) return null;
+
+  const { target, key } = result;
+
+  return target.$subscribe(key, val => {
+    el.setAttribute(attrName, val ? 'true' : 'false');
+  });
+}
+
+/**
+ * Resolve path to target and key
+ */
+function resolveProp(store, path) {
+  if (!path) return null;
+
+  const pathArr = path.split(".");
+  const key = pathArr.pop();
+  let target;
+
+  try {
+    target = resolvePath(store, pathArr);
+  } catch {
+    console.warn(`[Lume.js] Invalid path "${path}"`);
+    return null;
+  }
+
+  if (!target?.$subscribe) {
+    console.warn(`[Lume.js] Target for "${path}" is not reactive`);
+    return null;
+  }
+
+  return { target, key };
+}
+
+/**
+ * Update element with value (for data-bind)
  */
 function updateElement(el, val) {
   if (el.tagName === "INPUT") {
-    if (el.type === "checkbox") {
-      // Single checkbox: bind to boolean value
-      // For multiple checkboxes, use nested state objects:
-      //   <input data-bind="tags.javascript"> → state({ tags: state({ javascript: true }) })
-      el.checked = Boolean(val);
-    } else if (el.type === "radio") {
-      // Radio: checked when el.value matches state value
-      // String() handles null/undefined gracefully (no radio selected)
-      el.checked = el.value === String(val);
-    } else {
-      el.value = val ?? '';
-    }
-  } else if (el.tagName === "TEXTAREA") {
-    el.value = val ?? '';
-  } else if (el.tagName === "SELECT") {
+    if (el.type === "checkbox") el.checked = Boolean(val);
+    else if (el.type === "radio") el.checked = el.value === String(val);
+    else el.value = val ?? '';
+  } else if (el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
     el.value = val ?? '';
   } else {
     el.textContent = val ?? '';
@@ -161,24 +185,17 @@ function updateElement(el, val) {
 }
 
 /**
- * Get value from form input
- * @private
+ * Get value from input
  */
 function getInputValue(el) {
-  if (el.type === "checkbox") {
-    return el.checked;
-  } else if (el.type === "number" || el.type === "range") {
-    return el.valueAsNumber;
-  }
+  if (el.type === "checkbox") return el.checked;
+  if (el.type === "number" || el.type === "range") return el.valueAsNumber;
   return el.value;
 }
 
 /**
- * Check if element is a form input
- * @private
+ * Check if element is form input
  */
 function isFormInput(el) {
-  return el.tagName === "INPUT" ||
-    el.tagName === "TEXTAREA" ||
-    el.tagName === "SELECT";
+  return el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT";
 }
