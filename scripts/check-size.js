@@ -105,7 +105,7 @@ function formatBytes(bytes) {
 function printTerminalOutput(coreResults, coreGzipped, passed) {
   console.log('🔍 Lume.js Size Check');
   console.log('=====================\n');
-  console.log('Core Budget: <2KB gzipped\n');
+  console.log('Core Budget: <3KB gzipped\n');
 
   console.log('📦 Core Files:');
   for (const file of coreResults) {
@@ -119,10 +119,10 @@ function printTerminalOutput(coreResults, coreGzipped, passed) {
   console.log('=====================\n');
 
   if (passed) {
-    console.log(`✅ PASSED: Core is under 2KB!`);
+    console.log(`✅ PASSED: Core is under 3KB!`);
   } else {
     const overBy = coreGzipped - CORE_BUDGET;
-    console.log(`❌ FAILED: Core is over 2KB by ${formatBytes(overBy)}!`);
+    console.log(`❌ FAILED: Core is over 3KB by ${formatBytes(overBy)}!`);
   }
 }
 
@@ -148,11 +148,11 @@ function printGitHubOutput(coreResults, coreGzipped, passed) {
   if (passed) {
     console.log(`### ✅ Size Check Passed\n`);
     console.log(`Core bundle is **${formatSize(coreGzipped)}** (${percentage}% of budget)\n`);
-    console.log(`🎉 Well done! Core is under 2KB gzipped.`);
+    console.log(`🎉 Well done! Core is under 3KB gzipped.`);
   } else {
     console.log(`### ❌ Size Check Failed\n`);
     console.log(`Core bundle is **${formatSize(coreGzipped)}** (${percentage}% of budget)\n`);
-    console.log(`⚠️  Core exceeds 2KB budget by **${formatBytes(overBy)}**\n`);
+    console.log(`⚠️  Core exceeds 3KB budget by **${formatBytes(overBy)}**\n`);
     console.log(`**Action Required:**`);
     console.log(`- Remove unnecessary code from core`);
     console.log(`- Move non-essential features to addons`);

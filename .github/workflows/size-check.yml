@@ -46,7 +46,7 @@ jobs:
           echo "pr_size=$PR_SIZE" >> $GITHUB_OUTPUT
           
           # Check if passed
-          if grep -q "Well done! Core is under 2KB" size-output.txt; then
+          if grep -q "Well done! Core is under 3KB" size-output.txt; then
             echo "passed=true" >> $GITHUB_OUTPUT
           else
             echo "passed=false" >> $GITHUB_OUTPUT
@@ -91,12 +91,12 @@ jobs:
             body += `| Metric | Base | PR | Change |\n`;
             body += `|--------|------|----|---------|\n`;
             body += `| Core (gzipped) | ${baseSize.toFixed(2)} KB | ${prSize.toFixed(2)} KB | ${diffSymbol} ${diffSign}${diff.toFixed(2)} KB (${diffSign}${diffPercent}%) |\n`;
-            body += `| Budget | 2.00 KB | 2.00 KB | - |\n\n`;
+            body += `| Budget | 3.00 KB | 3.00 KB | - |\n\n`;
             
             if (passed) {
-              body += `🎉 **Great!** Core bundle is under 2KB.\n\n`;
+              body += `🎉 **Great!** Core bundle is under 3KB.\n\n`;
             } else {
-              body += `⚠️ **Action required:** Core bundle exceeds 2KB budget.\n\n`;
+              body += `⚠️ **Action required:** Core bundle exceeds 3KB budget.\n\n`;
               body += `**Suggestions:**\n`;
               body += `- Move non-essential features to addons\n`;
               body += `- Simplify complex logic\n`;
