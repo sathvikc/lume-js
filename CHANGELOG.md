@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **New `data-*` attribute handlers in `bindDom`**
+  - Boolean attributes (use DOM properties):
+    - `data-hidden="key"` → toggles `el.hidden`
+    - `data-disabled="key"` → toggles `el.disabled`
+    - `data-checked="key"` → toggles `el.checked`
+    - `data-required="key"` → toggles `el.required`
+  - ARIA attributes (use "true"/"false" strings):
+    - `data-aria-expanded="key"` → sets `aria-expanded`
+    - `data-aria-hidden="key"` → sets `aria-hidden`
+  - Array-based config for easy extensibility
+  - Uses explicit selectors for performance (no DOM-wide scanning)
+  - Backward compatible: `data-bind` continues to work as before
+
+### Updated
+- Increased check size to 3KB temporary to work on adding features
+
+### Improved
+- Test coverage: 201 tests (from 194)
+- Cleaner code: uses `el[prop] = Boolean(val)` for HTML booleans
+
+---
+
 ## [2.0.0-alpha.2] - 2026-01-14
 
 ### Added

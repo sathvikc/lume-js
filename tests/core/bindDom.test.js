@@ -644,4 +644,143 @@ describe('bindDom', () => {
       cleanup();
     });
   });
+
+  describe('data-{attr} reactive attributes', () => {
+    describe('data-hidden', () => {
+      it('adds hidden attribute when state is truthy', async () => {
+        const root = setupDOM(`<div><span data-hidden="isHidden">Content</span></div>`);
+        const store = state({ isHidden: true });
+
+        const cleanup = bindDom(root, store);
+        const span = root.querySelector('span');
+
+        expect(span.hasAttribute('hidden')).toBe(true);
+
+        store.isHidden = false;
+        await Promise.resolve();
+        expect(span.hasAttribute('hidden')).toBe(false);
+
+        cleanup();
+      });
+
+      it('removes hidden attribute when state is falsy', async () => {
+        const root = setupDOM(`<div><span data-hidden="isHidden">Content</span></div>`);
+        const store = state({ isHidden: false });
+
+        const cleanup = bindDom(root, store);
+        const span = root.querySelector('span');
+
+        expect(span.hasAttribute('hidden')).toBe(false);
+
+        store.isHidden = true;
+        await Promise.resolve();
+        expect(span.hasAttribute('hidden')).toBe(true);
+
+        cleanup();
+      });
+    });
+
+    describe('data-disabled', () => {
+      it('toggles disabled attribute on inputs', async () => {
+        const root = setupDOM(`<div><input data-disabled="isDisabled" /></div>`);
+        const store = state({ isDisabled: true });
+
+        const cleanup = bindDom(root, store);
+        const input = root.querySelector('input');
+
+        expect(input.hasAttribute('disabled')).toBe(true);
+
+        store.isDisabled = false;
+        await Promise.resolve();
+        expect(input.hasAttribute('disabled')).toBe(false);
+
+        cleanup();
+      });
+    });
+
+    describe('data-aria-expanded', () => {
+      it('sets aria-expanded to "true" when state is truthy', async () => {
+        const root = setupDOM(`<div><button data-aria-expanded="isOpen">Menu</button></div>`);
+        const store = state({ isOpen: true });
+
+        const cleanup = bindDom(root, store);
+        const button = root.querySelector('button');
+
+        expect(button.getAttribute('aria-expanded')).toBe('true');
+
+        store.isOpen = false;
+        await Promise.resolve();
+        expect(button.getAttribute('aria-expanded')).toBe('false');
+
+        cleanup();
+      });
+
+      it('sets aria-expanded to "false" when state is falsy', async () => {
+        const root = setupDOM(`<div><button data-aria-expanded="menuOpen">Menu</button></div>`);
+        const store = state({ menuOpen: false });
+
+        const cleanup = bindDom(root, store);
+        const button = root.querySelector('button');
+
+        expect(button.getAttribute('aria-expanded')).toBe('false');
+
+        store.menuOpen = true;
+        await Promise.resolve();
+        expect(button.getAttribute('aria-expanded')).toBe('true');
+
+        cleanup();
+      });
+    });
+
+    describe('combined usage', () => {
+      it('supports multiple reactive attributes on same element', async () => {
+        const root = setupDOM(`
+          <div>
+            <button 
+              data-disabled="isDisabled" 
+              data-aria-expanded="isOpen"
+            >Menu</button>
+          </div>
+        `);
+        const store = state({
+          isDisabled: false,
+          isOpen: false
+        });
+
+        const cleanup = bindDom(root, store);
+        const button = root.querySelector('button');
+
+        expect(button.hasAttribute('disabled')).toBe(false);
+        expect(button.getAttribute('aria-expanded')).toBe('false');
+
+        store.isDisabled = true;
+        store.isOpen = true;
+        await Promise.resolve();
+
+        expect(button.hasAttribute('disabled')).toBe(true);
+        expect(button.getAttribute('aria-expanded')).toBe('true');
+
+        cleanup();
+      });
+
+      it('coexists with data-bind', async () => {
+        const root = setupDOM(`
+          <div>
+            <input data-bind="name" />
+            <div data-hidden="isHidden">Hidden</div>
+          </div>
+        `);
+        const store = state({ name: 'Alice', isHidden: true });
+
+        const cleanup = bindDom(root, store);
+        const input = root.querySelector('input');
+        const div = root.querySelector('div > div');
+
+        expect(input.value).toBe('Alice');
+        expect(div.hasAttribute('hidden')).toBe(true);
+
+        cleanup();
+      });
+    });
+  });
 });
