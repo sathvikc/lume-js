@@ -3,8 +3,8 @@
  * Lume-JS DOM Binding
  *
  * Binds reactive state to DOM elements using data-* attributes.
- * 
- * Supported attributes:
+ *
+ * Built-in attributes (always available):
  *   data-bind="key"           → Two-way binding for inputs, textContent for others
  *   data-hidden="key"         → Toggles hidden (truthy = hidden)
  *   data-disabled="key"       → Toggles disabled (truthy = disabled)
@@ -13,6 +13,14 @@
  *   data-aria-expanded="key"  → Sets aria-expanded to "true"/"false"
  *   data-aria-hidden="key"    → Sets aria-hidden to "true"/"false"
  *
+ * Extensible via handlers option:
+ *   import { show, classToggle } from 'lume-js/handlers';
+ *   bindDom(root, store, { handlers: [show, classToggle('active')] });
+ *
+ * Custom handlers:
+ *   const tooltip = { attr: 'data-tooltip', apply(el, val) { el.title = val ?? ''; } };
+ *   bindDom(root, store, { handlers: [tooltip] });
+ *
  * Usage:
  *   import { bindDom } from "lume-js";
  *   const cleanup = bindDom(document.body, store);
@@ -20,18 +28,39 @@
 
 import { resolvePath } from "./utils.js";
 
-// HTML boolean properties (use el[prop] = true/false)
-const BOOLEAN_ATTRS = ['hidden', 'disabled', 'checked', 'required'];
+// --- Default Handlers (always active, backwards compatible) ---
 
-// ARIA boolean attributes (set "true"/"false" string)
-const ARIA_ATTRS = ['aria-expanded', 'aria-hidden'];
+const boolHandler = (name) => ({
+  attr: `data-${name}`,
+  apply(el, val) { el[name] = Boolean(val); }
+});
 
-// Build selector from supported attrs
-const SELECTORS = [
-  '[data-bind]',
-  ...BOOLEAN_ATTRS.map(a => `[data-${a}]`),
-  ...ARIA_ATTRS.map(a => `[data-${a}]`)
-].join(', ');
+const ariaHandler = (name) => ({
+  attr: `data-${name}`,
+  apply(el, val) { el.setAttribute(name, val ? 'true' : 'false'); }
+});
+
+const DEFAULT_HANDLERS = [
+  boolHandler('hidden'),
+  boolHandler('disabled'),
+  boolHandler('checked'),
+  boolHandler('required'),
+  ariaHandler('aria-expanded'),
+  ariaHandler('aria-hidden'),
+];
+
+/**
+ * Merge default and user handlers.
+ * User handlers override defaults with same attr (Map deduplicates).
+ * User handler arrays are flattened one level (supports classToggle()).
+ */
+function mergeHandlers(defaults, userHandlers) {
+  if (!userHandlers.length) return defaults;
+  const merged = new Map();
+  for (const h of defaults) merged.set(h.attr, h);
+  for (const h of userHandlers.flat()) merged.set(h.attr, h);
+  return [...merged.values()];
+}
 
 /**
  * DOM binding for reactive state
@@ -44,46 +73,40 @@ export function bindDom(root, store, options = {}) {
     throw new Error('bindDom() requires a reactive state object');
   }
 
-  const { immediate = false } = options;
+  const { immediate = false, handlers: userHandlers = [] } = options;
+  const handlers = mergeHandlers(DEFAULT_HANDLERS, userHandlers);
 
   const performBinding = () => {
     const cleanups = [];
     const bindingMap = new WeakMap();
-    const elements = root.querySelectorAll(SELECTORS);
+
+    // Build compiled selector: data-bind (always) + all handler attrs
+    const selector = ['[data-bind]', ...handlers.map(h => `[${h.attr}]`)].join(',');
+    const elements = root.querySelectorAll(selector);
 
     for (const el of elements) {
-      // data-bind (two-way)
+      // data-bind (two-way) — always in core, special handling
       if (el.hasAttribute('data-bind')) {
         const c = handleDataBind(el, store, el.getAttribute('data-bind'), bindingMap);
         if (c) cleanups.push(c);
       }
 
-      // Boolean attrs (hidden, disabled, checked, required)
-      for (const attr of BOOLEAN_ATTRS) {
-        const dataAttr = `data-${attr}`;
-        if (el.hasAttribute(dataAttr)) {
-          const c = handleBooleanProp(el, store, el.getAttribute(dataAttr), attr);
-          if (c) cleanups.push(c);
-        }
-      }
-
-      // ARIA attrs (aria-expanded, aria-hidden)
-      for (const attr of ARIA_ATTRS) {
-        const dataAttr = `data-${attr}`;
-        if (el.hasAttribute(dataAttr)) {
-          const c = handleAriaAttr(el, store, el.getAttribute(dataAttr), attr);
+      // All registered handlers (default + user)
+      for (const handler of handlers) {
+        if (el.hasAttribute(handler.attr)) {
+          const c = applyHandler(el, store, el.getAttribute(handler.attr), handler);
           if (c) cleanups.push(c);
         }
       }
     }
 
     // Event delegation for two-way bindings
-    const handler = e => {
+    const inputHandler = e => {
       const binding = bindingMap.get(e.target);
       if (binding) binding.target[binding.key] = getInputValue(e.target);
     };
-    root.addEventListener("input", handler);
-    cleanups.push(() => root.removeEventListener("input", handler));
+    root.addEventListener("input", inputHandler);
+    cleanups.push(() => root.removeEventListener("input", inputHandler));
 
     return () => cleanups.forEach(c => c());
   };
@@ -97,6 +120,17 @@ export function bindDom(root, store, options = {}) {
   }
 
   return performBinding();
+}
+
+/**
+ * Apply a handler to an element via subscription.
+ * Resolves the state path and subscribes to changes.
+ */
+function applyHandler(el, store, path, handler) {
+  const result = resolveProp(store, path);
+  if (!result) return null;
+  const { target, key } = result;
+  return target.$subscribe(key, val => handler.apply(el, val));
 }
 
 /**
@@ -114,34 +148,6 @@ function handleDataBind(el, store, path, bindingMap) {
   }
 
   return unsub;
-}
-
-/**
- * Handle boolean properties (hidden, disabled, checked, required)
- */
-function handleBooleanProp(el, store, path, propName) {
-  const result = resolveProp(store, path);
-  if (!result) return null;
-
-  const { target, key } = result;
-
-  return target.$subscribe(key, val => {
-    el[propName] = Boolean(val);
-  });
-}
-
-/**
- * Handle ARIA attributes (aria-expanded, aria-hidden)
- */
-function handleAriaAttr(el, store, path, attrName) {
-  const result = resolveProp(store, path);
-  if (!result) return null;
-
-  const { target, key } = result;
-
-  return target.$subscribe(key, val => {
-    el.setAttribute(attrName, val ? 'true' : 'false');
-  });
 }
 
 /**

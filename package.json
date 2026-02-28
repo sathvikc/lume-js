@@ -14,6 +14,10 @@
     "./addons": {
       "import": "./src/addons/index.js",
       "types": "./src/addons/index.d.ts"
+    },
+    "./handlers": {
+      "import": "./src/handlers/index.js",
+      "types": "./src/handlers/index.d.ts"
     }
   },
   "scripts": {

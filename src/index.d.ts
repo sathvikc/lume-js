@@ -204,6 +204,26 @@ export function state<T extends object>(
 ): ReactiveState<T>;
 
 /**
+ * Handler interface for extending bindDom with custom reactive data-* attributes.
+ * Create plain objects matching this shape — no framework API needed.
+ *
+ * @example
+ * ```typescript
+ * const tooltip: Handler = {
+ *   attr: 'data-tooltip',
+ *   apply(el, val) { el.title = val ?? ''; }
+ * };
+ * bindDom(root, store, { handlers: [tooltip] });
+ * ```
+ */
+export interface Handler {
+  /** Data attribute name (e.g., 'data-show', 'data-class-active') */
+  readonly attr: string;
+  /** Apply the reactive value to the element */
+  apply(el: HTMLElement, val: any): void;
+}
+
+/**
  * Options for bindDom function
  */
 export interface BindDomOptions {
@@ -212,6 +232,22 @@ export interface BindDomOptions {
    * @default false
    */
   immediate?: boolean;
+
+  /**
+   * Additional handlers for reactive data-* attributes.
+   * Handlers can be individual objects or arrays (auto-flattened).
+   * User handlers override built-in handlers with the same attr.
+   *
+   * Built-in handlers (always active): data-hidden, data-disabled,
+   * data-checked, data-required, data-aria-expanded, data-aria-hidden
+   *
+   * @example
+   * ```typescript
+   * import { show, classToggle } from 'lume-js/handlers';
+   * bindDom(root, store, { handlers: [show, classToggle('active')] });
+   * ```
+   */
+  handlers?: (Handler | Handler[])[];
 }
 
 /**
