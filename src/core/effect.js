@@ -60,6 +60,7 @@ export function effect(fn, deps) {
    * Execute the effect function
    */
   const execute = () => {
+    /* v8 ignore next -- re-entry guard: unreachable because $subscribe fires via microtask after isRunning resets in finally */
     if (isRunning) return;
     isRunning = true;
 
