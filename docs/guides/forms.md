@@ -64,6 +64,42 @@ document.querySelector('form').addEventListener('submit', (e) => {
 });
 ```
 
+## Reactive Form Attributes
+
+Use built-in `data-*` attributes to control form state reactively:
+
+```html
+<form id="signup">
+  <input data-bind="email" data-required="emailRequired">
+  <span data-bind="error"></span>
+  <button data-disabled="isSubmitting">Submit</button>
+  <div data-hidden="isSubmitting">Form content</div>
+</form>
+```
+
+```javascript
+const store = state({
+  email: '',
+  error: '',
+  emailRequired: true,
+  isSubmitting: false
+});
+
+bindDom(document.getElementById('signup'), store);
+```
+
+For additional form attributes like `readonly`, import from `lume-js/handlers`:
+
+```javascript
+import { formHandlers } from 'lume-js/handlers';
+
+bindDom(root, store, { handlers: formHandlers });
+```
+
+```html
+<input data-bind="name" data-readonly="isLocked">
+```
+
 ---
 
 **← Previous: [API: repeat()](../api/addons/repeat.md)** | **Next: [Routing](routing.md) →**

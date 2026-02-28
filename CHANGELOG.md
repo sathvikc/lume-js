@@ -1,27 +1,42 @@
 # Changelog
 
-## Unreleased
+## [2.0.0-beta.1] - 2026-02-28
 
 ### Added
-- **New `data-*` attribute handlers in `bindDom`**
-  - Boolean attributes (use DOM properties):
-    - `data-hidden="key"` → toggles `el.hidden`
-    - `data-disabled="key"` → toggles `el.disabled`
-    - `data-checked="key"` → toggles `el.checked`
-    - `data-required="key"` → toggles `el.required`
-  - ARIA attributes (use "true"/"false" strings):
-    - `data-aria-expanded="key"` → sets `aria-expanded`
-    - `data-aria-hidden="key"` → sets `aria-hidden`
-  - Array-based config for easy extensibility
-  - Uses explicit selectors for performance (no DOM-wide scanning)
-  - Backward compatible: `data-bind` continues to work as before
+- **Extensible Handler System for `bindDom`**
+  - Handler contract: `{ attr: string, apply(el, val): void }` — plain objects, no framework API
+  - Pass handlers to `bindDom()` via `options.handlers`
+  - Built-in handlers (always active, backward compatible):
+    - `data-hidden`, `data-disabled`, `data-checked`, `data-required` (boolean props)
+    - `data-aria-expanded`, `data-aria-hidden` (ARIA attributes)
+  - User handlers override built-ins with same `attr` (Map deduplication)
+  - Arrays auto-flattened (supports `classToggle()` returning multiple handlers)
+  - Compiled selectors built from handler list for O(n) DOM performance
 
-### Updated
-- Increased check size to 3KB temporary to work on adding features
+- **New `lume-js/handlers` module** (0.33KB gzipped, tree-shakeable)
+  - `show` — `data-show="key"` shows element when truthy (inverse of `data-hidden`)
+  - `boolAttr(name)` — toggle any boolean attribute via `toggleAttribute()`
+  - `ariaAttr(name)` — any ARIA attribute with auto `aria-` prefix handling
+  - `classToggle(...names)` — CSS class toggling (`data-class-{name}="key"`)
+  - `stringAttr(name)` — string attributes with null removal (href, src, title, etc.)
+  - `formHandlers` preset — `[boolAttr('readonly')]`
+  - `a11yHandlers` preset — `[ariaAttr('pressed'), ariaAttr('selected'), ariaAttr('disabled')]`
+  - Full TypeScript definitions (`src/handlers/index.d.ts`)
+
+- **Handler API documentation** at `docs/api/core/handlers.md`
+- **`./handlers` export path** in package.json
+- **Handler interface** added to core TypeScript definitions (`Handler`, `BindDomOptions.handlers`)
+
+### Changed
+- **`bindDom` internal architecture**: Refactored from hardcoded `BOOLEAN_ATTRS`/`ARIA_ATTRS` arrays to composable handler pattern. No API breaking changes — existing code works without modification.
 
 ### Improved
-- Test coverage: 201 tests (from 194)
-- Cleaner code: uses `el[prop] = Boolean(val)` for HTML booleans
+- Test coverage: 231 tests across 11 test files (from 201)
+- 30 new handler tests covering show, classToggle, boolAttr, ariaAttr, stringAttr, custom handlers, composition, overrides, presets, and edge cases
+- Core size: 2.39KB gzipped (+60 bytes from handler interface)
+- Updated README with handler system documentation
+- Updated bindDom API docs with full handler reference
+- Updated design-decisions.md with handler architecture rationale
 
 ---
 

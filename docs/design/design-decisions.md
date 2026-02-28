@@ -708,47 +708,74 @@ effect(() => {
 
 ### Why `data-{attr}` for Reactive HTML Attributes?
 
-**Decision:** Make HTML attributes reactive by prefixing with `data-`. Use explicit selector list (not dynamic scanning) for performance.
+**Decision:** Make HTML attributes reactive by prefixing with `data-`. Use explicit selector list (not dynamic scanning) for performance. Extend via composable handler objects passed to `bindDom()`.
 
 ```html
-<!-- Reactive visibility and form controls -->
+<!-- Built-in: always available, no imports needed -->
 <div data-hidden="isLoading">Content</div>
 <button data-disabled="isSubmitting">Submit</button>
 <input data-checked="isAgreed" type="checkbox">
 <input data-required="fieldRequired">
-
-<!-- Reactive ARIA -->
 <button data-aria-expanded="menuOpen">Menu</button>
+<div data-aria-hidden="isCollapsed">Panel</div>
+```
+
+```html
+<!-- Extended: import handlers, pass to bindDom -->
+<span data-show="isVisible">Shown when truthy</span>
+<div data-class-active="isActive">CSS class toggle</div>
+<a data-href="profileUrl">Profile</a>
+<input data-readonly="isReadonly">
 ```
 
 ```js
-// Implementation: Array-based config, explicit selectors
-const BOOLEAN_ATTRS = ['hidden', 'disabled', 'checked', 'required'];
-const ARIA_ATTRS = ['aria-expanded', 'aria-hidden'];
+// Implementation: Handler objects with compiled selectors
+import { show, classToggle, stringAttr } from 'lume-js/handlers';
 
-// Boolean attrs use DOM properties (el.hidden = true)
-// ARIA attrs use setAttribute ('aria-expanded', 'true'/'false')
+bindDom(root, store, {
+  handlers: [show, classToggle('active'), stringAttr('href')]
+});
+
+// Handler contract: { attr: string, apply(el, val): void }
+// Built-in defaults use same pattern internally:
+//   boolHandler('hidden')  → { attr: 'data-hidden', apply(el, val) { el.hidden = Boolean(val); } }
+//   ariaHandler('aria-expanded') → { attr: 'data-aria-expanded', apply(el, val) { el.setAttribute(...); } }
 ```
 
 **Reasoning:**
 1. **Extends `data-bind` naturally:** Same pattern users already know (`data-{thing}="stateKey"`)
 2. **Standards-based:** `data-*` is valid HTML5, works with validators
 3. **Explicit mapping:** `data-hidden` → `hidden`, no interpretation needed
-4. **Performance:** Explicit selectors are `O(n)`, dynamic scanning is `O(n × m)`
-5. **Easy to extend:** Adding new attr = add to array, selector rebuilds automatically
+4. **Performance:** Compiled selectors built from handler list, `O(n)` DOM pass
+5. **Composable:** Handlers are plain objects — combine, override, create custom ones
+6. **Tree-shakeable:** Only import the handlers you use (`lume-js/handlers`)
+7. **No core modification:** New attributes never require changing `bindDom` source
+
+**Handler system design (v2.0.0-beta.1):**
+- Built-in handlers (always active): `hidden`, `disabled`, `checked`, `required`, `aria-expanded`, `aria-hidden`
+- User handlers override built-ins with same `attr` (Map deduplication)
+- Arrays auto-flattened (supports `classToggle()` returning multiple handlers)
+- Custom handler = any object with `{ attr, apply }` — no framework API needed
 
 **Alternatives considered:**
 - ❌ Custom directives (`x-hidden`, `v-if`, `x-bind:hidden`) → Breaks standards-only philosophy
 - ❌ Generic syntax `data-attr="hidden:isLoading"` → More complex, harder to scan
+- ❌ Dynamic scanning (scan all `data-*` attrs) → Ambiguity with non-Lume attrs (`data-testid`), O(n × m)
+- ❌ Side-effect imports (auto-register on import) → Violates "explicit over magic" philosophy
+- ❌ Marker attribute hybrid (`data-lm` + store-key matching) → Still has collision risks
 
 **What we deferred:**
-- Dynamic pattern (any `data-*` → attr) — Needs benchmarks for O(n × m) concern
-- `data-class` — Replace-all is destructive. Needs toggle pattern like `data-class-active="isActive"`
-- `data-href`, `data-src`, `data-style` — Security implications need careful design
+- `htmlAttrs()` preset — one import to enable all standard HTML attrs (planned)
+- `data-style` — Security implications need careful design
 - Expressions (`data-hidden="count > 5"`) — Violates explicit philosophy
-- Negation (`data-hidden="!isVisible"`) — Use inverted state or future `data-show`
 
-**Tradeoff:** Explicit selector list means we support specific attrs, not any attr. But this gives us performance and safety while remaining easy to extend.
+**What we resolved (previously deferred):**
+- ✅ `data-show` — Implemented as `show` handler (inverse of `data-hidden`)
+- ✅ `data-class-{name}` toggle — Implemented as `classToggle()` factory
+- ✅ `data-href`, `data-src` — Implemented as `stringAttr()` factory
+- ✅ Negation pattern — `data-show` is the positive counterpart to `data-hidden`
+
+**Tradeoff:** Explicit handler registration means users opt in to each attr. But this gives performance (compiled selectors), safety (no ambiguity), and composability (mix and match handlers).
 
 ---
 
@@ -793,6 +820,12 @@ We're open to change, but will prioritize **simplicity and standards** over feat
 
 ## Document History
 
+- **2026-02-28:**
+  - Updated reactive data-* attributes section: now reflects handler system architecture
+  - Documented handler contract, composability, and tree-shaking
+  - Updated resolved/deferred lists (show, classToggle, stringAttr now implemented)
+  - Added handler system design decision rationale
+  - Updated test coverage to 231 tests
 - **2026-01-23:**
   - Added reactive data-* attributes design decision
   - Documented DOM properties vs setAttribute for boolean attrs
