@@ -304,5 +304,23 @@ describe('effect', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(fn).toHaveBeenCalledTimes(3);
     });
+
+    it('should handle errors in explicit deps mode', () => {
+      const store = state({ count: 0 });
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+
+      // Throw during initial execution in explicit deps mode
+      expect(() => {
+        effect(() => {
+          throw new Error('Explicit deps error');
+        }, [[store, 'count']]);
+      }).toThrow('Explicit deps error');
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[Lume.js effect] Error in effect:',
+        expect.any(Error)
+      );
+      errorSpy.mockRestore();
+    });
   });
 });

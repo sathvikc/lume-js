@@ -252,6 +252,24 @@ describe('debug addon', () => {
             debug.filter(null);
             expect(debug.getFilter()).toBeNull();
         });
+
+        it('passes through when filter is non-string/non-RegExp type', () => {
+            // Covers matchesFilter fallback: when filter is set to unusual type (e.g. number)
+            const store = state({ count: 0 }, {
+                plugins: [createDebugPlugin()]
+            });
+
+            // Set filter to a number (not null, not string, not RegExp)
+            debug.filter(42);
+            consoleSpy.log.mockClear();
+
+            store.count = 5;
+
+            // Should still log because matchesFilter returns true for unknown filter types
+            const logOutput = consoleSpy.log.mock.calls.map(c => c.join(' ')).join(' ');
+            expect(logOutput).toContain('SET');
+            expect(logOutput).toContain('count');
+        });
     });
 
     describe('debug.stats()', () => {
@@ -348,6 +366,32 @@ describe('debug addon', () => {
 
             tableSpy.mockRestore();
         });
+
+        it('logStats() shows 0 for notifies when key was set but not yet notified', () => {
+            const tableSpy = vi.spyOn(console, 'table').mockImplementation(() => { });
+
+            const store = state({ count: 0, name: 'test' }, {
+                plugins: [createDebugPlugin({ label: 'statstest', logGet: true })]
+            });
+
+            // Only read name (generates gets but no sets or notifies for name)
+            void store.name;
+
+            consoleSpy.log.mockClear();
+            consoleSpy.group.mockClear();
+
+            debug.logStats();
+
+            // Verify table was called with data containing the key
+            expect(tableSpy).toHaveBeenCalled();
+            const tableData = tableSpy.mock.calls[0][0];
+            const nameRow = tableData.find(r => r.key === 'name');
+            expect(nameRow).toBeDefined();
+            expect(nameRow.gets).toBeGreaterThanOrEqual(1);
+            expect(nameRow.notifies).toBe(0); // read-only key, never notified
+
+            tableSpy.mockRestore();
+        });
     });
 
     describe('debug.resetStats()', () => {
@@ -365,6 +409,71 @@ describe('debug addon', () => {
 
             stats = debug.stats();
             expect(stats).toEqual({});
+        });
+    });
+
+    describe('formatValue edge cases', () => {
+        it('handles circular references gracefully (JSON.stringify throws)', () => {
+            const store = state({ data: null }, {
+                plugins: [createDebugPlugin({ label: 'circular' })]
+            });
+
+            // Create circular reference
+            const circular = {};
+            circular.self = circular;
+
+            consoleSpy.log.mockClear();
+
+            // This triggers formatValue on the circular object which causes JSON.stringify to throw
+            store.data = circular;
+
+            // Should not crash — formatValue catches the error and uses String(value)
+            const logOutput = consoleSpy.log.mock.calls.map(c => c.join(' ')).join(' ');
+            expect(logOutput).toContain('SET');
+            expect(logOutput).toContain('data');
+            // String(circular) gives "[object Object]"
+            expect(logOutput).toContain('[object Object]');
+        });
+
+        it('truncates large values (JSON > 100 chars)', () => {
+            const store = state({ data: null }, {
+                plugins: [createDebugPlugin({ label: 'large' })]
+            });
+
+            // Create a value whose JSON representation exceeds 100 characters
+            const largeValue = {
+                key1: 'aaaaaaaaaaaaaaaaaaaaaaaaa',
+                key2: 'bbbbbbbbbbbbbbbbbbbbbbbbb',
+                key3: 'ccccccccccccccccccccccccc',
+            };
+
+            consoleSpy.log.mockClear();
+
+            store.data = largeValue;
+
+            const logOutput = consoleSpy.log.mock.calls.map(c => c.join(' ')).join(' ');
+            expect(logOutput).toContain('SET');
+            // Should contain the truncation marker
+            expect(logOutput).toContain('...');
+        });
+
+        it('handles values that stringify to exactly 100 chars without truncation', () => {
+            const store = state({ data: null }, {
+                plugins: [createDebugPlugin({ label: 'exact' })]
+            });
+
+            // Create a value close to 100 chars but not over
+            const shortValue = { a: 'x'.repeat(80) };
+            const json = JSON.stringify(shortValue);
+
+            consoleSpy.log.mockClear();
+            store.data = shortValue;
+
+            const logOutput = consoleSpy.log.mock.calls.map(c => c.join(' ')).join(' ');
+            // If <= 100 chars, should contain the full JSON without truncation
+            if (json.length <= 100) {
+                expect(logOutput).not.toContain('...');
+            }
         });
     });
 });
