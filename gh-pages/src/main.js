@@ -37,6 +37,7 @@ const SITE_MAP = [
   { path: 'examples/tic-tac-toe', title: 'Tic Tac Toe Example', type: 'example' },
   { path: 'examples/form-heavy', title: 'Form Handling Example', type: 'example' },
   { path: 'examples/repeat-test', title: 'List Rendering Example', type: 'example' },
+  { path: 'examples/handler-demo', title: 'Handler System Demo', type: 'example' },
   { path: 'examples/linkedin-puzzle', title: 'LinkedIn Zip Puzzle', type: 'external', url: 'https://sathvikc.github.io/linkedin-zip-puzzle/' },
 
   // API: Core

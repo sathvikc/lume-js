@@ -55,7 +55,8 @@ function injectImportMap(dir) {
     {
       "imports": {
         "lume-js": "https://cdn.jsdelivr.net/npm/lume-js@${version}/src/index.js",
-        "lume-js/addons": "https://cdn.jsdelivr.net/npm/lume-js@${version}/src/addons/index.js"
+        "lume-js/addons": "https://cdn.jsdelivr.net/npm/lume-js@${version}/src/addons/index.js",
+        "lume-js/handlers": "https://cdn.jsdelivr.net/npm/lume-js@${version}/src/handlers/index.js"
       }
     }
   </script>

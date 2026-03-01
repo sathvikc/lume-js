@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lume.js - Handler System Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+      line-height: 1.6;
+      color: #1a1a2e;
+      background: #f8f9fa;
+    }
+    h1 { font-size: 28px; margin-bottom: 4px; }
+    .subtitle { color: #666; margin-bottom: 24px; font-size: 15px; }
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .card h2 {
+      font-size: 18px;
+      margin-bottom: 4px;
+      color: #2563eb;
+    }
+    .card .hint {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 14px;
+    }
+    .code {
+      font-family: 'SF Mono', Menlo, monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #334155;
+    }
+    label { display: block; font-weight: 500; margin-bottom: 6px; }
+    input[type="text"],
+    input[type="email"],
+    textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 15px;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #2563eb;
+    }
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-right: 8px;
+      margin-bottom: 6px;
+    }
+    button:active { transform: scale(0.97); }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: #e5e7eb; color: #374151; }
+    .btn-secondary:hover { background: #d1d5db; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-success:hover { background: #059669; }
+
+    /* Demo-specific styles */
+    .demo-box {
+      padding: 16px;
+      border: 2px dashed #e5e7eb;
+      border-radius: 8px;
+      margin-top: 12px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+    .notification {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-top: 10px;
+      font-weight: 500;
+      transition: all 0.3s;
+    }
+    .notification.info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+    .notification.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .notification.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+    .active { background: #dbeafe !important; border-color: #2563eb !important; }
+    .highlight { background: #fef3c7 !important; border-color: #f59e0b !important; }
+    .selected { outline: 3px solid #8b5cf6; outline-offset: 2px; }
+
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .status-bar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: #666;
+      margin-top: 10px;
+    }
+    .status-bar span { display: flex; align-items: center; gap: 4px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .dot.on { background: #10b981; }
+    .dot.off { background: #ef4444; }
+
+    details { margin-top: 12px; }
+    summary {
+      cursor: pointer;
+      font-size: 13px;
+      color: #2563eb;
+      font-weight: 600;
+    }
+    details pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 14px;
+      border-radius: 8px;
+      margin-top: 8px;
+      font-size: 13px;
+      overflow-x: auto;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔌 Handler System Demo</h1>
+  <p class="subtitle">Extending <span class="code">bindDom()</span> with custom reactive attributes — new in v2.0.0-beta.1</p>
+
+  <!-- 1. show handler -->
+  <div class="card" id="show-section">
+    <h2>data-show — Conditional Visibility</h2>
+    <p class="hint">Inverse of built-in <span class="code">data-hidden</span>. Shows element when value is truthy.</p>
+    <div class="toolbar">
+      <button class="btn-primary" data-action="toggleShow">
+        Toggle Message
+      </button>
+    </div>
+    <div data-show="showMessage" class="notification info">
+      👋 This message is visible because <span class="code">showMessage</span> is <strong>true</strong>.
+    </div>
+    <div class="status-bar">
+      <span><span class="dot" id="show-dot"></span> showMessage: <strong data-bind="showMessage"></strong></span>
+    </div>
+    <details>
+      <summary>View Code</summary>
+      <pre>import { show } from 'lume-js/handlers';
+
+const store = state({ showMessage: true });
+bindDom(root, store, { handlers: [show] });
+
+// HTML: &lt;div data-show="showMessage"&gt;Visible!&lt;/div&gt;</pre>
+    </details>
+  </div>
+
+  <!-- 2. classToggle handler -->
+  <div class="card" id="class-section">
+    <h2>classToggle() — Dynamic CSS Classes</h2>
+    <p class="hint">Toggle individual CSS classes based on state. Each class gets its own <span class="code">data-class-{name}</span> attribute.</p>
+    <div class="toolbar">
+      <button class="btn-primary" data-action="toggleActive">Toggle Active</button>
+      <button class="btn-secondary" data-action="toggleHighlight">Toggle Highlight</button>
+      <button class="btn-success" data-action="toggleSelected">Toggle Selected</button>
+    </div>
+    <div class="demo-box"
+         data-class-active="isActive"
+         data-class-highlight="isHighlighted"
+         data-class-selected="isSelected">
+      <strong>Styled Box</strong>
+      <p>Classes update reactively based on state</p>
+    </div>
+    <div class="status-bar">
+      <span><span class="dot" id="active-dot"></span> active: <strong data-bind="isActive"></strong></span>
+      <span><span class="dot" id="highlight-dot"></span> highlight: <strong data-bind="isHighlighted"></strong></span>
+      <span><span class="dot" id="selected-dot"></span> selected: <strong data-bind="isSelected"></strong></span>
+    </div>
+    <details>
+      <summary>View Code</summary>
+      <pre>import { classToggle } from 'lume-js/handlers';
+
+const store = state({ isActive: false, isHighlighted: false });
+bindDom(root, store, {
+  handlers: [classToggle('active', 'highlight', 'selected')]
+});
+
+// HTML: &lt;div data-class-active="isActive"
+//            data-class-highlight="isHighlighted"&gt;</pre>
+    </details>
+  </div>
+
+  <!-- 3. boolAttr handler -->
+  <div class="card" id="bool-section">
+    <h2>boolAttr() — Boolean Attributes</h2>
+    <p class="hint">Toggle any HTML boolean attribute: <span class="code">readonly</span>, <span class="code">open</span>, <span class="code">contenteditable</span>, etc.</p>
+    <div class="toolbar">
+      <button class="btn-primary" data-action="toggleReadonly">Toggle Readonly</button>
+    </div>
+    <label>Editable field:</label>
+    <input type="text" value="Try typing here..." data-readonly="isReadonly" />
+    <div class="status-bar">
+      <span><span class="dot" id="readonly-dot"></span> readonly: <strong data-bind="isReadonly"></strong></span>
+    </div>
+    <details>
+      <summary>View Code</summary>
+      <pre>import { boolAttr } from 'lume-js/handlers';
+
+const store = state({ isReadonly: false });
+bindDom(root, store, { handlers: [boolAttr('readonly')] });
+
+// HTML: &lt;input data-readonly="isReadonly" /&gt;</pre>
+    </details>
+  </div>
+
+  <!-- 4. ariaAttr handler -->
+  <div class="card" id="aria-section">
+    <h2>ariaAttr() — ARIA Attributes</h2>
+    <p class="hint">Beyond built-in <span class="code">aria-expanded</span> / <span class="code">aria-hidden</span>. Add any ARIA state attribute.</p>
+    <div class="toolbar">
+      <button class="btn-primary" data-action="togglePressed"
+              data-aria-pressed="isPressed"
+              role="button">
+        Toggle Button (aria-pressed)
+      </button>
+      <button class="btn-secondary" data-action="toggleSelected2"
+              data-aria-selected="isSelected2"
+              role="option">
+        Option (aria-selected)
+      </button>
+    </div>
+    <div class="status-bar">
+      <span><span class="dot" id="pressed-dot"></span> aria-pressed: <strong data-bind="isPressed"></strong></span>
+      <span><span class="dot" id="aria-selected-dot"></span> aria-selected: <strong data-bind="isSelected2"></strong></span>
+    </div>
+    <details>
+      <summary>View Code</summary>
+      <pre>import { ariaAttr } from 'lume-js/handlers';
+
+const store = state({ isPressed: false });
+bindDom(root, store, {
+  handlers: [ariaAttr('pressed'), ariaAttr('selected')]
+});
+
+// HTML: &lt;button data-aria-pressed="isPressed"
+//               role="button"&gt;Toggle&lt;/button&gt;</pre>
+    </details>
+  </div>
+
+  <!-- 5. stringAttr handler -->
+  <div class="card" id="string-section">
+    <h2>stringAttr() — Dynamic String Attributes</h2>
+    <p class="hint">Set <span class="code">href</span>, <span class="code">src</span>, <span class="code">title</span>, or any attribute as a reactive string.</p>
+    <label>Link URL:</label>
+    <input type="text" data-bind="linkUrl" placeholder="Enter a URL..." style="margin-bottom: 10px;" />
+    <label>Link title:</label>
+    <input type="text" data-bind="linkTitle" placeholder="Enter a title..." style="margin-bottom: 10px;" />
+    <div class="demo-box">
+      <a data-href="linkUrl" data-title="linkTitle" target="_blank" rel="noopener"
+         style="color: #2563eb; font-weight: 600; text-decoration: underline;">
+        Dynamic Link → <span data-bind="linkUrl"></span>
+      </a>
+    </div>
+    <details>
+      <summary>View Code</summary>
+      <pre>import { stringAttr } from 'lume-js/handlers';
+
+const store = state({ linkUrl: 'https://github.com', linkTitle: 'GitHub' });
+bindDom(root, store, {
+  handlers: [stringAttr('href'), stringAttr('title')]
+});
+
+// HTML: &lt;a data-href="linkUrl" data-title="linkTitle"&gt;Link&lt;/a&gt;</pre>
+    </details>
+  </div>
+
+  <!-- 6. Presets -->
+  <div class="card" id="preset-section">
+    <h2>Presets — Ready-Made Handler Bundles</h2>
+    <p class="hint">Use <span class="code">formHandlers</span> and <span class="code">a11yHandlers</span> for common patterns without importing individual handlers.</p>
+    <details>
+      <summary>View Code</summary>
+      <pre>import { formHandlers, a11yHandlers } from 'lume-js/handlers';
+
+// formHandlers includes: boolAttr('readonly')
+// a11yHandlers includes: ariaAttr('pressed'), ariaAttr('selected'), ariaAttr('disabled')
+
+bindDom(root, store, {
+  handlers: [formHandlers, a11yHandlers]
+  // Arrays are auto-flattened, so presets compose naturally
+});</pre>
+    </details>
+  </div>
+
+  <!-- 7. Custom Handler -->
+  <div class="card" id="custom-section">
+    <h2>Custom Handlers — Build Your Own</h2>
+    <p class="hint">Any object with <span class="code">attr</span> and <span class="code">apply(el, val)</span> works as a handler.</p>
+    <label>Tooltip text:</label>
+    <input type="text" data-bind="tooltipText" placeholder="Enter tooltip..." style="margin-bottom: 10px;" />
+    <div class="demo-box" data-tooltip="tooltipText" style="cursor: help;">
+      <strong>Hover me!</strong>
+      <p>I have a dynamic tooltip (native title attribute)</p>
+    </div>
+    <details>
+      <summary>View Code</summary>
+      <pre>// Define a custom handler — just a plain object
+const tooltip = {
+  attr: 'data-tooltip',
+  apply(el, val) { el.title = val ?? ''; }
+};
+
+const store = state({ tooltipText: 'Hello from Lume!' });
+bindDom(root, store, { handlers: [tooltip] });
+
+// HTML: &lt;div data-tooltip="tooltipText"&gt;Hover me&lt;/div&gt;</pre>
+    </details>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

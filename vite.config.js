@@ -25,6 +25,7 @@ const lumeResolverPlugin = () => ({
     resolveId(source) {
         if (source === 'lume-js') return resolve(projectRoot, 'src/index.js');
         if (source === 'lume-js/addons') return resolve(projectRoot, 'src/addons/index.js');
+        if (source === 'lume-js/handlers') return resolve(projectRoot, 'src/handlers/index.js');
         if (source.startsWith('lume-js/addons/')) {
             const sub = source.replace('lume-js/addons/', '');
             // support both with and without .js extension

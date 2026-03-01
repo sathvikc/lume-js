@@ -50,6 +50,7 @@ export function Sidebar(store) {
             ${renderLink('examples/tic-tac-toe', 'Tic Tac Toe')}
             ${renderLink('examples/form-heavy', 'Form Handling')}
             ${renderLink('examples/repeat-test', 'List Rendering')}
+            ${renderLink('examples/handler-demo', 'Handler System')}
             ${renderLink('examples/linkedin-puzzle', 'LinkedIn Zip Puzzle')}
           </div>
         </div>
