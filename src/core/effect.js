@@ -118,6 +118,8 @@ export function effect(fn, deps) {
       };
 
       // Set as current effect (for state.js to detect)
+      // Save previous context to support nested effects/computed
+      const previousEffect = globalThis.__LUME_CURRENT_EFFECT__;
       globalThis.__LUME_CURRENT_EFFECT__ = effectContext;
       isRunning = true;
 
@@ -127,7 +129,8 @@ export function effect(fn, deps) {
         console.error('[Lume.js effect] Error in effect:', error);
         throw error;
       } finally {
-        globalThis.__LUME_CURRENT_EFFECT__ = undefined;
+        // Restore previous context (not undefined) to support nesting
+        globalThis.__LUME_CURRENT_EFFECT__ = previousEffect;
         isRunning = false;
       }
     };
