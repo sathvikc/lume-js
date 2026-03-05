@@ -94,3 +94,26 @@ export const formHandlers: Handler[];
 
 /** Additional ARIA handlers preset (pressed, selected, disabled) */
 export const a11yHandlers: Handler[];
+
+/**
+ * One-import preset that enables all standard HTML attributes as reactive handlers.
+ *
+ * Includes:
+ * - Boolean attributes: readonly, open, autofocus, controls, muted, inert, etc.
+ * - String attributes: href, src, alt, title, placeholder, role, tabindex, etc.
+ * - ARIA attributes: aria-pressed, aria-label, aria-describedby, aria-valuenow, etc.
+ * - Show handler: data-show (inverse of data-hidden)
+ *
+ * @returns Flat array of handlers — pass directly to bindDom options.
+ *
+ * @example
+ * ```typescript
+ * import { htmlAttrs } from 'lume-js/handlers';
+ *
+ * bindDom(document.body, store, { handlers: [htmlAttrs()] });
+ * // <a data-href="url">Link</a>
+ * // <input data-readonly="isLocked" />
+ * // <div data-aria-label="labelText">...</div>
+ * ```
+ */
+export function htmlAttrs(): Handler[];

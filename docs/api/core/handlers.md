@@ -190,6 +190,50 @@ bindDom(root, store, {
 });
 ```
 
+### `htmlAttrs()`
+
+One-import preset that enables **all standard HTML attributes** as reactive handlers. Includes boolean attrs, string attrs, ARIA attrs, and the `show` handler.
+
+```javascript
+import { htmlAttrs } from 'lume-js/handlers';
+
+bindDom(document.body, store, { handlers: [htmlAttrs()] });
+```
+
+Now use any `data-*` attribute without additional imports:
+
+```html
+<!-- Boolean attributes -->
+<input data-readonly="isLocked" />
+<details data-open="isExpanded">...</details>
+<video data-autoplay="shouldPlay" data-controls="showControls" data-muted="isMuted" />
+
+<!-- String attributes -->
+<a data-href="url" data-title="tooltip">Link</a>
+<img data-src="imageUrl" data-alt="imageDesc" />
+<input data-placeholder="hintText" data-pattern="validationRegex" />
+<div data-role="widgetRole" data-tabindex="tabOrder" />
+
+<!-- ARIA attributes -->
+<button data-aria-pressed="isPressed" data-aria-label="btnLabel">Toggle</button>
+<div data-aria-describedby="descId" data-aria-live="liveRegion" />
+<input data-aria-invalid="hasError" data-aria-required="isRequired" />
+
+<!-- Show handler -->
+<div data-show="isVisible">Shown when truthy</div>
+```
+
+**Included attributes:**
+
+| Category | Attributes |
+|----------|-----------|
+| **Boolean** | `readonly`, `open`, `novalidate`, `multiple`, `autofocus`, `autoplay`, `controls`, `loop`, `muted`, `defer`, `async`, `reversed`, `selected`, `inert`, `allowfullscreen` |
+| **String** | `href`, `src`, `alt`, `title`, `placeholder`, `action`, `method`, `target`, `rel`, `type`, `name`, `role`, `lang`, `tabindex`, `pattern`, `min`, `max`, `step`, `minlength`, `maxlength`, `width`, `height`, `for`, `form`, `accept`, `autocomplete`, `loading`, `decoding`, `inputmode`, `enterkeyhint`, `draggable`, `contenteditable`, `spellcheck`, `translate`, `dir`, `id`, `poster`, `preload`, `download`, `media`, `sizes`, `srcset`, `colspan`, `rowspan`, `scope`, `headers`, `wrap`, `sandbox` |
+| **ARIA** | `pressed`, `selected`, `disabled`, `checked`, `invalid`, `required`, `current`, `busy`, `live`, `atomic`, `relevant`, `modal`, `haspopup`, `label`, `describedby`, `labelledby`, `controls`, `owns`, `activedescendant`, `errormessage`, `valuenow`, `valuemin`, `valuemax`, `valuetext`, and more |
+| **Other** | `show` |
+
+> **When to use `htmlAttrs()`:** Great for prototyping and apps that use many different attributes. For production bundles where you want minimal overhead, cherry-pick individual handlers instead.
+
 ## Custom Handlers
 
 Any plain object matching `{ attr, apply }` works as a handler:
@@ -266,6 +310,15 @@ bindDom(root, store, {
     stringAttr('title')
   ]
 });
+```
+
+### Everything at once
+
+```javascript
+import { htmlAttrs } from 'lume-js/handlers';
+
+// One import to enable all standard HTML attributes
+bindDom(root, store, { handlers: [htmlAttrs()] });
 ```
 
 ### Multiple bindDom calls with different handlers
