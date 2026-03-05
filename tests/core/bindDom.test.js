@@ -783,4 +783,31 @@ describe('bindDom', () => {
       });
     });
   });
+
+  describe('edge cases', () => {
+    it('select-multiple only captures first selected value', async () => {
+      const root = setupDOM(`
+        <div>
+          <select data-bind="choices" multiple>
+            <option value="a" selected>A</option>
+            <option value="b" selected>B</option>
+            <option value="c">C</option>
+          </select>
+        </div>
+      `);
+      const store = state({ choices: '' });
+
+      const cleanup = bindDom(root, store);
+      const select = root.querySelector('select');
+
+      select.options[0].selected = true;
+      select.options[1].selected = true;
+      select.dispatchEvent(new Event('input', { bubbles: true }));
+
+      // el.value returns only the first selected option
+      expect(typeof store.choices).toBe('string');
+
+      cleanup();
+    });
+  });
 });

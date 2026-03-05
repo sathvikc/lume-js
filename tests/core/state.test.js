@@ -841,4 +841,54 @@ describe('plugin system', () => {
       expect(store.fullName).toBe('Computed Value');
     });
   });
+
+  describe('$subscribe assignment', () => {
+    it('does not trigger plugin onSet', () => {
+      const setKeys = [];
+      const plugin = {
+        name: 'spy',
+        onSet: (key, newValue, oldValue) => {
+          setKeys.push(key);
+          return newValue;
+        }
+      };
+
+      state({ count: 0 }, { plugins: [plugin] });
+      expect(setKeys).not.toContain('$subscribe');
+    });
+
+    it('does not trigger plugin onNotify', async () => {
+      const notifyKeys = [];
+      const plugin = {
+        name: 'spy',
+        onNotify: (key, value) => {
+          notifyKeys.push(key);
+        }
+      };
+
+      state({ count: 0 }, { plugins: [plugin] });
+      await Promise.resolve();
+      expect(notifyKeys).not.toContain('$subscribe');
+    });
+  });
+
+  describe('edge cases', () => {
+    it('Symbol keys work and bypass $-prefix guard', () => {
+      const sym = Symbol('test');
+      const store = state({ [sym]: 42 });
+      expect(store[sym]).toBe(42);
+      expect(Object.keys(store)).not.toContain(String(sym));
+    });
+
+    it('Object.is treats +0 and -0 as different values', async () => {
+      const store = state({ value: 0 });
+      const spy = vi.fn();
+      store.$subscribe('value', spy);
+      spy.mockClear();
+
+      store.value = -0;
+      await Promise.resolve();
+      expect(spy).toHaveBeenCalledWith(-0);
+    });
+  });
 });

@@ -1188,4 +1188,27 @@ describe('repeat', () => {
       document.body.removeChild(scrollContainer);
     });
   });
+
+  describe('initialization', () => {
+    it('calls render exactly once per item on initial mount', () => {
+      const renderCalls = [];
+      const store = state({
+        items: [
+          { id: 1, name: 'Alice' },
+          { id: 2, name: 'Bob' }
+        ]
+      });
+
+      const cleanup = repeat(container, store, 'items', {
+        key: item => item.id,
+        render: (item, el) => {
+          renderCalls.push(item.name);
+          el.textContent = item.name;
+        }
+      });
+
+      expect(renderCalls).toEqual(['Alice', 'Bob']);
+      cleanup();
+    });
+  });
 });
