@@ -325,17 +325,18 @@ export function repeat(container, store, arrayKey, options) {
     if (restoreScroll) restoreScroll();
   }
 
-  // Initial render
-  updateList();
-
-  // Subscription
+  // Subscription — $subscribe calls updateList immediately (initial render),
+  // so no separate updateList() call is needed for reactive stores.
   let unsubscribe;
   if (typeof store.$subscribe === 'function') {
     unsubscribe = store.$subscribe(arrayKey, updateList);
   } else if (typeof store.subscribe === 'function') {
-    // Generic subscribe (e.g. computed)
+    // Generic subscribe (e.g. computed) — subscribe first, then initial render
     unsubscribe = store.subscribe(() => updateList());
+    updateList();
   } else {
+    // Non-reactive store — render once and return cleanup
+    updateList();
     console.warn('[Lume.js] repeat(): store is not reactive (no $subscribe or subscribe method)');
     return () => {
       containerEl.replaceChildren();

@@ -242,7 +242,10 @@ export function state(obj, options = {}) {
    * @param {function} fn - Callback function
    * @returns {function} Unsubscribe function
    */
-  proxy.$subscribe = (key, fn) => {
+  // Set on obj (not proxy) to avoid triggering the set trap,
+  // which would cause spurious plugin onSet/onNotify calls and a wasted microtask.
+  // The get trap already returns target[key] directly for $-prefixed keys.
+  obj.$subscribe = (key, fn) => {
     if (typeof fn !== 'function') {
       throw new Error('Subscriber must be a function');
     }
