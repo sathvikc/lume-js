@@ -765,7 +765,6 @@ bindDom(root, store, {
 - ❌ Marker attribute hybrid (`data-lm` + store-key matching) → Still has collision risks
 
 **What we deferred:**
-- `htmlAttrs()` preset — one import to enable all standard HTML attrs (planned)
 - `data-style` — Security implications need careful design
 - Expressions (`data-hidden="count > 5"`) — Violates explicit philosophy
 

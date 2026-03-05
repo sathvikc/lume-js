@@ -93,7 +93,9 @@ bindDom(root, store, { handlers: [boolAttr('readonly'), boolAttr('open')] });
 
 ### `ariaAttr(name)`
 
-Creates a handler for an ARIA attribute. Accepts the name with or without the `aria-` prefix.
+Creates a handler for a **boolean** ARIA attribute. Coerces values to `"true"` or `"false"` strings. Accepts the name with or without the `aria-` prefix.
+
+For string-valued ARIA attrs like `aria-label`, use `stringAttr('aria-label')` instead.
 
 ```javascript
 import { ariaAttr } from 'lume-js/handlers';
@@ -229,9 +231,12 @@ Now use any `data-*` attribute without additional imports:
 |----------|-----------|
 | **Boolean** | `readonly`, `open`, `novalidate`, `multiple`, `autofocus`, `autoplay`, `controls`, `loop`, `muted`, `defer`, `async`, `reversed`, `selected`, `inert`, `allowfullscreen` |
 | **String** | `href`, `src`, `alt`, `title`, `placeholder`, `action`, `method`, `target`, `rel`, `type`, `name`, `role`, `lang`, `tabindex`, `pattern`, `min`, `max`, `step`, `minlength`, `maxlength`, `width`, `height`, `for`, `form`, `accept`, `autocomplete`, `loading`, `decoding`, `inputmode`, `enterkeyhint`, `draggable`, `contenteditable`, `spellcheck`, `translate`, `dir`, `id`, `poster`, `preload`, `download`, `media`, `sizes`, `srcset`, `colspan`, `rowspan`, `scope`, `headers`, `wrap`, `sandbox` |
-| **ARIA** | `pressed`, `selected`, `disabled`, `checked`, `invalid`, `required`, `current`, `busy`, `live`, `atomic`, `relevant`, `modal`, `haspopup`, `label`, `describedby`, `labelledby`, `controls`, `owns`, `activedescendant`, `errormessage`, `valuenow`, `valuemin`, `valuemax`, `valuetext`, and more |
+| **ARIA (boolean)** | `pressed`, `selected`, `disabled`, `checked`, `invalid`, `required`, `busy`, `modal`, `multiselectable`, `multiline`, `readonly`, `atomic` |
+| **ARIA (string)** | `label`, `describedby`, `labelledby`, `controls`, `owns`, `activedescendant`, `errormessage`, `current`, `live`, `relevant`, `haspopup`, `sort`, `autocomplete`, `orientation`, `valuenow`, `valuemin`, `valuemax`, `valuetext`, `details`, `flowto`, `colcount`, `colindex`, `colspan`, `rowcount`, `rowindex`, `rowspan`, `level`, `setsize`, `posinset`, `placeholder`, `roledescription`, `keyshortcuts`, `braillelabel`, `brailleroledescription` |
 | **Other** | `show` |
 
+> **ARIA boolean vs string:** Boolean ARIA attrs (like `aria-pressed`) are coerced to `"true"`/`"false"`. String ARIA attrs (like `aria-label`) pass through the actual value, and are removed when set to `null`/`undefined`.
+>
 > **When to use `htmlAttrs()`:** Great for prototyping and apps that use many different attributes. For production bundles where you want minimal overhead, cherry-pick individual handlers instead.
 
 ## Custom Handlers
