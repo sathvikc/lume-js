@@ -3,6 +3,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { state, effect } from '../../src/index.js';
+import { computed } from '../../src/addons/computed.js';
 
 describe('effect', () => {
   it('should throw error if not given a function', () => {
@@ -321,6 +322,71 @@ describe('effect', () => {
         expect.any(Error)
       );
       errorSpy.mockRestore();
+    });
+  });
+
+  describe('nested effect tracking', () => {
+    it('tracks properties accessed after a nested effect', async () => {
+      const store = state({ a: 0, b: 0 });
+      const fn = vi.fn();
+
+      effect(() => {
+        fn();
+        void store.a;
+        const innerCleanup = effect(() => {
+          void store.b;
+        });
+        void store.a;
+      });
+
+      expect(fn).toHaveBeenCalledTimes(1);
+
+      store.a = 1;
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(fn.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('tracks properties accessed after a nested computed', async () => {
+      const store = state({ count: 0, name: 'Alice' });
+      const fn = vi.fn();
+
+      effect(() => {
+        fn();
+        void store.count;
+        const c = computed(() => store.name.toUpperCase());
+        void store.count;
+      });
+
+      expect(fn).toHaveBeenCalledTimes(1);
+
+      store.count = 1;
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(fn.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('$subscribe inside auto-tracking effect causes double tracking', async () => {
+      const store = state({ count: 0 });
+      let effectRuns = 0;
+      let subCalls = 0;
+
+      const cleanup = effect(() => {
+        effectRuns++;
+        void store.count;
+        store.$subscribe('count', () => {
+          subCalls++;
+        });
+      });
+
+      expect(effectRuns).toBe(1);
+
+      store.count = 1;
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // Documents behavior: both auto-tracking and manual subscribe fire
+      expect(effectRuns).toBeGreaterThanOrEqual(2);
+      expect(subCalls).toBeGreaterThanOrEqual(2);
+
+      cleanup();
     });
   });
 });
