@@ -2,36 +2,42 @@
   "name": "lume-js",
   "version": "2.0.0-beta.1",
   "description": "Minimal reactive state management using only standard JavaScript and HTML - no custom syntax, no build step required",
-  "main": "src/index.js",
+  "main": "dist/index.mjs",
+  "module": "dist/index.mjs",
   "types": "src/index.d.ts",
   "type": "module",
   "sideEffects": false,
+  "unpkg": "dist/lume.global.js",
+  "jsdelivr": "dist/lume.global.js",
   "exports": {
     ".": {
-      "import": "./src/index.js",
+      "import": "./dist/index.mjs",
       "types": "./src/index.d.ts"
     },
     "./addons": {
-      "import": "./src/addons/index.js",
+      "import": "./dist/addons.mjs",
       "types": "./src/addons/index.d.ts"
     },
     "./handlers": {
-      "import": "./src/handlers/index.js",
+      "import": "./dist/handlers.mjs",
       "types": "./src/handlers/index.d.ts"
-    }
+    },
+    "./src/*": "./src/*"
   },
   "scripts": {
     "dev": "vite",
     "dev:site": "node scripts/build-site-assets.js && vite -c vite.site.config.js",
-    "build": "echo 'No build step needed - zero-runtime library!'",
+    "build": "node scripts/build.js",
     "size": "node scripts/check-size.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
-    "validate": "npm run size && npm run typecheck && npm test"
+    "validate": "npm run size && npm run typecheck && npm test",
+    "prepublishOnly": "npm run build && npm run validate"
   },
   "files": [
+    "dist",
     "src",
     "README.md",
     "LICENSE"
