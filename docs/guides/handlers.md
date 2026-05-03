@@ -1,0 +1,125 @@
+# Handlers
+
+`bindDom` handles `data-bind`, `data-hidden`, `data-disabled`, and a handful of other built-in attributes. For anything else — showing elements, toggling classes, setting `href` or `src`, or any custom behavior — you use a **handler**.
+
+A handler is a plain object with two things: the attribute name it responds to, and a function that applies the reactive value to an element. That's the entire API.
+
+## Anatomy
+
+```js
+const myHandler = {
+  attr: 'data-tooltip',
+  apply(el, value) {
+    el.title = value ?? '';
+  }
+};
+```
+
+When `bindDom` scans the DOM and finds an element with `data-tooltip="someKey"`:
+
+1. It subscribes to `store.someKey`.
+2. It calls `apply(el, store.someKey)` immediately, then again on every subsequent change.
+
+## Built-in handlers
+
+The handlers below are exported from `lume-js/handlers`. They are opt-in — import only the ones you need.
+
+### `show` — `data-show`
+
+Sets `el.hidden = !Boolean(val)`: hides the element (via the `hidden` attribute) when the value is falsy.
+
+```js
+import { show } from 'lume-js/handlers';
+bindDom(root, store, { handlers: [show] });
+
+// HTML:
+// <div data-show="isVisible">Only when truthy</div>
+```
+
+### `classToggle(name)` — `data-class-{name}`
+
+Toggles a CSS class based on a truthy value. Factory — returns a handler for a specific class.
+
+```js
+import { classToggle } from 'lume-js/handlers';
+
+bindDom(root, store, {
+  handlers: [classToggle('active'), classToggle('error')]
+});
+
+// HTML:
+// <li data-class-active="isSelected">…</li>
+// <input data-class-error="hasError">
+```
+
+### `stringAttr(name)` — `data-{name}` → `{name}`
+
+Mirrors a reactive value to a string attribute. Perfect for `href`, `src`, `alt`, `title`.
+
+```js
+import { stringAttr } from 'lume-js/handlers';
+
+bindDom(root, store, {
+  handlers: [stringAttr('href'), stringAttr('src')]
+});
+
+// HTML:
+// <a data-href="profileUrl">Profile</a>
+// <img data-src="avatarUrl" alt="Avatar">
+```
+
+## Writing your own
+
+Any behavior you can describe as "this attribute controls this element property based on a reactive value" is a handler. The three examples below cover the most common patterns.
+
+### Example 1 — `data-disabled`
+
+```js
+const disabled = {
+  attr: 'data-disabled',
+  apply(el, value) {
+    el.toggleAttribute('disabled', Boolean(value));
+  }
+};
+```
+
+### Example 2 — `data-style-color`
+
+```js
+function styleProp(prop) {
+  return {
+    attr: `data-style-${prop}`,
+    apply(el, value) {
+      el.style.setProperty(prop, value ?? '');
+    }
+  };
+}
+
+bindDom(root, store, {
+  handlers: [styleProp('color'), styleProp('background-color')]
+});
+```
+
+### Example 3 — `data-format-currency`
+
+```js
+const formatCurrency = {
+  attr: 'data-format-currency',
+  apply(el, value) {
+    el.textContent = new Intl.NumberFormat('en-US', {
+      style: 'currency', currency: 'USD'
+    }).format(value ?? 0);
+  }
+};
+
+// HTML:
+// <span data-format-currency="price"></span>
+```
+
+## Handler ordering
+
+Handlers are applied in the order you pass them. If two handlers share the same `attr` name, the last one wins — it replaces the earlier one. This is how you override a built-in handler: pass your replacement after the built-in in the `handlers` array.
+
+---
+
+**← Previous: [How reactivity works](reactivity.md)** | **Next: [Two-way binding](two-way-binding.md) →**

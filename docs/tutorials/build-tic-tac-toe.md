@@ -1,6 +1,6 @@
 # Tutorial: Tic-Tac-Toe
 
-This tutorial will guide you through building a complete Tic-Tac-Toe game with "Time Travel".
+Build a complete Tic-Tac-Toe game with move history and time travel — entirely in a single HTML file, with no build step. This tutorial is a good introduction to `computed` values and keeping state as an immutable history.
 
 **What you will learn:**
 - Creating reactive state
@@ -186,11 +186,10 @@ const store = state({
 
 ## Step 7: Updating Computed Values
 
-Now that we have history, "current" squares depends on which step we are viewing.
+Now that the board state lives inside `history`, we derive the current squares from the active step number:
 
 ```javascript
-const current = computed(() => store.history[store.stepNumber]);
-const currentSquares = computed(() => current.value.squares);
+const currentSquares = computed(() => store.history[store.stepNumber].squares);
 const winner = computed(() => calculateWinner(currentSquares.value));
 ```
 
@@ -224,20 +223,19 @@ root.addEventListener('click', (e) => {
 Finally, let's render the list of past moves.
 
 ```javascript
-// Helper to jump to a step
+// Jump to any past move
 window.jumpTo = (step) => {
   store.stepNumber = step;
   store.xIsNext = (step % 2) === 0;
 };
 
 effect(() => {
-  // ... render board ...
+  const squares = currentSquares.value;
 
-  // Render History
+  // Build the history button list
   const moves = store.history.map((step, move) => {
     const desc = move ? `Go to move #${move}` : 'Go to game start';
     const isCurrent = move === store.stepNumber;
-    
     return `
       <li>
         <button onclick="jumpTo(${move})" style="${isCurrent ? 'font-weight: bold' : ''}">
@@ -246,8 +244,28 @@ effect(() => {
       </li>
     `;
   }).join('');
-  
-  // Inject into DOM (assuming you added a container for it)
+
+  // Render board + history together
+  root.innerHTML = `
+    <div class="game">
+      <div class="game-board">
+        <div class="status">${winner.value ? 'Winner: ' + winner.value : 'Next player: ' + (store.xIsNext ? 'X' : 'O')}</div>
+        <div class="board">
+          ${[0, 1, 2].map(row => `
+            <div class="board-row">
+              ${[0, 1, 2].map(col => {
+                const i = row * 3 + col;
+                return \`<button class="square" data-index="\${i}">\${squares[i] || ''}</button>\`;
+              }).join('')}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div class="game-info">
+        <ol>${moves}</ol>
+      </div>
+    </div>
+  `;
 });
 ```
 
@@ -385,4 +403,4 @@ effect(() => {
 
 ---
 
-**← Previous: [Working with Arrays](../tutorials/working-with-arrays.md)** | **Next: [API Reference: State](../api/core/state.md) →**
+**← Previous: [Build a Todo app](build-todo-app.md)** | **Next: [Migrating from 1.x](../guides/migration.md) →**

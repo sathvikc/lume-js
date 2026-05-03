@@ -1,40 +1,86 @@
-# watch(store, key, callback)
+# watch(store, key, fn)
 
-Watches a specific property on a state object for changes.
+Subscribes to a single store key. More explicit than `effect` — no auto-tracking, and the callback always receives the new value directly.
 
 ## Signature
 
-```typescript
+```ts
 function watch(
-  store: object, 
-  key: string, 
-  callback: (value: any) => void
-): () => void;
+  store: object,
+  key: string,
+  fn: (newValue: any) => void
+): () => void
 ```
+
+Imported from `lume-js/addons`.
 
 ## Parameters
 
-- `store` (Object): The reactive state object.
-- `key` (String): The property name to watch.
-- `callback` (Function): Called with the new value.
+- `store` — A reactive store created by `state()`.
+- `key` — The property name to watch.
+- `fn` — Called with `(newValue)` immediately on subscribe, then on every subsequent change.
 
 ## Returns
 
-- An unsubscribe function.
+An unsubscribe function. Call it to stop watching.
 
-## Description
+## Examples
 
-`watch` is a convenience alias for `store.$subscribe(key, callback)`.
+### Basic
 
-## Example
-
-```javascript
+```js
 import { state } from 'lume-js';
 import { watch } from 'lume-js/addons';
 
-const store = state({ count: 0 });
+const store = state({ theme: 'light', count: 0 });
 
-watch(store, 'count', (val) => {
-  console.log('Count is now:', val);
+watch(store, 'theme', (newTheme) => {
+  document.documentElement.dataset.theme = newTheme;
+});
+// Called immediately with 'light', then again on every change
+
+store.theme = 'dark'; // callback fires with 'dark'
+```
+
+### One-time watcher
+
+```js
+const stop = watch(store, 'count', (val) => {
+  if (val >= 10) {
+    console.log('Reached 10!');
+    stop(); // unsubscribe after the condition is met
+  }
 });
 ```
+
+### Side effects (localStorage, analytics)
+
+`watch` is the right tool for side effects that should react to exactly one key. Unlike auto-tracking `effect`, there is no risk of accidentally subscribing to extra keys.
+
+```js
+watch(store, 'theme', (theme) => {
+  localStorage.setItem('theme', theme);
+});
+
+watch(store, 'userId', (id) => {
+  analytics.identify(id);
+});
+```
+
+## Compared to `effect`
+
+| | `effect(fn)` | `watch(store, key, fn)` |
+|--|--------------|------------------------|
+| Dependency tracking | Auto — all reads inside fn | Explicit — one key only |
+| Callback args | none | `(newValue)` |
+| Runs immediately | Yes (on first call) | Yes (always, on subscribe) |
+| Best for | UI bindings, rendering | Side effects, persistence |
+
+## See also
+
+- [effect()](../core/effect.md)
+- [computed()](computed.md)
+
+---
+
+**← Previous: [effect()](../core/effect.md)** | **Next: [computed()](computed.md) →**

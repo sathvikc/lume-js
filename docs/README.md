@@ -1,63 +1,150 @@
-# Introduction
+# Lume.js Documentation
 
-**Lume.js** is a minimal reactive state management library using only standard JavaScript and HTML. No custom syntax, no build step required, no framework lock-in.
+**Lume.js** is a lightweight reactive state library built on standard JavaScript and HTML. Drop it into any page via a CDN `<script>` tag and get reactive bindings in minutes — no build tool, no custom syntax, no framework required.
 
-> **Current Version:** 2.0.0-beta.1 | Core: 2.39KB gzipped | 231 tests
+> **Version:** 2.0.0-beta.1 · **Core:** ~2.4 KB gzipped · **Tests:** 231 · **Dependencies:** 0
 
 ## Why Lume.js?
 
-- **Standards-Only**: Uses `data-*` attributes and standard JS.
-- **Tiny**: ~2.4KB gzipped core, zero dependencies.
-- **No Virtual DOM**: Direct DOM manipulation for maximum performance.
-- **Extensible**: Composable handler system for reactive attributes.
-- **Tree-shakeable**: Import only what you need (`lume-js/handlers`, `lume-js/addons`).
+| | Lume.js | Vue / React / Svelte |
+|--|---------|----------------------|
+| Build step | None required | Required |
+| Custom syntax | None — plain `data-*` attrs | Templates / JSX / `.svelte` |
+| Bundle size | ~2.4 KB gzipped | 40 KB+ |
+| Learning curve | ~15 min | Days |
+| Virtual DOM | No — direct DOM | Yes |
 
-## Quick Start
+Lume is a good fit when you want reactive state without a full framework: dashboards, interactive documentation, progressive enhancement on server-rendered pages, and small single-page apps.
 
-### 1. Install
+## Quick start
 
-**Via CDN:**
+### CDN — no install needed
+
+Paste this into an HTML file and open it in a browser. No npm, no bundler, no config.
+
 ```html
-<script type="module">
-  import { state, bindDom } from 'https://cdn.jsdelivr.net/npm/lume-js/src/index.js';
-</script>
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>Hello, <span data-bind="name"></span>!</h1>
+  <input data-bind="name" placeholder="Your name">
+
+  <script type="module">
+    import { state, bindDom } from 'https://cdn.jsdelivr.net/npm/lume-js/src/index.js';
+
+    const store = state({ name: 'World' });
+    bindDom(document.body, store);
+  </script>
+</body>
+</html>
 ```
 
-**Via NPM:**
+### npm
+
 ```bash
 npm install lume-js
 ```
 
-### 2. Create State & Bind
+```js
+import { state, bindDom, effect } from 'lume-js';
+import { watch, computed } from 'lume-js/addons';
+import { show, classToggle, stringAttr } from 'lume-js/handlers';
+```
 
-**HTML:**
+## The three ideas
+
+The entire library is built on three primitives. Once you understand them, you understand Lume.
+
+### 1. `state(obj)` — reactive store
+
+```js
+const store = state({ count: 0 });
+
+store.count = 1;  // any subscribers are notified automatically
+```
+
+### 2. `bindDom(root, store)` — DOM bindings
+
+Scans for `data-*` attributes and wires them to the store. Form controls get two-way binding; everything else gets one-way (`textContent`).
+
 ```html
-<div>
-  <h1>Hello, <span data-bind="name"></span>!</h1>
-  <input data-bind="name" placeholder="Enter your name">
-</div>
+<span data-bind="count"></span>       <!-- textContent = store.count -->
+<input data-bind="name">               <!-- value ⇄ store.name (two-way) -->
+<input type="checkbox" data-bind="on"> <!-- checked ⇄ boolean -->
+<select data-bind="theme">…</select>   <!-- value ⇄ store.theme -->
 ```
 
-**JavaScript:**
-```javascript
-import { state, bindDom } from 'lume-js';
+### 3. `effect(fn)` — reactive side-effects
 
-const store = state({ name: 'World' });
-bindDom(document.body, store);
-```
+Runs a function immediately and re-runs it whenever the store data it read changes. Dependencies are tracked automatically — no explicit list needed.
 
-### 3. Extend with Handlers (optional)
+```js
+import { effect } from 'lume-js';
 
-```javascript
-import { show, classToggle } from 'lume-js/handlers';
-
-bindDom(document.body, store, {
-  handlers: [show, classToggle('active')]
+effect(() => {
+  document.title = `${store.count} items`;  // re-runs when count changes
 });
 ```
 
-## Next Steps
+Need more control? `lume-js/addons` includes `watch` (subscribe to a single key) and `computed` (cached derived value):
 
-- Follow the [Build a Todo App](tutorials/build-todo-app.md) tutorial.
-- Learn about [Reactivity](api/core/state.md).
-- Explore [Guides](guides/README.md) for advanced topics.
+```js
+import { watch, computed } from 'lume-js/addons';
+
+watch(store, 'theme', (theme) => {
+  localStorage.setItem('theme', theme);      // fires only when theme changes
+});
+
+const total = computed(() => store.items.reduce((s, i) => s + i.price, 0));
+console.log(total.value);  // cached until items changes
+```
+
+## Package exports
+
+| Import | Contents |
+|--------|----------|
+| `lume-js` | `state`, `isReactive`, `bindDom`, `effect` |
+| `lume-js/addons` | `watch`, `computed`, `repeat`, `createDebugPlugin`, `debug`, `defaultFocusPreservation`, `defaultScrollPreservation` |
+| `lume-js/handlers` | `show`, `boolAttr`, `ariaAttr`, `classToggle`, `stringAttr`, `formHandlers`, `a11yHandlers`, `htmlAttrs` |
+
+## Documentation
+
+### Getting started
+- [Installation](guides/installation.md)
+- [Quick start](guides/quick-start.md)
+- [Core concepts](guides/core-concepts.md)
+
+### Guides
+- [How reactivity works](guides/reactivity.md)
+- [Handlers](guides/handlers.md)
+- [Two-way binding](guides/two-way-binding.md)
+- [Lists & repeat](guides/lists.md)
+- [Performance](guides/performance.md)
+
+### API — Core
+- [state()](api/core/state.md)
+- [bindDom()](api/core/bindDom.md)
+- [effect()](api/core/effect.md)
+
+### API — Addons
+- [watch()](api/addons/watch.md)
+- [computed()](api/addons/computed.md)
+- [repeat()](api/addons/repeat.md)
+
+### API — Handlers
+- [show](api/handlers/show.md)
+- [classToggle](api/handlers/classToggle.md)
+- [stringAttr](api/handlers/stringAttr.md)
+
+### Tutorials
+- [Build a Todo app](tutorials/build-todo-app.md)
+- [Build Tic-Tac-Toe](tutorials/build-tic-tac-toe.md)
+
+### Reference
+- [FAQ](guides/faq.md)
+- [Migrating from 1.x](guides/migration.md)
+- [Changelog](../CHANGELOG.md)
+
+---
+
+**Next: [Installation](guides/installation.md) →**
