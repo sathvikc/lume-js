@@ -295,4 +295,28 @@ code, kbd, pre { font-family: var(--font-family-mono); }
 .docs-main a:hover { text-decoration-color: var(--accent); }
 .docs-main .small { font-size: 13px; color: var(--fg-subtle); }
 
+/* ─── Heading anchor links (section permalinks) ─── */
+/* Inline link icon appended after heading text; revealed on hover.
+   In history mode: clicking pushes #id to the URL and copies the link.
+   In hash mode: clicking only scrolls (the fragment is used for routing). */
+.heading-anchor {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.45rem;
+  color: var(--fg-subtle);
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  text-decoration: none;
+  vertical-align: middle;
+}
+.docs-main h2:hover .heading-anchor,
+.docs-main h3:hover .heading-anchor {
+  opacity: 1;
+}
+.heading-anchor:hover,
+.heading-anchor.is-copied {
+  color: var(--accent-fg);
+  opacity: 1;
+}
+
 [hidden] { display: none !important; }

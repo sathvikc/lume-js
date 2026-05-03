@@ -271,3 +271,53 @@ export function wireTOC() {
     });
   }
 }
+
+const LINK_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>`;
+const HEADER_OFFSET = 80;
+
+/**
+ * wireHeadingAnchors(mode) — adds permalink icons to h2/h3 headings.
+ *
+ * Must be called after wireTOC() because wireTOC assigns the heading IDs.
+ *
+ * Behaviour by router mode:
+ *   history — clicking scrolls to the heading, pushes #id to the URL, and
+ *             copies the full link to clipboard. Refresh navigates straight
+ *             to the heading via the 404 fallback.
+ *   hash    — clicking only scrolls. The URL fragment is already used for
+ *             routing (#/docs/slug), so a second fragment isn't possible.
+ *             The anchor icon is still shown so users see the difference.
+ */
+export function wireHeadingAnchors(mode) {
+  const main = document.querySelector('.docs-main');
+  if (!main) return;
+
+  main.querySelectorAll('h2[id], h3[id]').forEach(h => {
+    if (h.querySelector('.heading-anchor')) return; // already wired (no double-add)
+
+    const anchor = document.createElement('a');
+    anchor.className = 'heading-anchor';
+    anchor.href = '#' + h.id;
+    anchor.setAttribute('aria-label', 'Link to this section');
+    if (mode !== 'history') {
+      anchor.title = 'Switch to History routing to get a shareable heading link';
+    }
+    anchor.innerHTML = LINK_ICON;
+
+    anchor.addEventListener('click', (e) => {
+      e.preventDefault();
+      const top = h.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET - 12;
+      window.scrollTo({ top, behavior: 'smooth' });
+
+      if (mode === 'history') {
+        history.pushState({}, '', location.pathname + '#' + h.id);
+        navigator.clipboard?.writeText(location.href).catch(() => {});
+        // Brief visual confirmation
+        anchor.classList.add('is-copied');
+        setTimeout(() => anchor.classList.remove('is-copied'), 1500);
+      }
+    });
+
+    h.appendChild(anchor);
+  });
+}
