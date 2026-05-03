@@ -1,10 +1,10 @@
 import { state, bindDom, effect } from 'lume-js';
-import { watch }                   from 'lume-js/addons';
+import { watch } from 'lume-js/addons';
 import { classToggle, show, stringAttr } from 'lume-js/handlers';
 
-import { createRouter, link }            from './lume-router.js';
-import { renderHome }                    from './pages/home.js';
-import { renderExamples }                from './pages/examples.js';
+import { createRouter, link } from './lume-router.js';
+import { renderHome } from './pages/home.js';
+import { renderExamples } from './pages/examples.js';
 import { renderCompare, renderNotFound } from './pages/compare.js';
 import { renderDocs, wireTOC, wireHeadingAnchors, fetchDoc, DOCS_SITEMAP } from './pages/docs.js';
 
@@ -31,10 +31,10 @@ if (typeof marked !== 'undefined') {
    THEME REGISTRY
    ========================================================================= */
 const THEMES = [
-  { id: 'light', label: 'Light',     hint: 'Paper',       swatches: ['#fafaf7','#ffffff','#b8541f','#18181b'] },
-  { id: 'dark',  label: 'Dark',      hint: 'Default',     swatches: ['#0b0b0c','#151517','#f5c54a','#f3f1ea'] },
-  { id: 'dim',   label: 'Dim',       hint: 'Tokyo Night', swatches: ['#1a1b26','#1f2030','#7aa2f7','#c0caf5'] },
-  { id: 'solar', label: 'Solarized', hint: 'Warm',        swatches: ['#fdf6e3','#fffaf0','#b8541f','#3a2f1b'] },
+  { id: 'light', label: 'Light', hint: 'Paper', swatches: ['#fafaf7', '#ffffff', '#b8541f', '#18181b'] },
+  { id: 'dark', label: 'Dark', hint: 'Default', swatches: ['#0b0b0c', '#151517', '#f5c54a', '#f3f1ea'] },
+  { id: 'dim', label: 'Dim', hint: 'Tokyo Night', swatches: ['#1a1b26', '#1f2030', '#7aa2f7', '#c0caf5'] },
+  { id: 'solar', label: 'Solarized', hint: 'Warm', swatches: ['#fdf6e3', '#fffaf0', '#b8541f', '#3a2f1b'] },
 ];
 const THEME_IDS = THEMES.map(t => t.id);
 const prefersLight = matchMedia('(prefers-color-scheme: light)').matches;
@@ -44,6 +44,8 @@ const initialTheme = THEME_IDS.includes(saved) ? saved : (prefersLight ? 'light'
 /* =========================================================================
    APP STORE
    ========================================================================= */
+const _initRouterMode = localStorage.getItem('lume.routerMode') || 'history';
+
 const store = state({
   theme: initialTheme,
   themeMenuOpen: false,
@@ -51,7 +53,15 @@ const store = state({
   route: { page: 'home', slug: null, params: {} },
   year: new Date().getFullYear(),
   clock: '',
-  routerMode: localStorage.getItem('lume.routerMode') || 'history',
+  routerMode: _initRouterMode,
+  routerTooltipTitle: _initRouterMode === 'hash' ? 'Hash routing active' : 'History routing active',
+  routerTooltipBody: _initRouterMode === 'hash'
+    ? 'URLs use #/path — works on any static host with no server config.'
+    : 'URLs use /path — clean paths. Needs a server or 404 fallback.',
+  toastVisible: false,
+  toastTitle: '',
+  toastUrl: '',
+  toastDesc: '',
 });
 window.store = store;
 
@@ -69,11 +79,12 @@ watch(demoStore, 'count', (n) => {
    ROUTER
    ========================================================================= */
 const router = createRouter(store, 'route', {
-  '/'            : ()       => ({ page: 'home',     slug: null }),
-  '/docs'        : ()       => ({ page: 'docs',     slug: 'introduction' }),
-  '/docs/:slug'  : (params) => ({ page: 'docs',     slug: params.slug }),
-  '/examples'    : ()       => ({ page: 'examples', slug: null }),
-  '/compare'     : ()       => ({ page: 'compare',  slug: null }),
+  '/': () => ({ page: 'home', slug: null, heading: null }),
+  '/docs': () => ({ page: 'docs', slug: 'introduction', heading: null }),
+  '/docs/:slug': (p) => ({ page: 'docs', slug: p.slug, heading: null }),
+  '/docs/:slug/:heading': (p) => ({ page: 'docs', slug: p.slug, heading: p.heading }),
+  '/examples': () => ({ page: 'examples', slug: null, heading: null }),
+  '/compare': () => ({ page: 'compare', slug: null, heading: null }),
 });
 window.router = router;
 
@@ -82,8 +93,29 @@ window.router = router;
    ========================================================================= */
 const outlet = document.getElementById('outlet');
 let currentCleanup = null;
+let _currentDocSlug = null; // tracks which doc is rendered to detect heading-only nav
+
+function _makeHashHeadingNav(slug) {
+  return (headingId) => router.go(`/docs/${slug}/${headingId}`, { scrollTop: false });
+}
 
 watch(store, 'route', async (r) => {
+  // Hash mode heading-only navigation: same doc, just scroll — no fetch, no re-render
+  if (r.page === 'docs' && r.slug === _currentDocSlug) {
+    const target = r.heading;
+    if (target) {
+      requestAnimationFrame(() => {
+        const el = document.getElementById(target);
+        if (!el) return;
+        const top = el.getBoundingClientRect().top + window.scrollY - 80 - 12;
+        window.scrollTo({ top, behavior: 'smooth' });
+      });
+    }
+    return;
+  }
+
+  _currentDocSlug = r.page === 'docs' ? r.slug : null;
+
   const current = outlet.firstElementChild;
   if (current) current.classList.add('is-leaving');
 
@@ -117,14 +149,13 @@ watch(store, 'route', async (r) => {
 
   if (r.page === 'docs') {
     wireTOC();
-    wireHeadingAnchors(router.mode);
+    wireHeadingAnchors(router.mode, _makeHashHeadingNav(r.slug || 'introduction'));
 
-    // On initial load (or after a 404 redirect), scroll to a heading if the
-    // URL has a fragment — e.g. /docs/intro#some-section after refresh.
-    const hash = location.hash.slice(1);
-    if (hash) {
+    // Scroll to heading if present in route (hash mode deep link) or URL fragment (history mode)
+    const target = r.heading || location.hash.slice(1);
+    if (target) {
       requestAnimationFrame(() => {
-        const el = document.getElementById(hash);
+        const el = document.getElementById(target);
         if (!el) return;
         const top = el.getBoundingClientRect().top + window.scrollY - 80 - 12;
         window.scrollTo({ top, behavior: 'smooth' });
@@ -135,10 +166,10 @@ watch(store, 'route', async (r) => {
 
 function renderPage(r) {
   switch (r.page) {
-    case 'home':     return renderHome();
+    case 'home': return renderHome();
     case 'examples': return renderExamples();
-    case 'compare':  return renderCompare();
-    default:         return renderNotFound();
+    case 'compare': return renderCompare();
+    default: return renderNotFound();
   }
 }
 
@@ -169,9 +200,9 @@ function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   const isLight = (theme === 'light' || theme === 'solar');
   const light = document.getElementById('hljs-light');
-  const dark  = document.getElementById('hljs-dark');
+  const dark = document.getElementById('hljs-dark');
   if (light) light.disabled = !isLight;
-  if (dark)  dark.disabled  =  isLight;
+  if (dark) dark.disabled = isLight;
   document.querySelectorAll('.theme-option[data-theme-id]').forEach(btn => {
     btn.classList.toggle('is-current', btn.dataset.themeId === theme);
   });
@@ -247,33 +278,69 @@ setInterval(tickClock, 1000);
    new mode (history→hash: add '#' prefix; hash→history: strip '#', rely on
    the 404 fallback to redirect back cleanly on GitHub Pages).
    ========================================================================= */
-window.switchRouterMode = function(newMode) {
-  const base = import.meta.env.BASE_URL;             // '/lume-js/' or '/'
-  const baseNoSlash = base.replace(/\/$/, '');        // '/lume-js'  or ''
+/* =========================================================================
+   TOAST — Lume.js drives content via data-bind; watch drives visibility
+   ========================================================================= */
+const TOAST_DURATION_MS = 10_000;
+document.documentElement.style.setProperty('--toast-duration', TOAST_DURATION_MS + 'ms');
 
-  // Current app-relative path regardless of which mode we're in
-  const currentPath = router.mode === 'hash'
-    ? (location.hash || '#/').slice(1)                // '#/docs/foo' → '/docs/foo'
-    : (location.pathname.startsWith(baseNoSlash)
-        ? location.pathname.slice(baseNoSlash.length) || '/'
-        : location.pathname);
-
-  localStorage.setItem('lume.routerMode', newMode);
-
-  if (newMode === 'hash') {
-    // e.g. https://…/lume-js/#/docs/introduction
-    window.location.href = location.origin + base + '#' + currentPath;
+let _toastTimer = null;
+watch(store, 'toastVisible', (visible) => {
+  const toast = document.getElementById('lume-toast');
+  if (!toast) return;
+  clearTimeout(_toastTimer);
+  if (visible) {
+    toast.classList.add('is-visible');
+    _toastTimer = setTimeout(() => { store.toastVisible = false; }, TOAST_DURATION_MS);
   } else {
-    // e.g. https://…/lume-js/docs/introduction  (GH Pages 404 trick picks it up)
-    window.location.href = location.origin + baseNoSlash + currentPath;
+    toast.classList.remove('is-visible');
   }
+});
+
+window.switchRouterMode = function (newMode) {
+  const currentRoute = store.route;
+  const historyFragment = newMode === 'hash' ? location.hash.slice(1) : null;
+
+  router.setMode(newMode);
+  store.routerMode = newMode;
+
+  // Rewrite URL to preserve heading in the new mode's encoding
+  const _b = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+  if (newMode === 'history' && currentRoute.heading) {
+    // hash: #/docs/intro/heading → history: /docs/intro#heading
+    history.replaceState({ lume: true }, '', `${_b}/docs/${currentRoute.slug}#${currentRoute.heading}`);
+  } else if (newMode === 'hash' && historyFragment && currentRoute.page === 'docs') {
+    // history: /docs/intro#heading → hash: #/docs/intro/heading
+    history.replaceState({ lume: true }, '', `${_b}/#/docs/${currentRoute.slug}/${historyFragment}`);
+  }
+
+  document.querySelectorAll('.heading-anchor').forEach(a => a.remove());
+  if (store.route.page === 'docs') {
+    wireHeadingAnchors(newMode, _makeHashHeadingNav(store.route.slug || 'introduction'));
+  }
+
+  store.routerTooltipTitle = newMode === 'hash' ? 'Hash routing active' : 'History routing active';
+  store.routerTooltipBody = newMode === 'hash'
+    ? 'URLs use #/path — works on any static host with no server config.'
+    : 'URLs use /path — clean paths. Needs a server or 404 fallback.';
+
+  store.toastTitle = newMode === 'hash' ? 'Switched to Hash routing' : 'Switched to History routing';
+  store.toastUrl = location.href;
+  store.toastDesc = newMode === 'hash'
+    ? 'Zero server config. Works on any static host. Heading anchors scroll only — # is already the route.'
+    : 'Clean URL paths. A 404 fallback handles deep links — already wired on this site.';
+
+  // Reset animation if toast is already showing, then re-trigger via store
+  store.toastVisible = false;
+  requestAnimationFrame(() => { store.toastVisible = true; });
 };
 
 /* =========================================================================
-   GLOBAL BINDINGS (header / footer)
+   GLOBAL BINDINGS (header / footer / toast)
    ========================================================================= */
 bindDom(document.querySelector('.site-header'), store, { handlers: [link(router)] });
 bindDom(document.querySelector('.site-footer'), store, { handlers: [link(router)] });
+bindDom(document.getElementById('lume-toast'), store, { handlers: [] });
 
 applyTheme(store.theme);
 
