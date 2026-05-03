@@ -28,6 +28,17 @@
 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.googletagmanager.com;
+    style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
+    font-src 'self' https://fonts.gstatic.com;
+    img-src 'self' data:;
+    connect-src 'self' https://cdn.jsdelivr.net https://www.google-analytics.com https://www.googletagmanager.com;
+    object-src 'none';
+    base-uri 'self';
+    form-action 'self';
+  " />
   <title>Lume.js — Reactivity that follows web standards</title>
   <meta name="description"
     content="Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required." />
