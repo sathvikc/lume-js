@@ -20,7 +20,6 @@ export const DOCS_SITEMAP = [
   { slug: 'tutorial-todo',        title: 'Build a Todo app',     category: 'Tutorials',       file: 'docs/tutorials/build-todo-app.md' },
   { slug: 'tutorial-tic-tac-toe', title: 'Build Tic-Tac-Toe',   category: 'Tutorials',       file: 'docs/tutorials/build-tic-tac-toe.md' },
   { slug: 'migration',            title: 'Migrating from 1.x',  category: 'Reference',       file: 'docs/guides/migration.md' },
-  { slug: 'changelog',            title: 'Changelog',            category: 'Reference',       file: 'docs/CHANGELOG.md' },
   { slug: 'faq',                  title: 'FAQ',                  category: 'Reference',       file: 'docs/guides/faq.md' },
   { slug: 'design-decisions',     title: 'Design decisions',     category: 'Design',          file: 'docs/design/design-decisions.md' },
 ];
@@ -58,10 +57,14 @@ export async function fetchDoc(slug) {
   const md = await res.text();
   let content = md.replace(/^---[\s\S]+?---\n?/, '').trim();
 
-  // Strip trailing markdown page-nav (--- section with ← Previous / Next → links)
-  content = content.replace(/\n---\n[\s\S]*$/, (match) =>
-    /Previous|Next|←|→/.test(match) ? '' : match
-  );
+  // Strip trailing markdown page-nav (--- section with ← Previous / Next → links).
+  // Check only the LAST --- block — not the first. Docs that use → inside bullet
+  // points (e.g. design-decisions.md) would have their body stripped by a greedy match.
+  const lastHr = content.lastIndexOf('\n---\n');
+  if (lastHr !== -1) {
+    const tail = content.slice(lastHr);
+    if (/Previous|Next|←|→/.test(tail)) content = content.slice(0, lastHr);
+  }
 
   if (typeof marked === 'undefined') return `<pre>${content}</pre>`;
 
