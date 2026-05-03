@@ -20,6 +20,8 @@ When `bindDom` scans the DOM and finds an element with `data-tooltip="someKey"`:
 1. It subscribes to `store.someKey`.
 2. It calls `apply(el, store.someKey)` immediately, then again on every subsequent change.
 
+> **→ Why `data-*` attributes?** [See the design decision.](../design/design-decisions.md#why-data-attr-for-reactive-html-attributes)
+
 ## Built-in handlers
 
 The handlers below are exported from `lume-js/handlers`. They are opt-in — import only the ones you need.

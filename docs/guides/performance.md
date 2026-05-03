@@ -2,6 +2,8 @@
 
 Lume's update model is O(subscribers) — only the effects that read a changed key re-run, nothing else. The patterns below keep that guarantee working well as your app grows.
 
+> **→ Why no virtual DOM?** Direct DOM writes are faster for small-to-medium UIs and keep the library tiny — [see the design decision.](../design/design-decisions.md#why-no-virtual-dom)
+
 ## Use `repeat` for lists
 
 `innerHTML` rebuilds the entire list on every change — event listeners, focus state, and scroll position are all destroyed. `repeat` keys elements by ID and only touches what changed.

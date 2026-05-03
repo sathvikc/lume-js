@@ -19,7 +19,7 @@ function bindDom(
 
 - `root` — The root element to scan. All descendants are included.
 - `store` — A reactive store created by `state()`.
-- `options.immediate` — If `true`, binds immediately instead of waiting for `DOMContentLoaded`.
+- `options.immediate` — If `true`, binds immediately instead of waiting for `DOMContentLoaded`. Default: `false` — [see why.](../../design/design-decisions.md#why-auto-ready-binddom-by-default)
 - `options.handlers` — Additional handler objects. See [Handlers](../../guides/handlers.md).
 
 ## Returns
@@ -29,6 +29,8 @@ A cleanup function. Call it to remove all bindings and event listeners created b
 ## Built-in bindings
 
 ### `data-bind` — two-way for forms, one-way for everything else
+
+> **→ Why one attribute?** [Why `data-bind` only, not `data-model` or `data-text`](../../design/design-decisions.md#why-data-bind-only-not-data-model-or-data-text)
 
 | Element | Property | Event |
 |---------|----------|-------|

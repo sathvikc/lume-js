@@ -38,6 +38,8 @@ Imported from `lume-js/addons`.
 
 Use `render` alone for simple read-only lists. Use `create + update` for lists with event listeners — `create` runs once when the element is created, `update` runs on every data change.
 
+> **→ Why `create` + `update` instead of a single `render`?** [See the design decision.](../../design/design-decisions.md#why-create--update-instead-of-just-render)
+
 ## Returns
 
 A cleanup function.
@@ -109,6 +111,8 @@ repeat('#todo-list', store, 'todos', {
 | Key removed (immutable replace) | Removes row |
 | Reorder — same keys (immutable replace) | Moves existing nodes, `update` fires (index changed) |
 | Same key, item ref changed | Only that row's `update` fires |
+
+> **→ Why check both reference AND index to skip `update`?** [See the design decision.](../../design/design-decisions.md#why-check-both-reference-and-index-for-update-skip)
 
 ## Using with `computed`
 

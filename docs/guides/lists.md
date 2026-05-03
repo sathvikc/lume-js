@@ -43,6 +43,8 @@ Use `render` alone for simple, read-only lists. Use `create` + `update` for list
 
 `repeat` subscribes to the array key on the store. To trigger a re-render, **replace the array** with a new reference — in-place mutations like `push` or `splice` are invisible to Lume because the array reference does not change:
 
+> **→ Why immutable updates?** Reference-equality checks are instant and require no Array monkey-patching — [see the design decision.](../design/design-decisions.md#why-no-loop-rendering-in-core-v-for-x-for)
+
 ```js
 // ❌ Mutations — NOT reactive, repeat() will not re-render
 store.todos.push(newTodo);

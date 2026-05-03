@@ -22,6 +22,7 @@ export const DOCS_SITEMAP = [
   { slug: 'migration',            title: 'Migrating from 1.x',  category: 'Reference',       file: 'docs/guides/migration.md' },
   { slug: 'changelog',            title: 'Changelog',            category: 'Reference',       file: 'docs/CHANGELOG.md' },
   { slug: 'faq',                  title: 'FAQ',                  category: 'Reference',       file: 'docs/guides/faq.md' },
+  { slug: 'design-decisions',     title: 'Design decisions',     category: 'Design',          file: 'docs/design/design-decisions.md' },
 ];
 
 // Reverse map: file path → slug (for link rewriting)

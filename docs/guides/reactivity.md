@@ -6,6 +6,8 @@ Lume's reactivity is a thin layer over JavaScript's built-in `Proxy`. This page 
 
 `state(obj)` returns `new Proxy(obj, handlers)`. The handlers intercept two traps:
 
+> **→ Why only objects?** `state()` only accepts plain objects, never primitives — [see the design decision.](../design/design-decisions.md#why-only-objects-in-state-not-primitives)
+
 ```js
 // Simplified pseudocode of what state() does
 function state(target) {
@@ -49,6 +51,8 @@ After the function finishes, the context is cleared. Writing to a store key insi
 
 On write, Lume queues the notification with `queueMicrotask`. On the next microtask, it calls every subscriber registered for that key. DOM updates therefore happen after the current synchronous JavaScript task finishes.
 
+> **→ Why microtasks?** Batching writes lets multiple property changes collapse into one DOM update — [see the design decision.](../design/design-decisions.md#why-microtask-batching-instead-of-synchronous-updates)
+
 ## Nested objects
 
 Nested objects are **not** automatically reactive. The `get` trap returns `target[key]` directly without wrapping it in a new proxy. To make a nested object reactive, wrap it in its own `state()` call:
@@ -74,6 +78,8 @@ store.todos = [...store.todos, { text: 'buy milk' }];
 // ❌ NOT reactive — mutates the raw array directly
 store.todos.push({ text: 'buy milk' }); // subscribers NOT notified
 ```
+
+> **→ Why no auto-nested reactivity?** Explicit wrapping keeps performance predictable and ownership clear — [see the design decision.](../design/design-decisions.md#why-nested-state-must-be-explicitly-wrapped)
 
 ## What is not reactive
 

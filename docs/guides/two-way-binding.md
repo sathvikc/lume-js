@@ -2,6 +2,8 @@
 
 A single `data-bind` attribute handles all form controls. Lume inspects the element type and wires the correct DOM property and event automatically — you don't need to configure anything.
 
+> **→ Why one attribute?** [Why `data-bind` only, not `data-model` or `data-text`](../design/design-decisions.md#why-data-bind-only-not-data-model-or-data-text)
+
 ## The rules
 
 | Element | Property | Event |

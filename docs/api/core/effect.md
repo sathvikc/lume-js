@@ -27,6 +27,8 @@ A dispose function. Call it to stop the effect and free its subscriptions.
 
 You can also pass an explicit `deps` array of `[store, ...keys]` tuples to skip auto-tracking and subscribe to specific keys only.
 
+> **→ Why support explicit deps?** [See the design decision.](../../design/design-decisions.md#why-support-explicit-dependencies-in-effect)
+
 ```js
 import { state, effect } from 'lume-js';
 

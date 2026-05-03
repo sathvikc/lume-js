@@ -27,6 +27,8 @@ An object with:
 
 ## Description
 
+> **→ Why is `computed` an addon and not part of core?** [See the design decision.](../../design/design-decisions.md#why-no-computed-properties-in-core)
+
 `computed` uses the same auto-tracking as `effect`: all store reads inside `fn` become dependencies. When any dependency changes, `fn` re-runs on the next microtask flush. The result is cached — `fn` never runs more than once per dependency change, no matter how many places read `computed.value`.
 
 ```js
