@@ -6,7 +6,7 @@ import { createRouter, link }            from './lume-router.js';
 import { renderHome }                    from './pages/home.js';
 import { renderExamples }                from './pages/examples.js';
 import { renderCompare, renderNotFound } from './pages/compare.js';
-import { renderDocs, wireTOC, fetchDoc, DOCS_SITEMAP } from './pages/docs.js';
+import { renderDocs, wireTOC, wireHeadingAnchors, fetchDoc, DOCS_SITEMAP } from './pages/docs.js';
 
 /* =========================================================================
    MARKED INIT — configure syntax highlighting on the global marked instance
@@ -115,7 +115,22 @@ watch(store, 'route', async (r) => {
 
   if (window.hljs) outlet.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
 
-  if (r.page === 'docs') wireTOC();
+  if (r.page === 'docs') {
+    wireTOC();
+    wireHeadingAnchors(router.mode);
+
+    // On initial load (or after a 404 redirect), scroll to a heading if the
+    // URL has a fragment — e.g. /docs/intro#some-section after refresh.
+    const hash = location.hash.slice(1);
+    if (hash) {
+      requestAnimationFrame(() => {
+        const el = document.getElementById(hash);
+        if (!el) return;
+        const top = el.getBoundingClientRect().top + window.scrollY - 80 - 12;
+        window.scrollTo({ top, behavior: 'smooth' });
+      });
+    }
+  }
 }, { immediate: true });
 
 function renderPage(r) {
