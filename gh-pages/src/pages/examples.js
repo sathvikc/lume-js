@@ -9,7 +9,7 @@ const EXAMPLES = [
 
 export function renderExamples() {
   return `
-    <section class="py-24 border-t-0">
+    <section class="py-12 md:py-24 border-t-0">
       <div class="max-w-7xl mx-auto px-4 sm:px-6">
         <div class="mb-12 max-w-2xl">
           <div class="font-mono text-[11.5px] font-medium text-accent-fg uppercase tracking-[0.12em] mb-3">Examples</div>

@@ -1,6 +1,6 @@
 export function renderCompare() {
   return `
-    <section class="py-24 border-t-0">
+    <section class="py-12 md:py-24 border-t-0">
       <div class="max-w-7xl mx-auto px-4 sm:px-6">
         <div class="mb-12 max-w-2xl">
           <div class="font-mono text-[11.5px] font-medium text-accent-fg uppercase tracking-[0.12em] mb-3">In context</div>
@@ -44,7 +44,7 @@ export function renderNotFound() {
       <div class="font-mono text-[11.5px] font-medium text-accent-fg uppercase tracking-[0.12em] mb-4">404</div>
       <h1 class="font-serif font-normal leading-[1.1] tracking-[-0.02em] text-fg mb-4 text-balance" style="font-size:clamp(28px,4vw,44px)">Page not found.</h1>
       <p class="text-[17px] text-fg-muted mx-auto mb-8 text-pretty">We couldn't find <code class="font-mono">${location.pathname}</code>.</p>
-      <a class="inline-flex items-center gap-2 px-[18px] py-[11px] rounded-[10px] font-medium text-sm bg-accent text-accent-contrast border border-transparent transition-all hover:brightness-[1.08] hover:-translate-y-px"
+      <a class="inline-flex items-center justify-center gap-2 px-[18px] py-[13px] rounded-[14px] font-semibold text-sm bg-accent text-accent-contrast border border-transparent transition-all hover:brightness-[1.08] hover:-translate-y-px active:scale-[0.98] w-full sm:w-auto"
          href="/" data-link>Back to home</a>
     </div>
   `;

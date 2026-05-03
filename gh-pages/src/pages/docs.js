@@ -118,13 +118,13 @@ export function renderDocsArticle(slug, html) {
     <article class="docs-main min-w-0">
       <div class="crumb">Docs · ${meta.category}</div>
       ${html}
-      <div class="grid grid-cols-2 gap-4 mt-16 pt-8 border-t border-border">
-        ${prev ? `<a href="/docs/${prev.slug}" data-link class="block p-4 px-5 bg-bg-raised border border-border rounded-[10px] text-fg no-underline transition-all hover:border-accent">
-          <div class="font-mono text-[10.5px] text-fg-subtle uppercase tracking-widest mb-1">← Previous</div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-16 pt-8 border-t border-border">
+        ${prev ? `<a href="/docs/${prev.slug}" data-link class="group block p-4 px-5 bg-bg-raised border border-border rounded-2xl text-fg no-underline transition-all hover:border-accent hover:bg-bg-sunken active:scale-[0.98]">
+          <div class="font-mono text-[10.5px] text-fg-subtle uppercase tracking-widest mb-1 transition-colors group-hover:text-accent">← Previous</div>
           <div class="font-serif font-medium text-lg text-fg">${prev.title}</div>
         </a>` : '<span></span>'}
-        ${next ? `<a href="/docs/${next.slug}" data-link class="block p-4 px-5 bg-bg-raised border border-border rounded-[10px] text-fg no-underline text-right transition-all hover:border-accent">
-          <div class="font-mono text-[10.5px] text-fg-subtle uppercase tracking-widest mb-1">Next →</div>
+        ${next ? `<a href="/docs/${next.slug}" data-link class="group block p-4 px-5 bg-bg-raised border border-border rounded-2xl text-fg no-underline text-right transition-all hover:border-accent hover:bg-bg-sunken active:scale-[0.98]">
+          <div class="font-mono text-[10.5px] text-fg-subtle uppercase tracking-widest mb-1 transition-colors group-hover:text-accent">Next →</div>
           <div class="font-serif font-medium text-lg text-fg">${next.title}</div>
         </a>` : '<span></span>'}
       </div>

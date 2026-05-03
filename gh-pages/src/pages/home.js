@@ -1,38 +1,38 @@
 export function renderHome() {
   return `
-    <section class="relative overflow-hidden pt-20 pb-16">
+    <section class="relative overflow-hidden pt-10 md:pt-20 pb-16">
       <div class="hero-glow" aria-hidden="true"></div>
       <div class="max-w-7xl mx-auto px-4 sm:px-6">
         <span class="inline-flex items-center gap-2 font-mono text-xs font-medium text-accent-fg bg-accent-soft px-2.5 py-1 rounded-full border border-accent/30">
           <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-dot"></span>
           v2.0.0-beta.1 · now with extensible handlers
         </span>
-        <h1 class="hero-title font-serif font-normal leading-[1.02] tracking-[-0.025em] text-fg mt-6 mb-5 text-balance"
-            style="font-size: clamp(40px, 6vw, 78px)">
+        <h1 class="hero-title font-serif font-normal leading-[1.1] tracking-[-0.02em] text-fg mt-6 mb-5 text-balance"
+            style="font-size: clamp(34px, 10vw, 78px)">
           Reactivity that<br/>follows <em>web standards</em>.
         </h1>
         <p class="text-[19px] text-fg-muted max-w-2xl leading-[1.55] text-pretty mb-8">
           Lume.js is a minimal reactive state library. It binds plain JavaScript objects to ordinary HTML using <code class="font-mono">data-*</code> attributes — no custom syntax, no compiler, no virtual DOM. 2.4&#8239;KB, shipped.
         </p>
-        <div class="flex flex-wrap gap-3 mb-10 items-center">
-          <a class="inline-flex items-center gap-2 px-[18px] py-[11px] rounded-[10px] font-medium text-sm border border-transparent cursor-pointer transition-all bg-accent text-accent-contrast shadow-[0_6px_18px_-8px_color-mix(in_oklab,var(--accent)_70%,transparent)] hover:brightness-[1.08] hover:-translate-y-px"
+        <div class="flex flex-col sm:flex-row gap-3 mb-10 items-stretch sm:items-center">
+          <a class="inline-flex items-center justify-center gap-2 px-[18px] py-[13px] rounded-[14px] font-semibold text-sm border border-transparent cursor-pointer transition-all bg-accent text-accent-contrast shadow-[0_6px_18px_-8px_color-mix(in_oklab,var(--accent)_70%,transparent)] hover:brightness-[1.08] hover:-translate-y-px active:scale-[0.98] w-full sm:w-auto"
              href="/docs/introduction" data-link>
             Read the docs
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
           </a>
-          <a class="inline-flex items-center gap-2 px-[18px] py-[11px] rounded-[10px] font-medium text-sm border border-border cursor-pointer transition-all bg-bg-raised text-fg hover:border-border-strong hover:bg-bg-sunken"
-             href="/docs/installation" data-link>
+          <button class="inline-flex items-center justify-center gap-2 px-[18px] py-[13px] rounded-[14px] font-medium text-sm border border-border cursor-pointer transition-all bg-bg-raised text-fg hover:border-border-strong hover:bg-bg-sunken active:scale-[0.98] w-full sm:w-auto"
+                  onclick="copyToClipboard('npm i lume-js@next', this)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-            <code class="font-mono text-[12.5px] opacity-80">npm i lume-js@next</code>
-          </a>
+            <code class="font-mono text-[12.5px] opacity-80 pointer-events-none">npm i lume-js@next</code>
+          </button>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-6 border-t border-dashed border-border mt-4">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-8 pt-6 border-t border-dashed border-border mt-4">
           <div><div class="font-serif font-medium text-[28px] leading-none text-fg tracking-[-0.02em]">2.4<span class="text-base">kb</span></div><div class="font-mono text-[11px] text-fg-subtle uppercase tracking-widest mt-1.5">Core gzipped</div></div>
           <div><div class="font-serif font-medium text-[28px] leading-none text-fg tracking-[-0.02em]">231</div><div class="font-mono text-[11px] text-fg-subtle uppercase tracking-widest mt-1.5">Tests passing</div></div>
           <div><div class="font-serif font-medium text-[28px] leading-none text-fg tracking-[-0.02em]">0</div><div class="font-mono text-[11px] text-fg-subtle uppercase tracking-widest mt-1.5">Dependencies</div></div>
           <div><div class="font-serif font-medium text-[28px] leading-none text-fg tracking-[-0.02em]">100%</div><div class="font-mono text-[11px] text-fg-subtle uppercase tracking-widest mt-1.5">Valid HTML</div></div>
         </div>
-        <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch">
+        <div class="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch">
           <div class="bg-bg-raised border border-border rounded-2xl overflow-hidden flex flex-col">
             <div class="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border bg-bg-sunken">
               <span class="flex gap-1.5">
