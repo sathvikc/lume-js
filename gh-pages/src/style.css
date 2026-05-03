@@ -1,16 +1,298 @@
 @import "tailwindcss";
-
 @plugin "@tailwindcss/typography";
+@source "../src/**/*.js";
+@source "../*.html";
 
 @theme {
-    --color-brand-50: #eff6ff;
-    --color-brand-100: #dbeafe;
-    --color-brand-500: #3b82f6;
-    --color-brand-600: #2563eb;
-    --color-brand-700: #1d4ed8;
+  --font-family-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-family-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-family-serif: "Fraunces", ui-serif, Georgia, serif;
+
+  /* Semantic color tokens — resolved at runtime from per-theme CSS vars */
+  --color-bg:              var(--bg);
+  --color-bg-raised:       var(--bg-raised);
+  --color-bg-sunken:       var(--bg-sunken);
+  --color-bg-code:         var(--bg-code);
+  --color-fg:              var(--fg);
+  --color-fg-muted:        var(--fg-muted);
+  --color-fg-subtle:       var(--fg-subtle);
+  --color-border:          var(--border);
+  --color-border-strong:   var(--border-strong);
+  --color-accent:          var(--accent);
+  --color-accent-soft:     var(--accent-soft);
+  --color-accent-fg:       var(--accent-fg);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-success:         var(--success);
+  --color-logo-primary:    var(--logo-primary);
+  --color-logo-secondary:  var(--logo-secondary);
+  --color-logo-accent:     var(--logo-accent);
 }
 
-.docs-content>hr:last-of-type,
-.docs-content>p:last-of-type {
-    display: none;
+/* ─── Theme definitions ─── */
+[data-theme="light"] {
+  --bg: #fafaf7; --bg-sunken: #f3f2ec; --bg-raised: #ffffff; --bg-code: #faf8f3;
+  --fg: #18181b; --fg-muted: #52525b; --fg-subtle: #8a8a93;
+  --border: #e7e5de; --border-strong: #d6d3ca;
+  --accent: #b8541f; --accent-soft: #f6e3d3; --accent-fg: #8a3e14; --accent-contrast: #ffffff;
+  --success: #2f7d4a;
+  --logo-primary: #b8541f; --logo-secondary: #d97757; --logo-accent: #f5c54a;
+  color-scheme: light;
 }
+[data-theme="dark"] {
+  --bg: #0b0b0c; --bg-sunken: #0f0f11; --bg-raised: #151517; --bg-code: #0f0f11;
+  --fg: #f3f1ea; --fg-muted: #a3a098; --fg-subtle: #6a685f;
+  --border: #232327; --border-strong: #33333a;
+  --accent: #f5c54a; --accent-soft: #2a220e; --accent-fg: #f5c54a; --accent-contrast: #111113;
+  --success: #66c28b;
+  --logo-primary: #ff8f6b; --logo-secondary: #f5c54a; --logo-accent: #ffd97a;
+  color-scheme: dark;
+}
+[data-theme="dim"] {
+  --bg: #1a1b26; --bg-sunken: #16171f; --bg-raised: #1f2030; --bg-code: #16171f;
+  --fg: #c0caf5; --fg-muted: #8a93bd; --fg-subtle: #565f89;
+  --border: #2a2b3d; --border-strong: #3b3d57;
+  --accent: #7aa2f7; --accent-soft: #1c2239; --accent-fg: #9db4ff; --accent-contrast: #0f1019;
+  --success: #9ece6a;
+  --logo-primary: #bb9af7; --logo-secondary: #7aa2f7; --logo-accent: #7dcfff;
+  color-scheme: dark;
+}
+[data-theme="solar"] {
+  --bg: #fdf6e3; --bg-sunken: #f4ecd6; --bg-raised: #fffaf0; --bg-code: #f4ecd6;
+  --fg: #3a2f1b; --fg-muted: #6b5d42; --fg-subtle: #93876a;
+  --border: #e5d9b6; --border-strong: #cab88a;
+  --accent: #b8541f; --accent-soft: #f1d9bc; --accent-fg: #8a3e14; --accent-contrast: #fffaf0;
+  --success: #557d2e;
+  --logo-primary: #b8541f; --logo-secondary: #cb4b16; --logo-accent: #d97757;
+  color-scheme: light;
+}
+
+/* ─── Base ─── */
+html { background: var(--bg); }
+body {
+  font-family: var(--font-family-sans);
+  color: var(--fg);
+  background: var(--bg);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+a { color: inherit; text-decoration: none; }
+code, kbd, pre { font-family: var(--font-family-mono); }
+::selection { background: var(--accent-soft); color: var(--accent-fg); }
+
+/* ─── Hero glow (radial gradient animation — not doable in Tailwind) ─── */
+.hero-glow {
+  position: absolute;
+  inset: -120px 0 auto 0;
+  height: 420px;
+  pointer-events: none;
+  opacity: 0.7;
+  background:
+    radial-gradient(600px 220px at 28% 0%, color-mix(in oklab, var(--logo-primary) 28%, transparent), transparent 70%),
+    radial-gradient(500px 220px at 72% 10%, color-mix(in oklab, var(--logo-accent) 22%, transparent), transparent 70%);
+}
+
+/* ─── Pulse animation ─── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+.animate-pulse-dot { animation: pulse 2.4s ease-in-out infinite; }
+
+/* ─── Page enter animation ─── */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: page-enter 0.22s ease both; }
+
+/* ─── SPA page transitions ─── */
+.page { opacity: 1; transition: opacity 0.18s ease; }
+.page.is-leaving { opacity: 0; }
+
+/* ─── Nav active underline ─── */
+#primary-nav a.active {
+  color: var(--accent-fg);
+  position: relative;
+}
+#primary-nav a.active::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+/* ─── Theme menu open state ─── */
+.theme-menu {
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.theme-menu.is-open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* ─── Theme option current ─── */
+.theme-option .check { opacity: 0; }
+.theme-option.is-current { color: var(--accent-fg); }
+.theme-option.is-current .check { opacity: 1; }
+
+/* ─── Mobile docs drawer ─── */
+/* Tailwind v4 uses the CSS `translate` property, so we must match it here */
+.docs-drawer { translate: -100% 0; transition: translate 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+.docs-drawer.is-open { translate: 0 0; }
+.docs-drawer-backdrop { transition: opacity 0.25s ease; }
+
+/* ─── Docs sidebar active link ─── */
+/* Uses inset box-shadow instead of border-left so the indicator respects border-radius
+   with no corner colour spill. No negative margin needed. */
+.docs-sidebar a.active,
+.docs-drawer a.active {
+  color: var(--accent-fg);
+  background: var(--accent-soft);
+  box-shadow: inset 2px 0 0 var(--accent);
+  font-weight: 500;
+}
+
+/* Focus outline drawn inward — prevents overflow-y:auto from clipping it */
+.docs-sidebar a:focus-visible,
+.docs-drawer a:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: -3px !important;
+  border-radius: 6px;
+}
+
+/* Fix Tailwind's two-hop CSS variable chain for accent-contrast text.
+   --color-accent-contrast → var(--accent-contrast) can mis-resolve across layers,
+   causing text to inherit the body colour instead. This shortcut wins. */
+.text-accent-contrast { color: var(--accent-contrast) !important; }
+
+/* ─── TOC active link ─── */
+.toc a.is-current {
+  color: var(--accent-fg);
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* ─── Code block (hljs) overrides ─── */
+.hljs { background: transparent !important; padding: 0 !important; }
+
+/* ─── Highlight.js theme toggling ─── */
+[data-theme="light"] #hljs-dark,
+[data-theme="solar"] #hljs-dark { display: none; }
+[data-theme="dark"]  #hljs-light,
+[data-theme="dim"]   #hljs-light { display: none; }
+
+/* ─── Compare table lume column highlight ─── */
+.lume-col {
+  background: color-mix(in oklab, var(--accent-soft) 50%, transparent);
+  color: var(--accent-fg);
+  font-weight: 600;
+  border-left: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
+  border-right: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
+}
+
+/* ─── Parity tag even state ─── */
+.parity-tag-even {
+  color: var(--accent-fg);
+  border-color: color-mix(in oklab, var(--accent) 40%, transparent);
+  background: var(--accent-soft);
+}
+
+/* ─── Search backdrop / box ─── */
+#search-backdrop {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+#search-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+#search-backdrop.is-open #search-box {
+  transform: translateY(0) scale(1);
+}
+#search-box {
+  transform: translateY(-8px) scale(0.98);
+  transition: transform 0.18s ease;
+}
+
+/* ─── Search results empty state ─── */
+#search-results:empty::after {
+  content: "No results";
+  display: block;
+  text-align: center;
+  color: var(--fg-subtle);
+  font-family: var(--font-family-mono);
+  font-size: 13px;
+  padding: 32px;
+}
+
+/* ─── Hero title gradient em ─── */
+.hero-title em {
+  font-style: italic;
+  color: transparent;
+  background: linear-gradient(115deg, var(--logo-primary), var(--logo-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* ─── Counter pill even state ─── */
+.tag.is-even {
+  color: var(--accent-fg);
+  border-color: color-mix(in oklab, var(--accent) 40%, transparent);
+  background: var(--accent-soft);
+}
+
+/* ─── doc-table ─── */
+.doc-table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13.5px; }
+.doc-table th, .doc-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+.doc-table thead th { font-family: var(--font-family-mono); font-size: 10.5px; font-weight: 600; color: var(--fg-subtle); text-transform: uppercase; letter-spacing: 0.08em; background: var(--bg-sunken); }
+
+/* ─── Markdown-rendered tables inside docs prose ─── */
+.docs-main table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13.5px; display: table; }
+.docs-main th, .docs-main td { padding: 10px 14px; text-align: left; border: 1px solid var(--border); vertical-align: top; color: var(--fg-muted); }
+.docs-main thead th { font-family: var(--font-family-mono); font-size: 10.5px; font-weight: 600; color: var(--fg-subtle); text-transform: uppercase; letter-spacing: 0.08em; background: var(--bg-sunken); border-color: var(--border); }
+.docs-main tbody tr:hover td { background: var(--bg-sunken); }
+
+/* ─── Callout ─── */
+.callout { margin: 24px 0; padding: 16px 20px; background: var(--bg-sunken); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 6px; }
+.callout strong { color: var(--accent-fg); display: block; margin-bottom: 6px; }
+.callout p { margin: 0; color: var(--fg-muted); font-size: 14px; }
+.callout-ok { border-left-color: var(--success); }
+.callout-ok strong { color: var(--success); }
+
+/* ─── Sig block ─── */
+.sig { padding: 14px 18px; background: var(--bg-sunken); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 6px; margin: 0 0 24px; }
+.sig h4 { margin: 0 0 6px; font-family: var(--font-family-mono); font-size: 10.5px; color: var(--fg-subtle); text-transform: uppercase; letter-spacing: 0.08em; }
+.sig pre { margin: 0; padding: 0; background: none; border: 0; }
+
+/* ─── Docs-main markdown prose overrides ─── */
+.docs-main { max-width: 780px; }
+.docs-main .crumb { font-family: var(--font-family-mono); font-size: 11.5px; color: var(--fg-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+.docs-main h1 { font-family: var(--font-family-serif); font-weight: 500; font-size: 42px; line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 24px; color: var(--fg); }
+.docs-main h2 { font-family: var(--font-family-serif); font-weight: 500; font-size: 26px; letter-spacing: -0.01em; margin: 48px 0 16px; color: var(--fg); padding-top: 12px; border-top: 1px solid var(--border); }
+.docs-main h2:first-of-type { border-top: 0; padding-top: 0; }
+.docs-main h3 { font-size: 18px; font-weight: 600; margin: 28px 0 10px; color: var(--fg); }
+.docs-main h4 { font-size: 14px; font-weight: 600; margin: 20px 0 8px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.docs-main p { margin: 0 0 16px; color: var(--fg-muted); line-height: 1.7; }
+.docs-main p.lede { font-size: 19px; color: var(--fg); line-height: 1.5; margin-bottom: 32px; font-weight: 400; }
+.docs-main strong { color: var(--fg); font-weight: 600; }
+.docs-main ul, .docs-main ol { margin: 0 0 16px; padding-left: 22px; color: var(--fg-muted); line-height: 1.7; }
+.docs-main li { margin-bottom: 6px; }
+.docs-main code { font-family: var(--font-family-mono); font-size: 0.88em; background: var(--bg-sunken); color: var(--accent-fg); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); }
+.docs-main pre { margin: 16px 0 24px; padding: 18px 20px; background: var(--bg-code); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; overflow-x: auto; line-height: 1.55; }
+.docs-main pre code { background: none; padding: 0; border: 0; color: var(--fg); font-size: inherit; }
+.docs-main a { color: var(--accent-fg); text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--accent) 40%, transparent); text-underline-offset: 3px; }
+.docs-main a:hover { text-decoration-color: var(--accent); }
+.docs-main .small { font-size: 13px; color: var(--fg-subtle); }
+
+[hidden] { display: none !important; }

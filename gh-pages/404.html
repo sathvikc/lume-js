@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lume.js</title>
+<style>
+  /* Brief flash of a loading screen before redirect */
+  body { margin: 0; background: #0b0b0c; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  svg { animation: p 1.2s ease-in-out infinite alternate; }
+  @keyframes p { from { opacity: 0.4 } to { opacity: 1 } }
+</style>
+</head>
+<body>
+<!-- GH Pages SPA Fallback
+     GitHub Pages serves this file for any unmatched URL.
+     We encode the real path into ?_r=… and redirect to index.html,
+     which reads that param and restores the correct URL via replaceState.
+-->
+<svg width="48" height="48" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="g" x1="50%" y1="100%" x2="50%" y2="0%">
+      <stop offset="0%" stop-color="#ff8f6b"/>
+      <stop offset="100%" stop-color="#f5c54a"/>
+    </linearGradient>
+  </defs>
+  <path d="M32 4C32 4 18 22 18 36C18 46 24 54 32 58C40 54 46 46 46 36C46 22 32 4 32 4Z" fill="url(#g)"/>
+  <path d="M32 18C32 18 24 30 24 40C24 48 28 52 32 54C36 52 40 48 40 40C40 30 32 18 32 18Z" fill="#f5c54a" opacity="0.5"/>
+</svg>
+<script>
+  // Encode current path + search into the _r query param
+  // then redirect to the root index.html
+  var path = location.pathname + location.search + location.hash;
+  // Don't encode if we're already at root (shouldn't happen but guard)
+  if (path === '/' || path === '') {
+    location.replace('/');
+  } else {
+    var encoded = encodeURIComponent(path);
+    location.replace('/?_r=' + encoded);
+  }
+</script>
+</body>
+</html>
