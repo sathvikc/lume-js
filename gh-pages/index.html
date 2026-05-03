@@ -53,7 +53,10 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&display=swap"
-    rel="stylesheet">
+    rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&display=swap"
+    rel="stylesheet"></noscript>
 
   <link id="hljs-light" rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css" media="print" onload="this.media='all'" disabled>
@@ -369,6 +372,10 @@
   </div>
 
   <script type="module" src="./src/app.js"></script>
+
+  <noscript>
+    <style>#outlet::before { content: 'JavaScript is required to view this site. Please enable JavaScript in your browser.'; display:block; padding:2rem; font-family:system-ui,sans-serif; }</style>
+  </noscript>
 </body>
 
 </html>
