@@ -209,8 +209,56 @@
     </div>
   </header>
 
-  <!-- ========================== MAIN (SPA outlet) ========================== -->
+  <!-- ========================== MAIN (SPA outlet — non-docs pages) ========================== -->
   <main id="outlet" class="min-h-[60vh]"></main>
+
+  <!-- ========================== DOCS SHELL (persistent — sidebar never re-renders) ========================== -->
+  <div id="docs-shell" hidden>
+
+    <!-- Mobile nav bar -->
+    <div class="lg:hidden sticky top-16 z-20 bg-bg/90 backdrop-blur border-b border-border px-4 py-2.5 flex items-center gap-3">
+      <button id="docs-mobile-toggle"
+              class="inline-flex items-center gap-2 text-[13px] font-medium text-fg-muted border border-border bg-bg-raised rounded-lg px-3 py-1.5 transition-all hover:text-fg hover:border-border-strong">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        Contents
+      </button>
+      <span id="docs-breadcrumb" class="text-[12px] text-fg-subtle font-mono"></span>
+    </div>
+
+    <!-- Mobile drawer backdrop -->
+    <div id="docs-drawer-backdrop" class="docs-drawer-backdrop fixed inset-0 z-40 bg-[rgba(0,0,0,.45)] backdrop-blur-[2px] hidden lg:hidden"></div>
+
+    <!-- Mobile drawer -->
+    <div id="docs-drawer" class="docs-drawer fixed top-0 left-0 z-50 h-full w-72 max-w-[85vw] bg-bg border-r border-border overflow-y-auto text-[13.5px] p-5 lg:hidden">
+      <div class="flex items-center justify-between mb-4">
+        <span class="font-mono text-[11px] font-semibold text-fg-subtle uppercase tracking-widest">Contents</span>
+        <button id="docs-drawer-close" class="w-8 h-8 inline-flex items-center justify-center rounded-md text-fg-muted hover:text-fg hover:bg-bg-sunken transition-all border-0 bg-transparent cursor-pointer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="flex items-center gap-2 px-3 py-2 mb-4 bg-bg-raised border border-border rounded-lg">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-fg-subtle shrink-0"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="docs-search-mobile" type="text" placeholder="Filter pages…" autocomplete="off"
+               class="flex-1 border-0 bg-transparent text-fg font-sans text-[13px] outline-none placeholder:text-fg-subtle">
+      </div>
+      <div id="docs-nav-mobile"></div>
+    </div>
+
+    <!-- Main layout grid -->
+    <div class="max-w-[1280px] mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-[260px_1fr] xl:grid-cols-[260px_1fr_200px] gap-10 pt-10 pb-20 min-h-[calc(100vh-64px)]">
+      <aside class="docs-sidebar hidden lg:block w-64 shrink-0 sticky top-20 self-start max-h-[calc(100vh-80px)] overflow-y-auto text-[13.5px] pr-2">
+        <div class="flex items-center gap-2 px-3 py-2 mb-4 bg-bg-raised border border-border rounded-lg">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-fg-subtle shrink-0"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="docs-search" type="text" placeholder="Filter pages…" autocomplete="off"
+                 class="flex-1 border-0 bg-transparent text-fg font-sans text-[13px] outline-none placeholder:text-fg-subtle">
+        </div>
+        <nav id="docs-nav"></nav>
+      </aside>
+      <div id="docs-article-outlet" class="min-w-0"></div>
+      <aside class="toc hidden xl:block w-48 shrink-0 sticky top-20 self-start max-h-[calc(100vh-80px)] overflow-y-auto text-[12.5px]" id="toc"></aside>
+    </div>
+
+  </div>
 
   <!-- ========================== FOOTER ========================== -->
   <footer class="site-footer border-t border-border pt-12 pb-10 text-fg-muted text-[13.5px]">
