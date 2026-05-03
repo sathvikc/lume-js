@@ -29,6 +29,8 @@ const store = state({
 store.user.name = 'Grace'; // works — user is its own reactive store
 ```
 
+> **→ Why not auto-proxy nested objects?** Explicit wrapping keeps performance predictable and ownership clear — [see the design decision.](../design/design-decisions.md#why-nested-state-must-be-explicitly-wrapped)
+
 ## 2. Bindings
 
 `bindDom()` connects your store to the DOM. It scans for `data-*` attributes and keeps them live — when the store changes, the page updates automatically.
@@ -42,6 +44,8 @@ The built-in `data-bind` attribute is **two-way** on form controls and **one-way
 ```
 
 For visibility, classes, attributes, and more, use **handlers** — or write your own. A handler is just a plain object with `attr` and `apply`. See [Handlers](handlers.md).
+
+> **→ Why one `data-bind` attribute?** [Why `data-bind` only, not `data-model` or `data-text`](../design/design-decisions.md#why-data-bind-only-not-data-model-or-data-text)
 
 ## 3. Effects
 
@@ -94,6 +98,8 @@ Your store sits in the middle. Bindings and effects subscribe to it. When you ch
 ```
 
 No virtual DOM, no component tree, no build step required.
+
+> **→ Why no virtual DOM?** Direct DOM writes are faster for small-to-medium UIs and keep the library tiny — [see the design decision.](../design/design-decisions.md#why-no-virtual-dom)
 
 ---
 

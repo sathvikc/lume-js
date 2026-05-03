@@ -48,6 +48,8 @@ const store = state({
 store.settings.theme = 'light'; // notifies subscribers of 'theme'
 ```
 
+> **→ Why not auto-proxy nested objects?** Explicit wrapping keeps performance predictable and ownership clear — [see the design decision.](../../design/design-decisions.md#why-nested-state-must-be-explicitly-wrapped)
+
 ## What's not reactive
 
 | Type | Supported | Notes |
