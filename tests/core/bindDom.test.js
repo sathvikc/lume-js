@@ -784,6 +784,36 @@ describe('bindDom', () => {
     });
   });
 
+  describe('path resolution', () => {
+    it('binds flat key (no path splitting)', async () => {
+      const root = setupDOM(`<div><span data-bind="count"></span></div>`);
+      const store = state({ count: 42 });
+      const cleanup = bindDom(root, store);
+      expect(root.querySelector('span').textContent).toBe('42');
+      cleanup();
+    });
+
+    it('warns and skips when intermediate path is null', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const root = setupDOM(`<div><span data-bind="user.name"></span></div>`);
+      const store = state({ user: null });
+      const cleanup = bindDom(root, store);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[Lume.js]'));
+      cleanup();
+      warnSpy.mockRestore();
+    });
+
+    it('warns and skips when property does not exist in path', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const root = setupDOM(`<div><span data-bind="user.age"></span></div>`);
+      const store = state({ user: { name: 'A' } });
+      const cleanup = bindDom(root, store);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[Lume.js]'));
+      cleanup();
+      warnSpy.mockRestore();
+    });
+  });
+
   describe('edge cases', () => {
     it('select-multiple only captures first selected value', async () => {
       const root = setupDOM(`

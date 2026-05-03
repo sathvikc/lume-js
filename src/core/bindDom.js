@@ -26,8 +26,6 @@
  *   const cleanup = bindDom(document.body, store);
  */
 
-import { resolvePath } from "./utils.js";
-
 // --- Default Handlers (always active, backwards compatible) ---
 
 const boolHandler = (name) => ({
@@ -148,6 +146,32 @@ function handleDataBind(el, store, path, bindingMap) {
   }
 
   return unsub;
+}
+
+/**
+ * Resolve a nested path in an object.
+ * Example: resolvePath(obj, ['user', 'address']) returns obj.user.address
+ */
+function resolvePath(obj, pathArr) {
+  if (!pathArr || pathArr.length === 0) {
+    return obj;
+  }
+  let current = obj;
+  for (let i = 0; i < pathArr.length; i++) {
+    const key = pathArr[i];
+    if (current === null || current === undefined) {
+      throw new Error(
+        `Cannot access property "${key}" of ${current} at path: ${pathArr.slice(0, i + 1).join('.')}`
+      );
+    }
+    if (!(key in current)) {
+      throw new Error(
+        `Property "${key}" does not exist at path: ${pathArr.slice(0, i + 1).join('.')}`
+      );
+    }
+    current = current[key];
+  }
+  return current;
 }
 
 /**
