@@ -192,6 +192,7 @@ export function state(obj, options = {}) {
             return () => {
               if (listeners[key]) {
                 listeners[key] = listeners[key].filter(subscriber => subscriber !== effectFn);
+                if (listeners[key].length === 0) delete listeners[key];
               }
             };
           })();
@@ -271,6 +272,7 @@ export function state(obj, options = {}) {
     return () => {
       if (listeners[key]) {
         listeners[key] = listeners[key].filter(subscriber => subscriber !== fn);
+        if (listeners[key].length === 0) delete listeners[key];
       }
     };
   };
