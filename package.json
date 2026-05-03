@@ -27,6 +27,7 @@
   "scripts": {
     "dev": "vite",
     "dev:site": "node scripts/build-site-assets.js && vite -c vite.site.config.js",
+    "build:site": "node scripts/build-site-assets.js && vite build -c vite.site.config.js",
     "build": "node scripts/build.js",
     "size": "node scripts/check-size.js",
     "test": "vitest run",

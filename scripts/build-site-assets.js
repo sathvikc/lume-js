@@ -8,66 +8,53 @@ const publicDir = path.resolve(rootDir, 'gh-pages/public');
 
 // Ensure public dir exists
 if (!fs.existsSync(publicDir)) {
-    fs.mkdirSync(publicDir, { recursive: true });
+  fs.mkdirSync(publicDir, { recursive: true });
 }
 
 // Helper to copy directory
 function copyDir(src, dest) {
-    if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
-    const entries = fs.readdirSync(src, { withFileTypes: true });
-
-    for (const entry of entries) {
-        const srcPath = path.join(src, entry.name);
-        const destPath = path.join(dest, entry.name);
-
-        if (entry.isDirectory()) {
-            copyDir(srcPath, destPath);
-        } else {
-            fs.copyFileSync(srcPath, destPath);
-        }
-    }
+  if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) copyDir(srcPath, destPath);
+    else fs.copyFileSync(srcPath, destPath);
+  }
 }
 
-const packageJsonPath = path.resolve(rootDir, 'package.json');
-const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+const packageJson = JSON.parse(fs.readFileSync(path.resolve(rootDir, 'package.json'), 'utf-8'));
 const version = packageJson.version;
 
 console.log(`Using version: ${version}`);
-
 console.log('Copying assets...');
 copyDir(path.join(rootDir, 'docs'), path.join(publicDir, 'docs'));
 copyDir(path.join(rootDir, 'examples'), path.join(publicDir, 'examples'));
 
-console.log('Injecting import maps...');
-// Walk through examples and inject import map
+// Inject import maps into examples/index.html files
 function injectImportMap(dir) {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-            injectImportMap(fullPath);
-        } else if (entry.name === 'index.html') {
-            let content = fs.readFileSync(fullPath, 'utf-8');
-
-            // Check if import map already exists
-            if (!content.includes('<script type="importmap">')) {
-                const importMap = `  <script type="importmap">
-    {
-      "imports": {
-        "lume-js": "https://cdn.jsdelivr.net/npm/lume-js@${version}/src/index.js",
-        "lume-js/addons": "https://cdn.jsdelivr.net/npm/lume-js@${version}/src/addons/index.js",
-        "lume-js/handlers": "https://cdn.jsdelivr.net/npm/lume-js@${version}/src/handlers/index.js"
-      }
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      injectImportMap(fullPath);
+    } else if (entry.name === 'index.html') {
+      let content = fs.readFileSync(fullPath, 'utf-8');
+      if (!content.includes('<script type="importmap">')) {
+        const importMap = `  <script type="importmap">
+  {
+    "imports": {
+      "lume-js":          "https://cdn.jsdelivr.net/npm/lume-js@${version}/src/index.js",
+      "lume-js/addons":   "https://cdn.jsdelivr.net/npm/lume-js@${version}/src/addons/index.js",
+      "lume-js/handlers": "https://cdn.jsdelivr.net/npm/lume-js@${version}/src/handlers/index.js"
     }
+  }
   </script>
 `;
-                // Insert before </head>
-                content = content.replace('</head>', `${importMap}</head>`);
-                fs.writeFileSync(fullPath, content);
-                console.log(`Injected import map into ${fullPath}`);
-            }
-        }
+        content = content.replace('</head>', `${importMap}</head>`);
+        fs.writeFileSync(fullPath, content);
+        console.log(`Injected import map: ${fullPath}`);
+      }
     }
+  }
 }
 
 injectImportMap(path.join(publicDir, 'examples'));
