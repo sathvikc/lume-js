@@ -373,3 +373,25 @@ export interface Debug {
  */
 export const debug: Debug;
 
+/**
+ * Returns true if the value is a Lume reactive proxy created by state().
+ * Uses duck-typing: checks for the presence of $subscribe.
+ * This is a type guard that narrows the type to ReactiveState.
+ * 
+ * @param obj - Value to check
+ * @returns true if obj is a ReactiveState, with type narrowing
+ * 
+ * @example
+ * ```typescript
+ * import { isReactive } from 'lume-js/addons';
+ * 
+ * function process(data: unknown) {
+ *   if (isReactive(data)) {
+ *     // data is now typed as ReactiveState<object>
+ *     data.$subscribe('key', () => {});
+ *   }
+ * }
+ * ```
+ */
+export function isReactive(obj: unknown): obj is ReactiveState<object>;
+

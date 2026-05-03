@@ -279,13 +279,3 @@ export function state(obj, options = {}) {
 
   return proxy;
 }
-
-/**
- * Determine if an object is a Lume reactive proxy.
- * Defensive: ensures object and marker presence.
- * @param {any} obj
- * @returns {boolean}
- */
-export function isReactive(obj) {
-  return !!(obj && typeof obj === 'object' && obj[REACTIVE_MARKER]);
-}
