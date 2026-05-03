@@ -6,7 +6,7 @@ import { createRouter, link } from './lume-router.js';
 import { renderHome } from './pages/home.js';
 import { renderExamples } from './pages/examples.js';
 import { renderCompare, renderNotFound } from './pages/compare.js';
-import { renderDocs, wireTOC, wireHeadingAnchors, fetchDoc, DOCS_SITEMAP } from './pages/docs.js';
+import { renderDocsArticle, mountDocsShell, updateDocsShellForSlug, wireTOC, wireHeadingAnchors, fetchDoc, DOCS_SITEMAP } from './pages/docs.js';
 
 /* =========================================================================
    MARKED INIT — configure syntax highlighting on the global marked instance
@@ -91,9 +91,14 @@ window.router = router;
 /* =========================================================================
    PAGE RENDERING
    ========================================================================= */
-const outlet = document.getElementById('outlet');
-let currentCleanup = null;
-let _currentDocSlug = null; // tracks which doc is rendered to detect heading-only nav
+const outlet      = document.getElementById('outlet');
+const docsShell   = document.getElementById('docs-shell');
+const articleOutlet = document.getElementById('docs-article-outlet');
+
+let currentCleanup    = null;
+let _tocCleanup       = null;
+let _docsShellMounted = false;
+let _currentDocSlug   = null;
 
 function _makeHashHeadingNav(slug) {
   return (headingId) => router.go(`/docs/${slug}/${headingId}`, { scrollTop: false });
@@ -116,42 +121,43 @@ watch(store, 'route', async (r) => {
 
   _currentDocSlug = r.page === 'docs' ? r.slug : null;
 
-  const current = outlet.firstElementChild;
-  if (current) current.classList.add('is-leaving');
-
-  // Fetch doc and run animation in parallel — MD files are small, fetch wins
-  const [docHtml] = await Promise.all([
-    r.page === 'docs' ? fetchDoc(r.slug || 'introduction') : Promise.resolve(null),
-    new Promise(res => setTimeout(res, 120)),
-  ]);
-
-  if (currentCleanup) { currentCleanup(); currentCleanup = null; }
-
-  let html;
   if (r.page === 'docs') {
-    html = renderDocs(r.slug || 'introduction', docHtml);
-  } else {
-    html = renderPage(r);
-  }
+    /* ── docs path: persistent shell, swap article only ── */
+    outlet.hidden    = true;
+    docsShell.hidden = false;
 
-  outlet.innerHTML = `<div class="page">${html}</div>`;
+    // Fade out current article
+    const leaving = articleOutlet.firstElementChild;
+    if (leaving) leaving.classList.add('is-leaving');
 
-  mountPage(r);
+    const slug = r.slug || 'introduction';
+    const [docHtml] = await Promise.all([
+      fetchDoc(slug),
+      new Promise(res => setTimeout(res, 120)),
+    ]);
 
-  currentCleanup = bindDom(outlet, store, {
-    handlers: [show, classToggle('active'), stringAttr('href'), link(router)]
-  });
+    // Mount sidebar + wire drawer/search on first docs visit
+    if (!_docsShellMounted) {
+      mountDocsShell(slug);
+      _docsShellMounted = true;
+    }
 
-  syncNav(r);
-  window.scrollTo({ top: 0, behavior: 'instant' });
+    // Swap article
+    if (_tocCleanup) { _tocCleanup(); _tocCleanup = null; }
+    articleOutlet.innerHTML = `<div class="page">${renderDocsArticle(slug, docHtml)}</div>`;
 
-  if (window.hljs) outlet.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+    // Update active sidebar link + mobile breadcrumb
+    updateDocsShellForSlug(slug);
 
-  if (r.page === 'docs') {
-    wireTOC();
-    wireHeadingAnchors(router.mode, _makeHashHeadingNav(r.slug || 'introduction'));
+    syncNav(r);
+    window.scrollTo({ top: 0, behavior: 'instant' });
 
-    // Scroll to heading if present in route (hash mode deep link) or URL fragment (history mode)
+    if (window.hljs) articleOutlet.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+
+    _tocCleanup = wireTOC();
+    wireHeadingAnchors(router.mode, _makeHashHeadingNav(slug));
+
+    // Scroll to heading if present in route (hash mode) or URL fragment (history mode)
     const target = r.heading || location.hash.slice(1);
     if (target) {
       requestAnimationFrame(() => {
@@ -161,6 +167,29 @@ watch(store, 'route', async (r) => {
         window.scrollTo({ top, behavior: 'smooth' });
       });
     }
+  } else {
+    /* ── non-docs path: use #outlet ── */
+    docsShell.hidden = true;
+    outlet.hidden    = false;
+
+    const current = outlet.firstElementChild;
+    if (current) current.classList.add('is-leaving');
+
+    await new Promise(res => setTimeout(res, 120));
+
+    if (currentCleanup) { currentCleanup(); currentCleanup = null; }
+
+    outlet.innerHTML = `<div class="page">${renderPage(r)}</div>`;
+    mountPage(r);
+
+    currentCleanup = bindDom(outlet, store, {
+      handlers: [show, classToggle('active'), stringAttr('href'), link(router)]
+    });
+
+    syncNav(r);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+
+    if (window.hljs) outlet.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
   }
 }, { immediate: true });
 
