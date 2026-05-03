@@ -51,6 +51,7 @@ const store = state({
   route: { page: 'home', slug: null, params: {} },
   year: new Date().getFullYear(),
   clock: '',
+  routerMode: localStorage.getItem('lume.routerMode') || 'history',
 });
 window.store = store;
 
@@ -222,6 +223,36 @@ const tickClock = () => {
 };
 tickClock();
 setInterval(tickClock, 1000);
+
+/* =========================================================================
+   ROUTER MODE TOGGLE
+   Lets users flip between hash and history routing live — great for seeing
+   how each mode behaves and how Lume.js handles both.
+   Switching saves the preference and reloads to the equivalent URL in the
+   new mode (history→hash: add '#' prefix; hash→history: strip '#', rely on
+   the 404 fallback to redirect back cleanly on GitHub Pages).
+   ========================================================================= */
+window.switchRouterMode = function(newMode) {
+  const base = import.meta.env.BASE_URL;             // '/lume-js/' or '/'
+  const baseNoSlash = base.replace(/\/$/, '');        // '/lume-js'  or ''
+
+  // Current app-relative path regardless of which mode we're in
+  const currentPath = router.mode === 'hash'
+    ? (location.hash || '#/').slice(1)                // '#/docs/foo' → '/docs/foo'
+    : (location.pathname.startsWith(baseNoSlash)
+        ? location.pathname.slice(baseNoSlash.length) || '/'
+        : location.pathname);
+
+  localStorage.setItem('lume.routerMode', newMode);
+
+  if (newMode === 'hash') {
+    // e.g. https://…/lume-js/#/docs/introduction
+    window.location.href = location.origin + base + '#' + currentPath;
+  } else {
+    // e.g. https://…/lume-js/docs/introduction  (GH Pages 404 trick picks it up)
+    window.location.href = location.origin + baseNoSlash + currentPath;
+  }
+};
 
 /* =========================================================================
    GLOBAL BINDINGS (header / footer)

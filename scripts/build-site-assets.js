@@ -30,6 +30,14 @@ console.log('Copying assets...');
 copyDir(path.join(rootDir, 'docs'), path.join(publicDir, 'docs'));
 copyDir(path.join(rootDir, 'examples'), path.join(publicDir, 'examples'));
 
+// Copy 404.html into publicDir so Vite includes it in the dist output.
+// GitHub Pages serves this file for any unmatched URL (history-mode SPA fallback).
+fs.copyFileSync(
+  path.resolve(rootDir, 'gh-pages/404.html'),
+  path.join(publicDir, '404.html')
+);
+console.log('Copied 404.html to public/');
+
 // Inject import maps into examples/index.html files
 function injectImportMap(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
