@@ -808,3 +808,13 @@ pre {
 [hidden] {
   display: none !important;
 }
+
+/* ─── CLS guardrail: reserve footer height so it never causes layout shift ─── */
+.site-footer {
+  min-height: 260px;
+}
+
+/* ─── CLS guardrail: main outlet must fill viewport above footer ─── */
+#outlet {
+  min-height: calc(100vh - 64px);
+}
