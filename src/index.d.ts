@@ -371,24 +371,6 @@ export function effect(fn: () => void): Unsubscribe;
  */
 export function effect(fn: () => void, deps: EffectDependency[]): Unsubscribe;
 
-/**
- * Check if a value is a Lume reactive proxy produced by state().
- * This is a type guard that narrows the type to ReactiveState.
- * 
- * @param obj - Value to check
- * @returns true if obj is a ReactiveState, with type narrowing
- * 
- * @example
- * ```typescript
- * function process(data: unknown) {
- *   if (isReactive(data)) {
- *     // data is now typed as ReactiveState<object>
- *     data.$subscribe('key', () => {});
- *   }
- * }
- * ```
- */
-export function isReactive(obj: unknown): obj is ReactiveState<object>;
 
 // ============================================================================
 // Utility Types

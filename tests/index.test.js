@@ -11,6 +11,10 @@ describe('public API', () => {
     expect(typeof api.effect).toBe('function');
   });
 
+  it('does not expose isReactive (moved to lume-js/addons)', () => {
+    expect(api).not.toHaveProperty('isReactive');
+  });
+
   it('handles automatic microtask batching', async () => {
     const element = document.createElement('div');
     element.innerHTML = '<input data-bind="value" />';

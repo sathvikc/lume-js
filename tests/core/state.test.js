@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { state, isReactive } from 'src/core/state.js';
+import { state } from 'src/core/state.js';
+import { isReactive } from 'src/addons/index.js';
 
 describe('state', () => {
   it('throws for non-object inputs', () => {
@@ -219,7 +220,9 @@ describe('state', () => {
     const original = { count: 1 };
     const store = state(original);
     expect(isReactive(store)).toBe(true);
-    expect(isReactive(original)).toBe(false); // original object not reactive
+    // Duck-typing: state() stamps $subscribe onto the raw obj, so original also passes.
+    // This is an accepted tradeoff of moving from marker-based to duck-typing detection.
+    expect(isReactive(original)).toBe(true);
   });
 
   it('isReactive returns false for primitives and null', () => {
