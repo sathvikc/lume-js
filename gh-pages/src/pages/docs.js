@@ -288,31 +288,45 @@ const HEADER_OFFSET = 80;
  *             routing (#/docs/slug), so a second fragment isn't possible.
  *             The anchor icon is still shown so users see the difference.
  */
-export function wireHeadingAnchors(mode) {
+/**
+ * onHashHeadingNav(headingId) — called in hash mode when an anchor is clicked.
+ * Navigates to /docs/:slug/:heading via the router (no scroll-to-top, no re-render
+ * for same-slug pages). URL becomes e.g. #/docs/introduction/what-is-lume-js.
+ */
+export function wireHeadingAnchors(mode, onHashHeadingNav) {
   const main = document.querySelector('.docs-main');
   if (!main) return;
 
   main.querySelectorAll('h2[id], h3[id]').forEach(h => {
-    if (h.querySelector('.heading-anchor')) return; // already wired (no double-add)
+    if (h.querySelector('.heading-anchor')) return;
 
     const anchor = document.createElement('a');
     anchor.className = 'heading-anchor';
-    anchor.href = '#' + h.id;
     anchor.setAttribute('aria-label', 'Link to this section');
-    if (mode !== 'history') {
-      anchor.title = 'Switch to History routing to get a shareable heading link';
-    }
     anchor.innerHTML = LINK_ICON;
+
+    if (mode === 'history') {
+      anchor.href = '#' + h.id;
+    } else {
+      // In hash mode the href is cosmetic — click is fully handled below
+      anchor.href = 'javascript:void(0)';
+    }
 
     anchor.addEventListener('click', (e) => {
       e.preventDefault();
-      const top = h.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET - 12;
-      window.scrollTo({ top, behavior: 'smooth' });
 
       if (mode === 'history') {
+        const top = h.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET - 12;
+        window.scrollTo({ top, behavior: 'smooth' });
         history.pushState({}, '', location.pathname + '#' + h.id);
         navigator.clipboard?.writeText(location.href).catch(() => {});
-        // Brief visual confirmation
+        anchor.classList.add('is-copied');
+        setTimeout(() => anchor.classList.remove('is-copied'), 1500);
+      } else if (onHashHeadingNav) {
+        // Navigate via router (updates hash URL, route watcher scrolls without re-render)
+        onHashHeadingNav(h.id);
+        // router.go() is synchronous — location.href is the new URL now
+        navigator.clipboard?.writeText(location.href).catch(() => {});
         anchor.classList.add('is-copied');
         setTimeout(() => anchor.classList.remove('is-copied'), 1500);
       }

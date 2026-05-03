@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-JMQZGCQ6L9"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
+    function gtag() { dataLayer.push(arguments); }
     gtag('js', new Date());
     gtag('config', 'G-JMQZGCQ6L9');
   </script>
@@ -13,26 +14,34 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lume.js — Reactivity that follows web standards</title>
-  <meta name="description" content="Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required." />
-  <meta name="keywords" content="javascript library, reactive, lightweight, no virtual dom, frontend, web development, lume.js, state management" />
+  <meta name="description"
+    content="Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required." />
+  <meta name="keywords"
+    content="javascript library, reactive, lightweight, no virtual dom, frontend, web development, lume.js, state management" />
   <meta name="author" content="Sathvik C" />
 
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://sathvikc.github.io/lume-js/" />
   <meta property="og:title" content="Lume.js — Reactivity that follows web standards" />
-  <meta property="og:description" content="Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required." />
+  <meta property="og:description"
+    content="Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required." />
 
   <meta property="twitter:card" content="summary_large_image" />
   <meta property="twitter:url" content="https://sathvikc.github.io/lume-js/" />
   <meta property="twitter:title" content="Lume.js — Reactivity that follows web standards" />
-  <meta property="twitter:description" content="Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required." />
+  <meta property="twitter:description"
+    content="Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required." />
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&display=swap"
+    rel="stylesheet">
 
-  <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css" disabled>
-  <link id="hljs-dark"  rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <link id="hljs-light" rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css" disabled>
+  <link id="hljs-dark" rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
   <!-- marked v4 — setOptions with highlight callback -->
@@ -40,9 +49,9 @@
 
   <!-- FOUC prevention: apply saved theme before first paint -->
   <script>
-    (function() {
+    (function () {
       var t = localStorage.getItem('lume.theme');
-      var valid = ['light','dark','dim','solar'];
+      var valid = ['light', 'dark', 'dim', 'solar'];
       if (!t || !valid.includes(t)) t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
       document.documentElement.dataset.theme = t;
       var isLight = t === 'light' || t === 'solar';
@@ -65,159 +74,236 @@
 
   <link rel="stylesheet" href="./src/style.css">
 </head>
+
 <body class="bg-bg text-fg font-sans">
 
-<!-- ========================== HEADER ========================== -->
-<header class="site-header sticky top-0 z-30 border-b border-border bg-bg/85 backdrop-blur-md backdrop-saturate-180">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-6">
-    <div class="flex items-center gap-4 relative">
-      <a class="inline-flex items-center gap-2 font-bold text-base tracking-tight" href="/" data-link>
-        <svg width="22" height="22" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-          <defs>
-            <linearGradient id="brandGrad" x1="50%" y1="100%" x2="50%" y2="0%">
-              <stop offset="0%"  stop-color="var(--logo-primary)" />
-              <stop offset="60%" stop-color="var(--logo-secondary)" />
-              <stop offset="100%" stop-color="var(--logo-accent)" />
-            </linearGradient>
-          </defs>
-          <path d="M32 4C32 4 18 22 18 36C18 46 24 54 32 58C40 54 46 46 46 36C46 22 32 4 32 4Z" fill="url(#brandGrad)"/>
-          <path d="M32 18C32 18 24 30 24 40C24 48 28 52 32 54C36 52 40 48 40 40C40 30 32 18 32 18Z" fill="var(--logo-accent)" opacity="0.5"/>
-        </svg>
-        <span class="text-fg">Lume<span class="text-logo-primary">.js</span></span>
-      </a>
-      <nav class="flex items-center gap-6 text-sm" aria-label="Primary" id="primary-nav">
-        <a class="text-fg-muted hover:text-fg transition-colors py-1.5" href="/"         data-link data-route="home">Home</a>
-        <a class="text-fg-muted hover:text-fg transition-colors py-1.5" href="/docs"     data-link data-route="docs">Docs</a>
-        <a class="text-fg-muted hover:text-fg transition-colors py-1.5" href="/examples" data-link data-route="examples">Examples</a>
-        <a class="text-fg-muted hover:text-fg transition-colors py-1.5" href="/compare"  data-link data-route="compare">Compare</a>
-      </nav>
-    </div>
+  <!-- ========================== HEADER ========================== -->
+  <header class="site-header sticky top-0 z-30 border-b border-border bg-bg/85 backdrop-blur-md backdrop-saturate-180">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-6">
+      <div class="flex items-center gap-4 relative">
+        <a class="inline-flex items-center gap-2 font-bold text-base tracking-tight" href="/" data-link>
+          <svg width="22" height="22" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="brandGrad" x1="50%" y1="100%" x2="50%" y2="0%">
+                <stop offset="0%" stop-color="var(--logo-primary)" />
+                <stop offset="60%" stop-color="var(--logo-secondary)" />
+                <stop offset="100%" stop-color="var(--logo-accent)" />
+              </linearGradient>
+            </defs>
+            <path d="M32 4C32 4 18 22 18 36C18 46 24 54 32 58C40 54 46 46 46 36C46 22 32 4 32 4Z"
+              fill="url(#brandGrad)" />
+            <path d="M32 18C32 18 24 30 24 40C24 48 28 52 32 54C36 52 40 48 40 40C40 30 32 18 32 18Z"
+              fill="var(--logo-accent)" opacity="0.5" />
+          </svg>
+          <span class="text-fg">Lume<span class="text-logo-primary">.js</span></span>
+        </a>
+        <nav class="flex items-center gap-6 text-sm" aria-label="Primary" id="primary-nav">
+          <a class="text-fg-muted hover:text-fg transition-colors py-1.5" href="/" data-link data-route="home">Home</a>
+          <a class="text-fg-muted hover:text-fg transition-colors py-1.5" href="/docs" data-link
+            data-route="docs">Docs</a>
+          <a class="text-fg-muted hover:text-fg transition-colors py-1.5" href="/examples" data-link
+            data-route="examples">Examples</a>
+          <a class="text-fg-muted hover:text-fg transition-colors py-1.5" href="/compare" data-link
+            data-route="compare">Compare</a>
+        </nav>
+      </div>
 
-    <div class="flex items-center gap-3">
-      <div style="position:relative">
-        <button class="font-mono text-[10.5px] font-medium text-accent-fg bg-accent-soft px-2 py-1 rounded-md ml-1 border border-accent/30 cursor-pointer inline-flex items-center gap-1 whitespace-nowrap transition-all hover:border-accent"
-                id="ver-btn" title="Version — click to switch" onclick="store.verMenuOpen = !store.verMenuOpen">
-          v2.0.0-beta.1
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="opacity-65"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div id="ver-menu" inert style="
+      <div class="flex items-center gap-3">
+        <div style="position:relative">
+          <button
+            class="font-mono text-[10.5px] font-medium text-accent-fg bg-accent-soft px-2 py-1 rounded-md ml-1 border border-accent/30 cursor-pointer inline-flex items-center gap-1 whitespace-nowrap transition-all hover:border-accent"
+            id="ver-btn" title="Version — click to switch" onclick="store.verMenuOpen = !store.verMenuOpen">
+            v2.0.0-beta.1
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round" class="opacity-65">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          <div id="ver-menu" inert style="
           position:absolute; right:0; top:calc(100% + 8px); z-index:50;
           background:var(--bg-raised); border:1px solid var(--border);
           border-radius:10px; box-shadow:0 12px 32px rgba(0,0,0,.10),0 2px 6px rgba(0,0,0,.06); padding:6px;
           min-width:220px; opacity:0; transform:translateY(-4px); pointer-events:none;
           transition:opacity .15s, transform .15s;
         ">
-          <div class="px-2.5 pt-2 pb-1 text-[11px] font-semibold text-fg-subtle uppercase tracking-widest font-mono">Version history</div>
-          <button class="theme-option flex items-center gap-2.5 w-full px-2.5 py-2 border-0 bg-transparent text-fg text-left font-inherit text-[13px] rounded-md cursor-pointer hover:bg-bg-sunken justify-between" onclick="store.verMenuOpen=false">
-            <span>v2.0.0-beta.1 <span class="text-[10.5px] text-fg-subtle font-mono">current</span></span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-fg)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          </button>
-          <button class="theme-option flex items-center gap-2.5 w-full px-2.5 py-2 border-0 bg-transparent text-fg text-left font-inherit text-[13px] rounded-md opacity-45 cursor-not-allowed" disabled>
-            <span>v1.4.2 <span class="text-[10.5px] text-fg-subtle font-mono">stable</span></span>
-          </button>
-          <div class="px-2.5 py-1.5 text-[11.5px] text-fg-subtle border-t border-border mt-1">Multi-version docs coming in stable release.</div>
+            <div class="px-2.5 pt-2 pb-1 text-[11px] font-semibold text-fg-subtle uppercase tracking-widest font-mono">
+              Version history</div>
+            <button
+              class="theme-option flex items-center gap-2.5 w-full px-2.5 py-2 border-0 bg-transparent text-fg text-left font-inherit text-[13px] rounded-md cursor-pointer hover:bg-bg-sunken justify-between"
+              onclick="store.verMenuOpen=false">
+              <span>v2.0.0-beta.1 <span class="text-[10.5px] text-fg-subtle font-mono">current</span></span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-fg)" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </button>
+            <button
+              class="theme-option flex items-center gap-2.5 w-full px-2.5 py-2 border-0 bg-transparent text-fg text-left font-inherit text-[13px] rounded-md opacity-45 cursor-not-allowed"
+              disabled>
+              <span>v1.4.2 <span class="text-[10.5px] text-fg-subtle font-mono">stable</span></span>
+            </button>
+            <div class="px-2.5 py-1.5 text-[11.5px] text-fg-subtle border-t border-border mt-1">Multi-version docs
+              coming in stable release.</div>
+          </div>
         </div>
-      </div>
-      <div class="theme-picker relative">
-        <button id="theme-btn"
-                class="w-9 h-9 inline-flex items-center justify-center border border-border bg-bg-raised rounded-lg text-fg-muted cursor-pointer transition-all hover:text-fg hover:border-border-strong"
-                aria-label="Change theme"
-                onclick="store.themeMenuOpen = !store.themeMenuOpen">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="9"/>
-            <circle cx="8.5" cy="10" r="1.2" fill="currentColor" stroke="none"/>
-            <circle cx="12" cy="7.5" r="1.2" fill="currentColor" stroke="none"/>
-            <circle cx="15.5" cy="10" r="1.2" fill="currentColor" stroke="none"/>
-            <circle cx="15.5" cy="14" r="1.2" fill="currentColor" stroke="none"/>
-            <path d="M12 21c-1.5 0-2-1-2-2s.5-2 2-2 3-1 3-3"/>
-          </svg>
-        </button>
-        <div id="theme-menu" inert
-             class="theme-menu absolute right-0 top-[calc(100%+8px)] min-w-[240px] bg-bg-raised border border-border rounded-[10px] shadow-xl p-1.5 z-50"
-             role="menu">
-          <div class="px-2.5 pt-2 pb-1 text-[11px] font-semibold text-fg-subtle uppercase tracking-widest font-mono">Theme · <span data-bind="theme"></span></div>
-          <div id="theme-options"></div>
-          <div class="px-2.5 pt-2.5 border-t border-border mt-1 text-[11px] font-semibold text-fg-subtle uppercase tracking-widest font-mono">System</div>
-          <button class="theme-option flex items-center gap-2.5 w-full px-2.5 py-2 border-0 bg-transparent text-fg text-left font-inherit text-[13px] rounded-md cursor-pointer hover:bg-bg-sunken" onclick="resetTheme()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
-            <span>Match system</span>
+        <div class="theme-picker relative">
+          <button id="theme-btn"
+            class="w-9 h-9 inline-flex items-center justify-center border border-border bg-bg-raised rounded-lg text-fg-muted cursor-pointer transition-all hover:text-fg hover:border-border-strong"
+            aria-label="Change theme" onclick="store.themeMenuOpen = !store.themeMenuOpen">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <circle cx="8.5" cy="10" r="1.2" fill="currentColor" stroke="none" />
+              <circle cx="12" cy="7.5" r="1.2" fill="currentColor" stroke="none" />
+              <circle cx="15.5" cy="10" r="1.2" fill="currentColor" stroke="none" />
+              <circle cx="15.5" cy="14" r="1.2" fill="currentColor" stroke="none" />
+              <path d="M12 21c-1.5 0-2-1-2-2s.5-2 2-2 3-1 3-3" />
+            </svg>
           </button>
+          <div id="theme-menu" inert
+            class="theme-menu absolute right-0 top-[calc(100%+8px)] min-w-[240px] bg-bg-raised border border-border rounded-[10px] shadow-xl p-1.5 z-50"
+            role="menu">
+            <div class="px-2.5 pt-2 pb-1 text-[11px] font-semibold text-fg-subtle uppercase tracking-widest font-mono">
+              Theme · <span data-bind="theme"></span></div>
+            <div id="theme-options"></div>
+            <div
+              class="px-2.5 pt-2.5 border-t border-border mt-1 text-[11px] font-semibold text-fg-subtle uppercase tracking-widest font-mono">
+              System</div>
+            <button
+              class="theme-option flex items-center gap-2.5 w-full px-2.5 py-2 border-0 bg-transparent text-fg text-left font-inherit text-[13px] rounded-md cursor-pointer hover:bg-bg-sunken"
+              onclick="resetTheme()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+              <span>Match system</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <button
-        title="Router mode — click to switch between history and hash routing"
-        onclick="window.switchRouterMode(store.routerMode === 'hash' ? 'history' : 'hash')"
-        class="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 border border-border bg-bg-raised text-fg-muted rounded-lg text-[11.5px] font-mono font-medium cursor-pointer transition-all hover:text-fg hover:border-border-strong whitespace-nowrap">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16H3m0 0l4-4m-4 4 4 4M3 8h18m0 0-4-4m4 4-4 4"/></svg>
-        <span data-bind="routerMode"></span>
-      </button>
+        <div class="router-mode-wrap hidden sm:block" style="position:relative">
+          <button onclick="window.switchRouterMode(store.routerMode === 'hash' ? 'history' : 'hash')"
+            class="inline-flex items-center gap-1.5 h-9 px-3 border border-border bg-bg-raised text-fg-muted rounded-lg text-[11.5px] font-mono font-medium cursor-pointer transition-all hover:text-fg hover:border-border-strong whitespace-nowrap w-full">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 16H3m0 0l4-4m-4 4 4 4M3 8h18m0 0-4-4m4 4-4 4" />
+            </svg>
+            <span data-bind="routerMode"></span>
+          </button>
+          <div class="router-tooltip" role="tooltip">
+            <div class="router-tooltip-mode" data-bind="routerTooltipTitle"></div>
+            <div class="router-tooltip-body" data-bind="routerTooltipBody"></div>
+          </div>
+        </div>
 
-      <a class="inline-flex items-center gap-2 px-3 py-2 text-[13px] font-medium border border-border bg-bg-raised text-fg rounded-lg transition-all hover:border-border-strong hover:bg-bg-sunken"
-         href="https://github.com/sathvikc/lume-js" target="_blank" rel="noopener">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12a12 12 0 008.2 11.4c.6.1.82-.26.82-.58v-2c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.84 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.66-.3-5.47-1.33-5.47-5.92 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.17 0 0 1-.32 3.3 1.23a11.5 11.5 0 016 0c2.3-1.55 3.3-1.23 3.3-1.23.65 1.65.24 2.87.12 3.17.77.84 1.23 1.91 1.23 3.22 0 4.6-2.8 5.61-5.48 5.91.43.37.82 1.1.82 2.22v3.29c0 .32.22.69.82.57A12 12 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-        <span>GitHub</span>
-      </a>
-    </div>
-  </div>
-</header>
-
-<!-- ========================== MAIN (SPA outlet) ========================== -->
-<main id="outlet" class="min-h-[60vh]"></main>
-
-<!-- ========================== FOOTER ========================== -->
-<footer class="site-footer border-t border-border pt-12 pb-10 text-fg-muted text-[13.5px]">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6">
-    <div class="grid grid-cols-2 md:grid-cols-[2fr_1fr_1fr_1fr] gap-8 pb-10">
-      <div class="col-span-2 md:col-span-1">
-        <a class="inline-flex items-center gap-2 font-bold text-base" href="/" data-link>
-          <svg width="20" height="20" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-            <defs><linearGradient id="fGrad" x1="50%" y1="100%" x2="50%" y2="0%"><stop offset="0%" stop-color="var(--logo-primary)"/><stop offset="100%" stop-color="var(--logo-accent)"/></linearGradient></defs>
-            <path d="M32 4C32 4 18 22 18 36C18 46 24 54 32 58C40 54 46 46 46 36C46 22 32 4 32 4Z" fill="url(#fGrad)"/>
+        <a class="inline-flex items-center gap-2 px-3 py-2 text-[13px] font-medium border border-border bg-bg-raised text-fg rounded-lg transition-all hover:border-border-strong hover:bg-bg-sunken"
+          href="https://github.com/sathvikc/lume-js" target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path
+              d="M12 0C5.37 0 0 5.37 0 12a12 12 0 008.2 11.4c.6.1.82-.26.82-.58v-2c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.84 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.66-.3-5.47-1.33-5.47-5.92 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.17 0 0 1-.32 3.3 1.23a11.5 11.5 0 016 0c2.3-1.55 3.3-1.23 3.3-1.23.65 1.65.24 2.87.12 3.17.77.84 1.23 1.91 1.23 3.22 0 4.6-2.8 5.61-5.48 5.91.43.37.82 1.1.82 2.22v3.29c0 .32.22.69.82.57A12 12 0 0024 12c0-6.63-5.37-12-12-12z" />
           </svg>
-          <span class="text-fg">Lume<span class="text-logo-primary">.js</span></span>
+          <span>GitHub</span>
         </a>
-        <p class="mt-3 max-w-xs">Reactivity that follows web standards. MIT-licensed, 2.4&#8239;KB gzipped, zero dependencies.</p>
-        <div class="flex gap-2 mt-4 flex-wrap">
-          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-mono font-medium border border-border text-fg-muted bg-bg-raised"><span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse-dot"></span> Built with Lume.js</span>
-          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-mono font-medium border border-border text-fg-muted bg-bg-raised">v2.0.0-beta.1</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================== MAIN (SPA outlet) ========================== -->
+  <main id="outlet" class="min-h-[60vh]"></main>
+
+  <!-- ========================== FOOTER ========================== -->
+  <footer class="site-footer border-t border-border pt-12 pb-10 text-fg-muted text-[13.5px]">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+      <div class="grid grid-cols-2 md:grid-cols-[2fr_1fr_1fr_1fr] gap-8 pb-10">
+        <div class="col-span-2 md:col-span-1">
+          <a class="inline-flex items-center gap-2 font-bold text-base" href="/" data-link>
+            <svg width="20" height="20" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="fGrad" x1="50%" y1="100%" x2="50%" y2="0%">
+                  <stop offset="0%" stop-color="var(--logo-primary)" />
+                  <stop offset="100%" stop-color="var(--logo-accent)" />
+                </linearGradient>
+              </defs>
+              <path d="M32 4C32 4 18 22 18 36C18 46 24 54 32 58C40 54 46 46 46 36C46 22 32 4 32 4Z"
+                fill="url(#fGrad)" />
+            </svg>
+            <span class="text-fg">Lume<span class="text-logo-primary">.js</span></span>
+          </a>
+          <p class="mt-3 max-w-xs">Reactivity that follows web standards. MIT-licensed, 2.4&#8239;KB gzipped, zero
+            dependencies.</p>
+          <div class="flex gap-2 mt-4 flex-wrap">
+            <span
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-mono font-medium border border-border text-fg-muted bg-bg-raised"><span
+                class="w-1.5 h-1.5 rounded-full bg-success animate-pulse-dot"></span> Built with Lume.js</span>
+            <span
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-mono font-medium border border-border text-fg-muted bg-bg-raised">v2.0.0-beta.1</span>
+          </div>
+        </div>
+        <div>
+          <h6 class="font-mono text-[11px] font-semibold text-fg-subtle uppercase tracking-widest mb-4">Docs</h6>
+          <ul class="list-none p-0 m-0 flex flex-col gap-2">
+            <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/introduction"
+                data-link>Introduction</a></li>
+            <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/installation"
+                data-link>Installation</a></li>
+            <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/core-concepts" data-link>Core
+                concepts</a></li>
+            <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/api-state" data-link>API
+                reference</a></li>
+          </ul>
+        </div>
+        <div>
+          <h6 class="font-mono text-[11px] font-semibold text-fg-subtle uppercase tracking-widest mb-4">Community</h6>
+          <ul class="list-none p-0 m-0 flex flex-col gap-2">
+            <li><a class="text-fg-muted hover:text-fg transition-colors" href="https://github.com/sathvikc/lume-js"
+                target="_blank" rel="noopener">GitHub</a></li>
+            <li><a class="text-fg-muted hover:text-fg transition-colors"
+                href="https://github.com/sathvikc/lume-js/issues" target="_blank" rel="noopener">Issues</a></li>
+            <li><a class="text-fg-muted hover:text-fg transition-colors" href="https://www.npmjs.com/package/lume-js"
+                target="_blank" rel="noopener">npm</a></li>
+            <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/changelog" data-link>Changelog</a>
+            </li>
+          </ul>
+        </div>
+        <div>
+          <h6 class="font-mono text-[11px] font-semibold text-fg-subtle uppercase tracking-widest mb-4">Project</h6>
+          <ul class="list-none p-0 m-0 flex flex-col gap-2">
+            <li><a class="text-fg-muted hover:text-fg transition-colors"
+                href="https://github.com/sathvikc/lume-js/blob/main/LICENSE" target="_blank" rel="noopener">MIT
+                License</a></li>
+            <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/migration" data-link>Migrate from
+                1.x</a></li>
+            <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/faq" data-link>FAQ</a></li>
+            <li><a class="text-fg-muted hover:text-fg transition-colors" href="/compare" data-link>Compare</a></li>
+          </ul>
         </div>
       </div>
-      <div>
-        <h6 class="font-mono text-[11px] font-semibold text-fg-subtle uppercase tracking-widest mb-4">Docs</h6>
-        <ul class="list-none p-0 m-0 flex flex-col gap-2">
-          <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/introduction" data-link>Introduction</a></li>
-          <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/installation" data-link>Installation</a></li>
-          <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/core-concepts" data-link>Core concepts</a></li>
-          <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/api-state"     data-link>API reference</a></li>
-        </ul>
-      </div>
-      <div>
-        <h6 class="font-mono text-[11px] font-semibold text-fg-subtle uppercase tracking-widest mb-4">Community</h6>
-        <ul class="list-none p-0 m-0 flex flex-col gap-2">
-          <li><a class="text-fg-muted hover:text-fg transition-colors" href="https://github.com/sathvikc/lume-js" target="_blank" rel="noopener">GitHub</a></li>
-          <li><a class="text-fg-muted hover:text-fg transition-colors" href="https://github.com/sathvikc/lume-js/issues" target="_blank" rel="noopener">Issues</a></li>
-          <li><a class="text-fg-muted hover:text-fg transition-colors" href="https://www.npmjs.com/package/lume-js" target="_blank" rel="noopener">npm</a></li>
-          <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/changelog" data-link>Changelog</a></li>
-        </ul>
-      </div>
-      <div>
-        <h6 class="font-mono text-[11px] font-semibold text-fg-subtle uppercase tracking-widest mb-4">Project</h6>
-        <ul class="list-none p-0 m-0 flex flex-col gap-2">
-          <li><a class="text-fg-muted hover:text-fg transition-colors" href="https://github.com/sathvikc/lume-js/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></li>
-          <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/migration" data-link>Migrate from 1.x</a></li>
-          <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/faq"       data-link>FAQ</a></li>
-          <li><a class="text-fg-muted hover:text-fg transition-colors" href="/compare"        data-link>Compare</a></li>
-        </ul>
+      <div class="flex justify-between items-center pt-6 border-t border-border flex-wrap gap-4">
+        <span>© <span data-bind="year"></span> Sathvik C. All rights reserved.</span>
+        <span class="font-mono text-xs">Theme: <span data-bind="theme"></span> · <span data-bind="clock"></span></span>
       </div>
     </div>
-    <div class="flex justify-between items-center pt-6 border-t border-border flex-wrap gap-4">
-      <span>© <span data-bind="year"></span> Sathvik C. All rights reserved.</span>
-      <span class="font-mono text-xs">Theme: <span data-bind="theme"></span> · <span data-bind="clock"></span></span>
-    </div>
-  </div>
-</footer>
+  </footer>
 
-<script type="module" src="./src/app.js"></script>
+  <!-- ========================== TOAST ========================== -->
+  <div id="lume-toast" class="lume-toast" role="alert" aria-live="polite">
+    <div class="toast-hd">
+      <strong class="toast-title" data-bind="toastTitle"></strong>
+      <button class="toast-close" onclick="store.toastVisible = false" aria-label="Dismiss">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+    <div class="toast-url" data-bind="toastUrl"></div>
+    <div class="toast-desc" data-bind="toastDesc"></div>
+    <div class="toast-progress" aria-hidden="true"></div>
+  </div>
+
+  <script type="module" src="./src/app.js"></script>
 </body>
+
 </html>

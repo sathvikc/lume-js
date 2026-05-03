@@ -61,7 +61,7 @@ function handleGhPagesRedirect() {
 
 /* ─── main export ─── */
 export function createRouter(store, key, routes, options = {}) {
-  const mode = options.mode === 'auto' || !options.mode ? detectMode() : options.mode;
+  let mode = options.mode === 'auto' || !options.mode ? detectMode() : options.mode;
 
   // Only restore the redirect in history mode — hash mode never triggers 404.html
   if (mode === 'history') handleGhPagesRedirect();
@@ -107,33 +107,64 @@ export function createRouter(store, key, routes, options = {}) {
   /* initial route */
   store[key] = read();
 
-  function go(to, { replace = false } = {}) {
+  function go(to, { replace = false, scrollTop = true } = {}) {
     const pathname = typeof to === 'string' ? to : String(to);
     if (mode === 'hash') {
       const newHash = '#' + pathname;
       if (replace) history.replaceState({ lume: true }, '', newHash);
       else         history.pushState({ lume: true }, '', newHash);
     } else {
-      // In history mode, prefix the Vite base so the browser URL stays correct.
-      // Routes are always defined without the base (e.g. '/docs/:slug'), but the
-      // actual URL the browser sees must include it (e.g. '/lume-js/docs/intro').
       const fullPath = _BASE + pathname;
       if (replace) history.replaceState({ lume: true }, '', fullPath);
       else         history.pushState({ lume: true }, '', fullPath);
     }
     store[key] = read();
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    if (scrollTop) window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
-  // Back / forward
+  // Back / forward (always installed — works in both modes)
   window.addEventListener('popstate', () => { store[key] = read(); });
 
-  // Hash change (hash mode only — history mode uses popstate)
-  if (mode === 'hash') {
-    window.addEventListener('hashchange', () => { store[key] = read(); });
+  // hashchange listener managed separately so setMode can add/remove it
+  const onHashChange = () => { store[key] = read(); };
+  if (mode === 'hash') window.addEventListener('hashchange', onHashChange);
+
+  /**
+   * setMode(newMode) — switch routing mode live without a page reload.
+   *
+   * Rewrites the current URL to the equivalent form in the new mode using
+   * replaceState (no navigation, no server request), swaps the hashchange
+   * listener, and re-reads the route so reactive state stays consistent.
+   *
+   * Callers should also update any mode-dependent UI (e.g. heading anchors).
+   */
+  function setMode(newMode) {
+    if (newMode === mode) return;
+    const currentPath = currentPathname(); // read before switching
+    mode = newMode;
+    localStorage.setItem('lume.routerMode', newMode);
+
+    if (newMode === 'hash') {
+      // Use an absolute path so the hash lands on the app root, not on the
+      // current deep URL (which would give /docs/intro#/docs/intro).
+      history.replaceState({ lume: true }, '', _BASE + '/#' + currentPath);
+      window.addEventListener('hashchange', onHashChange);
+    } else {
+      history.replaceState({ lume: true }, '', _BASE + currentPath);
+      window.removeEventListener('hashchange', onHashChange);
+    }
+
+    store[key] = read();
   }
 
-  return { go, mode, read, matchPathname };
+  // Expose mode as a getter so link() and callers always see the live value
+  return {
+    go,
+    get mode() { return mode; },
+    read,
+    matchPathname,
+    setMode,
+  };
 }
 
 /**
