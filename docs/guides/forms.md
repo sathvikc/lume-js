@@ -38,6 +38,11 @@ Checkboxes bind to a boolean. Radio groups bind to a string value — whichever 
 <input type="radio" name="theme" value="dark" data-bind="theme">
 ```
 
+## Known Limitations
+
+### `select multiple`
+The `data-bind` attribute does not currently support `<select multiple>`. Multi-select requires an array-based state model, while `data-bind` is designed for scalar values. If you need multi-select, manage the state manually using `addEventListener` and `watch`.
+
 ## Validation
 
 Use `watch` to run validation logic whenever a specific field changes. Write the result back to an error key in the store.

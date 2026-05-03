@@ -81,6 +81,21 @@ store.todos.push({ text: 'buy milk' }); // subscribers NOT notified
 - **Class instances** with private fields — the Proxy wraps the instance, but internal `this` references may read the private backing store directly and bypass the proxy.
 - **Functions stored on the store** — methods stay plain and are not proxied.
 
+## Anti-patterns
+
+### `$subscribe` inside an auto-tracking effect
+Calling `store.$subscribe(key, fn)` inside an `effect()` that already auto-tracks that same key will cause the logic to execute twice: once for the auto-tracking re-run and once for the manual subscription.
+
+```js
+// ❌ ANTI-PATTERN — double notification
+effect(() => {
+  void store.count; // auto-tracks
+  store.$subscribe('count', () => { ... }); // also tracks
+});
+```
+
+Instead, use `watch` for single-key reactions or let the `effect` handle all tracking automatically.
+
 ## Cleanup
 
 Both `effect` and `bindDom` return a dispose function. Call it when the associated component or UI section is removed from the page to prevent memory leaks.

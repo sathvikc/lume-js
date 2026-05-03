@@ -5,25 +5,8 @@
  * Import from "lume-js/handlers" for tree-shaking.
  */
 
-/**
- * Handler interface for reactive data-* attribute binding.
- * Pass to bindDom() options.handlers to add new reactive attributes.
- *
- * @example
- * ```typescript
- * const tooltip: Handler = {
- *   attr: 'data-tooltip',
- *   apply(el, val) { el.title = val ?? ''; }
- * };
- * bindDom(root, store, { handlers: [tooltip] });
- * ```
- */
-export interface Handler {
-  /** Data attribute name (e.g., 'data-show', 'data-class-active') */
-  readonly attr: string;
-  /** Apply the reactive value to the element */
-  apply(el: HTMLElement, val: any): void;
-}
+import type { Handler } from '../index.js';
+
 
 /**
  * data-show="key" → Shows element when truthy (el.hidden = !val)
