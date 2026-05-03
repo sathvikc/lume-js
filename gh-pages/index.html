@@ -67,14 +67,18 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&display=swap"
     rel="stylesheet" media="print" onload="this.media='all'">
-  <noscript><link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&display=swap"
-    rel="stylesheet"></noscript>
+  <noscript>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&display=swap"
+      rel="stylesheet">
+  </noscript>
 
   <link id="hljs-light" rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css" media="print" onload="this.media='all'" disabled>
+    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css" media="print"
+    onload="this.media='all'" disabled>
   <link id="hljs-dark" rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" media="print" onload="this.media='all'">
+    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" media="print"
+    onload="this.media='all'">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
 
   <!-- marked v4 — setOptions with highlight callback -->
@@ -141,7 +145,7 @@
 
   <!-- ========================== HEADER ========================== -->
   <header class="site-header sticky top-0 z-30 border-b border-border bg-bg/85 backdrop-blur-md backdrop-saturate-180">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-6">
       <div class="flex items-center gap-4 relative">
         <a class="inline-flex items-center gap-2 font-bold text-base tracking-tight" href="/" data-link>
           <svg width="22" height="22" viewBox="0 0 64 64" fill="none" aria-hidden="true">
@@ -159,7 +163,7 @@
           </svg>
           <span class="text-fg">Lume<span class="text-logo-primary">.js</span></span>
         </a>
-        <nav class="flex items-center gap-6 text-sm" aria-label="Primary" id="primary-nav">
+        <nav class="hidden md:flex items-center gap-6 text-sm" aria-label="Primary" id="primary-nav">
           <a class="text-fg-muted hover:text-fg transition-colors py-1.5" href="/" data-link data-route="home">Home</a>
           <a class="text-fg-muted hover:text-fg transition-colors py-1.5" href="/docs" data-link
             data-route="docs">Docs</a>
@@ -171,7 +175,7 @@
       </div>
 
       <div class="flex items-center gap-3">
-        <div style="position:relative">
+        <div class="hidden md:block" style="position:relative">
           <button
             class="font-mono text-[10.5px] font-medium text-accent-fg bg-accent-soft px-2 py-1 rounded-md ml-1 border border-accent/30 cursor-pointer inline-flex items-center gap-1 whitespace-nowrap transition-all hover:border-accent"
             id="ver-btn" title="Version — click to switch" onclick="store.verMenuOpen = !store.verMenuOpen">
@@ -210,9 +214,9 @@
         </div>
         <div class="theme-picker relative">
           <button id="theme-btn"
-            class="w-9 h-9 inline-flex items-center justify-center border border-border bg-bg-raised rounded-lg text-fg-muted cursor-pointer transition-all hover:text-fg hover:border-border-strong"
+            class="w-10 h-10 inline-flex items-center justify-center border border-border bg-bg-raised rounded-xl text-fg-muted cursor-pointer transition-all hover:text-fg hover:border-border-strong"
             aria-label="Change theme" onclick="store.themeMenuOpen = !store.themeMenuOpen">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
               stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="9" />
               <circle cx="8.5" cy="10" r="1.2" fill="currentColor" stroke="none" />
@@ -244,9 +248,9 @@
           </div>
         </div>
 
-        <div class="router-mode-wrap hidden sm:block" style="position:relative">
+        <div class="router-mode-wrap hidden md:block" style="position:relative">
           <button onclick="window.switchRouterMode(store.routerMode === 'hash' ? 'history' : 'hash')"
-            class="inline-flex items-center gap-1.5 h-9 px-3 border border-border bg-bg-raised text-fg-muted rounded-lg text-[11.5px] font-mono font-medium cursor-pointer transition-all hover:text-fg hover:border-border-strong whitespace-nowrap w-full">
+            class="inline-flex items-center gap-1.5 h-10 px-3.5 border border-border bg-bg-raised text-fg-muted rounded-xl text-[11.5px] font-mono font-medium cursor-pointer transition-all hover:text-fg hover:border-border-strong whitespace-nowrap w-full">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M21 16H3m0 0l4-4m-4 4 4 4M3 8h18m0 0-4-4m4 4-4 4" />
@@ -259,16 +263,146 @@
           </div>
         </div>
 
-        <a class="inline-flex items-center gap-2 px-3 py-2 text-[13px] font-medium border border-border bg-bg-raised text-fg rounded-lg transition-all hover:border-border-strong hover:bg-bg-sunken"
-          href="https://github.com/sathvikc/lume-js" target="_blank" rel="noopener">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <a class="inline-flex items-center justify-center w-10 h-10 border border-border bg-bg-raised text-fg rounded-xl transition-all hover:border-border-strong hover:bg-bg-sunken"
+          href="https://github.com/sathvikc/lume-js" target="_blank" rel="noopener" aria-label="GitHub">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path
               d="M12 0C5.37 0 0 5.37 0 12a12 12 0 008.2 11.4c.6.1.82-.26.82-.58v-2c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.84 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.66-.3-5.47-1.33-5.47-5.92 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.17 0 0 1-.32 3.3 1.23a11.5 11.5 0 016 0c2.3-1.55 3.3-1.23 3.3-1.23.65 1.65.24 2.87.12 3.17.77.84 1.23 1.91 1.23 3.22 0 4.6-2.8 5.61-5.48 5.91.43.37.82 1.1.82 2.22v3.29c0 .32.22.69.82.57A12 12 0 0024 12c0-6.63-5.37-12-12-12z" />
           </svg>
-          <span>GitHub</span>
         </a>
+
+        <!-- Burger Button -->
+        <button
+          class="md:hidden burger-btn w-10 h-10 flex items-center justify-center rounded-xl border border-border bg-bg-raised text-fg-muted cursor-pointer transition-all hover:text-fg hover:border-border-strong"
+          aria-label="Toggle menu" onclick="store.mobileMenuOpen = !store.mobileMenuOpen">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line class="line-1" x1="3" y1="6" x2="21" y2="6" />
+            <line class="line-2" x1="3" y1="12" x2="21" y2="12" />
+            <line class="line-3" x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
       </div>
     </div>
+  </header>
+
+  <!-- ========================== MOBILE MENU ========================== -->
+  <div id="mobile-menu" class="mobile-menu fixed inset-0 z-40 md:hidden pointer-events-none" inert>
+    <div
+      class="mobile-menu-backdrop absolute inset-0 bg-bg/60 backdrop-blur-md opacity-0 transition-opacity duration-300"
+      onclick="store.mobileMenuOpen = false"></div>
+    <div
+      class="mobile-menu-content absolute right-0 top-0 h-full w-72 max-w-[85vw] bg-bg-raised border-l border-border shadow-2xl flex flex-col p-8 overflow-y-auto">
+      <div class="flex items-center justify-between mb-10">
+        <span class="font-serif font-medium text-2xl tracking-tight">Navigation</span>
+        <button
+          class="w-10 h-10 flex items-center justify-center rounded-xl border border-border hover:bg-bg-sunken bg-transparent cursor-pointer transition-all"
+          onclick="store.mobileMenuOpen = false">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      <nav class="flex flex-col gap-3 mb-10" onclick="store.mobileMenuOpen = false">
+        <a class="group px-4 py-4 rounded-2xl text-fg font-medium bg-bg border border-border/50 hover:border-accent/40 hover:bg-bg-sunken flex items-center justify-between transition-all"
+          href="/" data-link data-route="home">
+          <span class="flex items-center gap-3">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" class="text-fg-subtle group-hover:text-accent">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+            Home
+          </span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round"
+            class="text-fg-subtle opacity-0 group-hover:opacity-100 transition-opacity">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </a>
+        <a class="group px-4 py-4 rounded-2xl text-fg font-medium bg-bg border border-border/50 hover:border-accent/40 hover:bg-bg-sunken flex items-center justify-between transition-all"
+          href="/docs" data-link data-route="docs">
+          <span class="flex items-center gap-3">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" class="text-fg-subtle group-hover:text-accent">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            </svg>
+            Documentation
+          </span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round"
+            class="text-fg-subtle opacity-0 group-hover:opacity-100 transition-opacity">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </a>
+        <a class="group px-4 py-4 rounded-2xl text-fg font-medium bg-bg border border-border/50 hover:border-accent/40 hover:bg-bg-sunken flex items-center justify-between transition-all"
+          href="/examples" data-link data-route="examples">
+          <span class="flex items-center gap-3">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" class="text-fg-subtle group-hover:text-accent">
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" />
+            </svg>
+            Live Examples
+          </span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round"
+            class="text-fg-subtle opacity-0 group-hover:opacity-100 transition-opacity">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </a>
+        <a class="group px-4 py-4 rounded-2xl text-fg font-medium bg-bg border border-border/50 hover:border-accent/40 hover:bg-bg-sunken flex items-center justify-between transition-all"
+          href="/compare" data-link data-route="compare">
+          <span class="flex items-center gap-3">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" class="text-fg-subtle group-hover:text-accent">
+              <path d="M16 3h5v5" />
+              <path d="M8 3H3v5" />
+              <path d="M21 3l-7 7" />
+              <path d="M3 3l7 7" />
+              <path d="M16 21h5v-5" />
+              <path d="M8 21H3v-5" />
+              <path d="M21 21l-7-7" />
+              <path d="M3 21l7-7" />
+            </svg>
+            Compare
+          </span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round"
+            class="text-fg-subtle opacity-0 group-hover:opacity-100 transition-opacity">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </a>
+        <div class="mt-auto pt-8 border-t border-border space-y-3">
+          <button onclick="window.switchRouterMode(store.routerMode === 'hash' ? 'history' : 'hash')"
+            class="flex items-center justify-between w-full px-4 py-3.5 rounded-2xl bg-bg border border-border/50 hover:border-accent/30 hover:bg-bg-sunken transition-all group cursor-pointer">
+            <span class="text-[10px] font-mono font-bold text-fg-subtle uppercase tracking-[0.15em]">Router</span>
+            <span class="flex items-center gap-2.5 text-[13px] font-semibold text-fg">
+              <span data-bind="routerMode"></span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round"
+                class="text-fg-subtle group-hover:text-accent transition-colors">
+                <path d="M21 16H3m0 0l4-4m-4 4 4 4M3 8h18m0 0-4-4m4 4-4 4" />
+              </svg>
+            </span>
+          </button>
+        </div>
+        <a class="flex items-center justify-center gap-3 h-14 bg-accent text-accent-contrast rounded-2xl font-semibold text-[15px] transition-all hover:brightness-110 active:scale-[0.98] shadow-lg shadow-accent/20"
+          href="https://github.com/sathvikc/lume-js" target="_blank">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 0C5.37 0 0 5.37 0 12a12 12 0 008.2 11.4c.6.1.82-.26.82-.58v-2c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.84 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.66-.3-5.47-1.33-5.47-5.92 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.17 0 0 1-.32 3.3 1.23a11.5 11.5 0 016 0c2.3-1.55 3.3-1.23 3.3-1.23.65 1.65.24 2.87.12 3.17.77.84 1.23 1.91 1.23 3.22 0 4.6-2.8 5.61-5.48 5.91.43.37.82 1.1.82 2.22v3.29c0 .32.22.69.82.57A12 12 0 0024 12c0-6.63-5.37-12-12-12z" />
+          </svg>
+          View on GitHub
+        </a>
+    </div>
+  </div>
+  </div>
+  </div>
   </header>
 
   <!-- ========================== MAIN (SPA outlet — non-docs pages) ========================== -->
@@ -278,46 +412,71 @@
   <div id="docs-shell" hidden>
 
     <!-- Mobile nav bar -->
-    <div class="lg:hidden sticky top-16 z-20 bg-bg/90 backdrop-blur border-b border-border px-4 py-2.5 flex items-center gap-3">
+    <div
+      class="lg:hidden sticky top-16 z-20 bg-bg/90 backdrop-blur border-b border-border px-4 py-2.5 flex items-center gap-3">
       <button id="docs-mobile-toggle"
-              class="inline-flex items-center gap-2 text-[13px] font-medium text-fg-muted border border-border bg-bg-raised rounded-lg px-3 py-1.5 transition-all hover:text-fg hover:border-border-strong">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        class="inline-flex items-center gap-2 text-[13px] font-medium text-fg-muted border border-border bg-bg-raised rounded-lg px-3 py-1.5 transition-all hover:text-fg hover:border-border-strong">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
         Contents
       </button>
       <span id="docs-breadcrumb" class="text-[12px] text-fg-subtle font-mono"></span>
     </div>
 
     <!-- Mobile drawer backdrop -->
-    <div id="docs-drawer-backdrop" class="docs-drawer-backdrop fixed inset-0 z-40 bg-[rgba(0,0,0,.45)] backdrop-blur-[2px] hidden lg:hidden"></div>
+    <div id="docs-drawer-backdrop"
+      class="docs-drawer-backdrop fixed inset-0 z-40 bg-[rgba(0,0,0,.45)] backdrop-blur-[2px] hidden lg:hidden"></div>
 
     <!-- Mobile drawer -->
-    <div id="docs-drawer" class="docs-drawer fixed top-0 left-0 z-50 h-full w-72 max-w-[85vw] bg-bg border-r border-border overflow-y-auto text-[13.5px] p-5 lg:hidden">
+    <div id="docs-drawer"
+      class="docs-drawer fixed top-0 left-0 z-50 h-full w-72 max-w-[85vw] bg-bg border-r border-border overflow-y-auto text-[13.5px] p-5 lg:hidden">
       <div class="flex items-center justify-between mb-4">
         <span class="font-mono text-[11px] font-semibold text-fg-subtle uppercase tracking-widest">Contents</span>
-        <button id="docs-drawer-close" class="w-8 h-8 inline-flex items-center justify-center rounded-md text-fg-muted hover:text-fg hover:bg-bg-sunken transition-all border-0 bg-transparent cursor-pointer">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <button id="docs-drawer-close"
+          class="w-8 h-8 inline-flex items-center justify-center rounded-md text-fg-muted hover:text-fg hover:bg-bg-sunken transition-all border-0 bg-transparent cursor-pointer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
         </button>
       </div>
       <div class="flex items-center gap-2 px-3 py-2 mb-4 bg-bg-raised border border-border rounded-lg">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-fg-subtle shrink-0"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" class="text-fg-subtle shrink-0">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M21 21l-4.3-4.3" />
+        </svg>
         <input id="docs-search-mobile" type="text" placeholder="Filter pages…" autocomplete="off"
-               class="flex-1 border-0 bg-transparent text-fg font-sans text-[13px] outline-none placeholder:text-fg-subtle">
+          class="flex-1 border-0 bg-transparent text-fg font-sans text-[13px] outline-none placeholder:text-fg-subtle">
       </div>
       <div id="docs-nav-mobile"></div>
     </div>
 
     <!-- Main layout grid -->
-    <div class="max-w-[1280px] mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-[260px_1fr] xl:grid-cols-[260px_1fr_200px] gap-10 pt-10 pb-20 min-h-[calc(100vh-64px)]">
-      <aside class="docs-sidebar hidden lg:block w-64 shrink-0 sticky top-20 self-start max-h-[calc(100vh-80px)] overflow-y-auto text-[13.5px] pr-2">
+    <div
+      class="max-w-[1280px] mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-[260px_1fr] xl:grid-cols-[260px_1fr_200px] gap-10 pt-10 pb-20 min-h-[calc(100vh-64px)]">
+      <aside
+        class="docs-sidebar hidden lg:block w-64 shrink-0 sticky top-20 self-start max-h-[calc(100vh-80px)] overflow-y-auto text-[13.5px] pr-2">
         <div class="flex items-center gap-2 px-3 py-2 mb-4 bg-bg-raised border border-border rounded-lg">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-fg-subtle shrink-0"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" class="text-fg-subtle shrink-0">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M21 21l-4.3-4.3" />
+          </svg>
           <input id="docs-search" type="text" placeholder="Filter pages…" autocomplete="off"
-                 class="flex-1 border-0 bg-transparent text-fg font-sans text-[13px] outline-none placeholder:text-fg-subtle">
+            class="flex-1 border-0 bg-transparent text-fg font-sans text-[13px] outline-none placeholder:text-fg-subtle">
         </div>
         <nav id="docs-nav"></nav>
       </aside>
       <div id="docs-article-outlet" class="min-w-0"></div>
-      <aside class="toc hidden xl:block w-48 shrink-0 sticky top-20 self-start max-h-[calc(100vh-80px)] overflow-y-auto text-[12.5px]" id="toc"></aside>
+      <aside
+        class="toc hidden xl:block w-48 shrink-0 sticky top-20 self-start max-h-[calc(100vh-80px)] overflow-y-auto text-[12.5px]"
+        id="toc"></aside>
     </div>
 
   </div>
@@ -416,7 +575,14 @@
   <script type="module" src="./src/app.js"></script>
 
   <noscript>
-    <style>#outlet::before { content: 'JavaScript is required to view this site. Please enable JavaScript in your browser.'; display:block; padding:2rem; font-family:system-ui,sans-serif; }</style>
+    <style>
+      #outlet::before {
+        content: 'JavaScript is required to view this site. Please enable JavaScript in your browser.';
+        display: block;
+        padding: 2rem;
+        font-family: system-ui, sans-serif;
+      }
+    </style>
   </noscript>
 </body>
 

@@ -28,6 +28,19 @@
   --color-logo-accent: var(--logo-accent);
 }
 
+@keyframes toast-in {
+  from { transform: translate(-50%, 1rem); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+@keyframes toast-out {
+  from { transform: translate(-50%, 0); opacity: 1; }
+  to { transform: translate(-50%, 1rem); opacity: 0; }
+}
+
+.animate-toast-in { animation: toast-in 0.3s ease-out forwards; }
+.animate-toast-out { animation: toast-out 0.3s ease-in forwards; }
+
 /* ─── Theme definitions ─── */
 [data-theme="light"] {
   --bg: #fafaf7;
@@ -248,6 +261,43 @@ pre {
   opacity: 1;
 }
 
+/* ─── Mobile menu ─── */
+.mobile-menu.is-open {
+  pointer-events: auto;
+}
+
+.mobile-menu.is-open .mobile-menu-backdrop {
+  opacity: 1;
+}
+
+.mobile-menu-content {
+  translate: 100% 0;
+  transition: translate 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mobile-menu.is-open .mobile-menu-content {
+  translate: 0 0;
+}
+
+.burger-btn .line-1,
+.burger-btn .line-2,
+.burger-btn .line-3 {
+  transition: transform 0.3s, opacity 0.3s;
+  transform-origin: center;
+}
+
+.site-header.is-open .burger-btn .line-1 {
+  transform: translateY(6px) rotate(45deg);
+}
+
+.site-header.is-open .burger-btn .line-2 {
+  opacity: 0;
+}
+
+.site-header.is-open .burger-btn .line-3 {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
 /* ─── Mobile docs drawer ─── */
 /* Tailwind v4 uses the CSS `translate` property, so we must match it here */
 .docs-drawer {
@@ -383,6 +433,9 @@ pre {
   border-collapse: collapse;
   margin: 16px 0 24px;
   font-size: 13.5px;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .doc-table th,
@@ -409,12 +462,15 @@ pre {
   border-collapse: collapse;
   margin: 16px 0 24px;
   font-size: 13.5px;
-  display: table;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .docs-main th,
 .docs-main td {
   padding: 10px 14px;
+  min-width: 120px;
   text-align: left;
   border: 1px solid var(--border);
   vertical-align: top;

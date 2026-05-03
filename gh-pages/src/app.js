@@ -2,6 +2,32 @@ import { state, bindDom, effect } from 'lume-js';
 import { watch } from 'lume-js/addons';
 import { classToggle, show, stringAttr } from 'lume-js/handlers';
 
+// --- Toast helper ---
+function showToast(msg) {
+  const toast = document.createElement('div');
+  toast.className = 'fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] px-5 py-2.5 bg-fg text-bg rounded-full text-sm font-medium shadow-2xl animate-toast-in pointer-events-none';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('animate-toast-out');
+    setTimeout(() => toast.remove(), 400);
+  }, 2000);
+}
+
+// --- Global helpers ---
+window.copyToClipboard = (text, btn) => {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Copied to clipboard');
+      if (btn) {
+        const original = btn.innerHTML;
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-success"><polyline points="20 6 9 17 4 12"/></svg> <span class="font-mono text-[12.5px]">Copied!</span>`;
+        setTimeout(() => btn.innerHTML = original, 2000);
+      }
+    });
+  }
+};
+
 import { createRouter, link } from './lume-router.js';
 import { renderHome } from './pages/home.js';
 import { renderExamples } from './pages/examples.js';
@@ -62,6 +88,7 @@ const store = state({
   toastTitle: '',
   toastUrl: '',
   toastDesc: '',
+  mobileMenuOpen: false,
 });
 window.store = store;
 
@@ -290,6 +317,14 @@ watch(store, 'themeMenuOpen', (open) => {
   menu.classList.toggle('is-open', open);
 });
 
+watch(store, 'mobileMenuOpen', (open) => {
+  document.body.style.overflow = open ? 'hidden' : '';
+  const menu = document.getElementById('mobile-menu');
+  if (!menu) return;
+  menu.inert = !open;
+  menu.classList.toggle('is-open', open);
+});
+
 /* =========================================================================
    CLOCK — deferred: non-critical, starts after browser is idle (item 16)
    ========================================================================= */
@@ -371,8 +406,9 @@ window.switchRouterMode = function (newMode) {
 /* =========================================================================
    GLOBAL BINDINGS (header / footer / toast)
    ========================================================================= */
-bindDom(document.querySelector('.site-header'), store, { handlers: [link(router)] });
+bindDom(document.querySelector('.site-header'), store, { handlers: [link(router), classToggle('is-open')] });
 bindDom(document.querySelector('.site-footer'), store, { handlers: [link(router)] });
+bindDom(document.getElementById('mobile-menu'), store, { handlers: [link(router)] });
 bindDom(document.getElementById('lume-toast'), store, { handlers: [] });
 
 applyTheme(store.theme);
