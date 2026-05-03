@@ -291,13 +291,17 @@ watch(store, 'themeMenuOpen', (open) => {
 });
 
 /* =========================================================================
-   CLOCK
+   CLOCK — deferred: non-critical, starts after browser is idle (item 16)
    ========================================================================= */
 const tickClock = () => {
   store.clock = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 };
-tickClock();
-setInterval(tickClock, 1000);
+const _startClock = () => { tickClock(); setInterval(tickClock, 1000); };
+if ('requestIdleCallback' in window) {
+  requestIdleCallback(_startClock, { timeout: 2000 });
+} else {
+  setTimeout(_startClock, 0);
+}
 
 /* =========================================================================
    ROUTER MODE TOGGLE
