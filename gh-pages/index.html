@@ -2,13 +2,28 @@
 <html lang="en" data-theme="dark">
 
 <head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-JMQZGCQ6L9"></script>
+  <!-- Google Analytics — loaded after first paint to avoid blocking FCP -->
   <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
-    gtag('js', new Date());
-    gtag('config', 'G-JMQZGCQ6L9');
+    (function () {
+      function loadGA() {
+        var s = document.createElement('script');
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-JMQZGCQ6L9';
+        s.async = true;
+        document.head.appendChild(s);
+        s.onload = function () {
+          window.dataLayer = window.dataLayer || [];
+          function gtag() { dataLayer.push(arguments); }
+          window.gtag = gtag;
+          gtag('js', new Date());
+          gtag('config', 'G-JMQZGCQ6L9');
+        };
+      }
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(loadGA, { timeout: 4000 });
+      } else {
+        window.addEventListener('load', loadGA, { once: true });
+      }
+    })();
   </script>
 
   <meta charset="UTF-8" />
