@@ -2,13 +2,14 @@
  * lume-router — History API + Hash router addon for Lume.js
  *
  * Mode detection (auto):
- *   - GitHub Pages (*.github.io) → hash mode
- *   - Any other host → history mode
+ *   - Checks localStorage('lume.routerMode') first
+ *   - Defaults to 'history' — the 404.html fallback handles GitHub Pages
  *   - Override: createRouter(store, 'route', routes, { mode: 'hash' | 'history' | 'auto' })
  *
- * GH Pages trick:
- *   Ship a 404.html next to index.html that encodes the path into ?_r=…
- *   On init, createRouter detects this and replaces state back to the real path.
+ * GH Pages trick (history mode):
+ *   Ship a 404.html that encodes the app-relative path into ?_r=…
+ *   On init, createRouter detects this, reconstructs the full URL with the
+ *   Vite base path, and replaces state so the URL looks clean.
  *
  * Usage:
  *   import { createRouter, link } from './lume-router.js';
@@ -20,18 +21,17 @@
  *   bindDom(document.body, store, { handlers: [link(router)] });
  */
 
+// Vite replaces this at build time: '/' in dev, '/lume-js/' in production.
+// Stripping the trailing slash gives us a clean prefix to prepend/strip.
+const _BASE = (import.meta.env.BASE_URL || '/').replace(/\/$/, ''); // '' or '/lume-js'
+
 /* ─── mode detection ─── */
 function detectMode() {
   if (typeof window === 'undefined') return 'history';
-  const h = location.hostname;
-  if (
-    h.endsWith('.github.io') ||
-    h.endsWith('.gitlab.io') ||
-    h === 'localhost' && location.port === '' // some static servers
-  ) return 'hash';
-  // Allow explicit opt-in via meta tag: <meta name="lume-router-mode" content="hash">
-  const meta = document.querySelector('meta[name="lume-router-mode"]');
-  if (meta) return meta.content === 'hash' ? 'hash' : 'history';
+  // User's stored preference wins over everything else
+  const stored = localStorage.getItem('lume.routerMode');
+  if (stored === 'hash' || stored === 'history') return stored;
+  // Default: history mode — the 404.html fallback makes it work on GitHub Pages
   return 'history';
 }
 
@@ -45,23 +45,26 @@ function compile(pattern) {
 }
 
 /* ─── GH Pages 404 redirect handler ─── */
-// 404.html encodes the real path into ?_r=<encoded-path>
-// We decode it on startup and replace history so the URL looks clean.
+// 404.html encodes the app-relative path into ?_r=<encoded-path> and redirects
+// to the app root. We decode it and replaceState so the URL looks like a normal
+// navigation — the rest of the router never knows the redirect happened.
 function handleGhPagesRedirect() {
   const params = new URLSearchParams(location.search);
   const redirected = params.get('_r');
   if (!redirected) return;
-  const target = decodeURIComponent(redirected);
-  // Strip _r from the query string and replace state
-  const clean = target || '/';
-  history.replaceState({ lume: true }, '', clean);
+  // _r holds the app-relative path e.g. '/docs/introduction' (without base prefix)
+  const appPath = decodeURIComponent(redirected);
+  // Reconstruct the full URL path including the Vite base
+  const fullPath = _BASE + (appPath.startsWith('/') ? appPath : '/' + appPath);
+  history.replaceState({ lume: true }, '', fullPath);
 }
 
 /* ─── main export ─── */
 export function createRouter(store, key, routes, options = {}) {
   const mode = options.mode === 'auto' || !options.mode ? detectMode() : options.mode;
 
-  handleGhPagesRedirect();
+  // Only restore the redirect in history mode — hash mode never triggers 404.html
+  if (mode === 'history') handleGhPagesRedirect();
 
   const compiled = Object.entries(routes).map(([pattern, resolve]) => ({
     pattern,
@@ -85,7 +88,14 @@ export function createRouter(store, key, routes, options = {}) {
       const h = (location.hash || '#/').slice(1); // '#/docs/foo' → '/docs/foo'
       return h || '/';
     }
-    return location.pathname;
+    // History mode: strip the Vite base prefix before matching routes.
+    // In dev _BASE='' so this is a no-op. In prod _BASE='/lume-js' so
+    // '/lume-js/docs/intro' → '/docs/intro' which matches '/docs/:slug'.
+    const raw = location.pathname;
+    if (_BASE && raw.startsWith(_BASE)) {
+      return raw.slice(_BASE.length) || '/';
+    }
+    return raw;
   }
 
   function read() {
@@ -104,8 +114,12 @@ export function createRouter(store, key, routes, options = {}) {
       if (replace) history.replaceState({ lume: true }, '', newHash);
       else         history.pushState({ lume: true }, '', newHash);
     } else {
-      if (replace) history.replaceState({ lume: true }, '', pathname);
-      else         history.pushState({ lume: true }, '', pathname);
+      // In history mode, prefix the Vite base so the browser URL stays correct.
+      // Routes are always defined without the base (e.g. '/docs/:slug'), but the
+      // actual URL the browser sees must include it (e.g. '/lume-js/docs/intro').
+      const fullPath = _BASE + pathname;
+      if (replace) history.replaceState({ lume: true }, '', fullPath);
+      else         history.pushState({ lume: true }, '', fullPath);
     }
     store[key] = read();
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -114,7 +128,7 @@ export function createRouter(store, key, routes, options = {}) {
   // Back / forward
   window.addEventListener('popstate', () => { store[key] = read(); });
 
-  // Hash change (hash mode)
+  // Hash change (hash mode only — history mode uses popstate)
   if (mode === 'hash') {
     window.addEventListener('hashchange', () => { store[key] = read(); });
   }
@@ -154,14 +168,15 @@ export function link(router) {
       const url = new URL(href, location.href);
       if (url.origin !== location.origin) return;
 
-      const target = url.pathname + url.search + url.hash;
-
-      // No-op if already on this path (history mode)
+      // No-op if already on this path.
+      // Compare against the app-relative path (routes don't include the base).
       if (router.mode === 'history') {
-        const cur = location.pathname + location.search + location.hash;
-        if (target === cur) return;
+        const rawCur = (_BASE && location.pathname.startsWith(_BASE))
+          ? location.pathname.slice(_BASE.length) || '/'
+          : location.pathname;
+        const curFull = rawCur + location.search + location.hash;
+        if (url.pathname + url.search + url.hash === curFull) return;
       }
-      // No-op if already on this hash (hash mode)
       if (router.mode === 'hash') {
         const curHash = (location.hash || '#/').slice(1);
         if (url.pathname === curHash) return;

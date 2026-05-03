@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lume.js</title>
 <style>
-  /* Brief flash of a loading screen before redirect */
   body { margin: 0; background: #0b0b0c; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
   svg { animation: p 1.2s ease-in-out infinite alternate; }
   @keyframes p { from { opacity: 0.4 } to { opacity: 1 } }
@@ -14,7 +13,7 @@
 <body>
 <!-- GH Pages SPA Fallback
      GitHub Pages serves this file for any unmatched URL.
-     We encode the real path into ?_r=… and redirect to index.html,
+     We encode the app-relative path into ?_r=… and redirect to the app root,
      which reads that param and restores the correct URL via replaceState.
 -->
 <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
@@ -28,15 +27,23 @@
   <path d="M32 18C32 18 24 30 24 40C24 48 28 52 32 54C36 52 40 48 40 40C40 30 32 18 32 18Z" fill="#f5c54a" opacity="0.5"/>
 </svg>
 <script>
-  // Encode current path + search into the _r query param
-  // then redirect to the root index.html
-  var path = location.pathname + location.search + location.hash;
-  // Don't encode if we're already at root (shouldn't happen but guard)
-  if (path === '/' || path === '') {
-    location.replace('/');
+  // For GitHub Pages project pages (e.g. username.github.io/repo/), detect the
+  // base path from the first path segment so the redirect lands on the right root.
+  var isGhPages = /\.(github|gitlab)\.io$/.test(location.hostname);
+  var base = '/';
+  if (isGhPages) {
+    var seg = location.pathname.split('/')[1];
+    if (seg) base = '/' + seg + '/';
+  }
+  var fullPath = location.pathname + location.search + location.hash;
+  // Strip the base prefix so _r carries only the app-relative path.
+  // e.g. /lume-js/docs/intro → _r=/docs/intro  (not /lume-js/docs/intro)
+  var basePfx = base.slice(0, -1); // '/lume-js' (no trailing slash)
+  var appPath = (basePfx && fullPath.startsWith(basePfx)) ? fullPath.slice(basePfx.length) || '/' : fullPath;
+  if (!appPath || appPath === '/') {
+    location.replace(base);
   } else {
-    var encoded = encodeURIComponent(path);
-    location.replace('/?_r=' + encoded);
+    location.replace(base + '?_r=' + encodeURIComponent(appPath));
   }
 </script>
 </body>
