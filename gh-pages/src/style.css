@@ -157,21 +157,24 @@ pre {
     radial-gradient(500px 220px at 72% 10%, color-mix(in oklab, var(--logo-accent) 22%, transparent), transparent 70%);
 }
 
-/* ─── Pulse animation ─── */
+/* ─── Pulse animation (GPU-composited: transform + opacity only) ─── */
 @keyframes pulse {
 
   0%,
   100% {
+    transform: scale(1);
     opacity: 1;
   }
 
   50% {
+    transform: scale(0.75);
     opacity: 0.55;
   }
 }
 
 .animate-pulse-dot {
   animation: pulse 2.4s ease-in-out infinite;
+  will-change: transform;
 }
 
 /* ─── Page enter animation ─── */
