@@ -213,7 +213,16 @@ export function link(router) {
         if (url.pathname === curHash) return;
       }
 
-      router.go(url.pathname + url.search);
+      // Preserve the hash fragment: history mode appends it to the URL;
+      // hash mode embeds it as a path segment (# is already used for routing).
+      const headingId = url.hash.slice(1);
+      if (router.mode === 'history') {
+        router.go(url.pathname + url.search + (url.hash || ''));
+      } else if (headingId) {
+        router.go(url.pathname + url.search + '/' + headingId);
+      } else {
+        router.go(url.pathname + url.search);
+      }
     });
     link._installed = true;
   }
