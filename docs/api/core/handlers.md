@@ -1,8 +1,8 @@
 # Handlers API
 
-> **Version:** 2.0.0-beta.1+  
-> **Import:** `import { ... } from 'lume-js/handlers'`  
-> **Size:** 0.33KB gzipped
+> **Version:** 2.0.0-beta.1+
+> **Import:** `import { ... } from 'lume-js/handlers'`
+> **Size:** 0.33 KB gzipped
 
 Handlers extend `bindDom()` with additional reactive `data-*` attributes. Each handler is a plain object — no framework API, no registration system.
 
@@ -42,19 +42,19 @@ A handler is any object with two properties:
 
 ```typescript
 interface Handler {
-  readonly attr: string;         // e.g., 'data-show', 'data-class-active'
-  apply(el: HTMLElement, val: any): void;  // Called with reactive value
+  readonly attr: string;                        // e.g., 'data-show', 'data-class-active'
+  apply(el: HTMLElement, val: any): void;       // Called with the reactive value
 }
 ```
 
-- `attr` — The `data-*` attribute name that triggers this handler
-- `apply` — Called immediately with the current value, then again whenever the state changes
+- `attr` — The `data-*` attribute name that triggers this handler.
+- `apply` — Called immediately with the current value, then again whenever the state changes.
 
 ## Ready-to-use Handlers
 
 ### `show`
 
-Shows element when state value is truthy (inverse of built-in `data-hidden`).
+Shows an element when the state value is truthy (inverse of the built-in `data-hidden`).
 
 ```javascript
 import { show } from 'lume-js/handlers';
@@ -87,7 +87,7 @@ bindDom(root, store, { handlers: [boolAttr('readonly'), boolAttr('open')] });
 
 **Behavior:** `el.toggleAttribute(name, Boolean(val))`
 
-> **Note:** Built-in handlers for `hidden`, `disabled`, `checked`, `required` use direct property assignment (`el.hidden = true`). The `boolAttr()` factory uses `toggleAttribute()` which works correctly with any attribute name regardless of camelCase property mapping.
+> **Note:** The built-in handlers for `hidden`, `disabled`, `checked`, and `required` use direct property assignment (`el.hidden = true`). The `boolAttr()` factory uses `toggleAttribute()`, which works correctly with any attribute name regardless of camelCase property mapping.
 
 ---
 
@@ -95,7 +95,7 @@ bindDom(root, store, { handlers: [boolAttr('readonly'), boolAttr('open')] });
 
 Creates a handler for a **boolean** ARIA attribute. Coerces values to `"true"` or `"false"` strings. Accepts the name with or without the `aria-` prefix.
 
-For string-valued ARIA attrs like `aria-label`, use `stringAttr('aria-label')` instead.
+For string-valued ARIA attributes like `aria-label`, use `stringAttr('aria-label')` instead.
 
 ```javascript
 import { ariaAttr } from 'lume-js/handlers';
@@ -132,13 +132,13 @@ bindDom(root, store, { handlers: [classToggle('active', 'loading', 'error')] });
 
 **Behavior:** `el.classList.toggle(name, Boolean(val))`
 
-Does **not** affect other classes on the element — only toggles the specified class.
+Does **not** affect other classes on the element — only the specified class is toggled.
 
 ---
 
 ### `stringAttr(name)`
 
-Creates a handler for any string attribute. Removes the attribute when value is `null` or `undefined`.
+Creates a handler for any string attribute. Removes the attribute when the value is `null` or `undefined`.
 
 ```javascript
 import { stringAttr } from 'lume-js/handlers';
@@ -194,7 +194,7 @@ bindDom(root, store, {
 
 ### `htmlAttrs()`
 
-One-import preset that enables **all standard HTML attributes** as reactive handlers. Includes boolean attrs, string attrs, ARIA attrs, and the `show` handler.
+A single-import preset that enables **all standard HTML attributes** as reactive handlers — boolean attrs, string attrs, ARIA attrs, and the `show` handler.
 
 ```javascript
 import { htmlAttrs } from 'lume-js/handlers';
@@ -235,7 +235,7 @@ Now use any `data-*` attribute without additional imports:
 | **ARIA (string)** | `label`, `describedby`, `labelledby`, `controls`, `owns`, `activedescendant`, `errormessage`, `current`, `live`, `relevant`, `haspopup`, `sort`, `autocomplete`, `orientation`, `valuenow`, `valuemin`, `valuemax`, `valuetext`, `details`, `flowto`, `colcount`, `colindex`, `colspan`, `rowcount`, `rowindex`, `rowspan`, `level`, `setsize`, `posinset`, `placeholder`, `roledescription`, `keyshortcuts`, `braillelabel`, `brailleroledescription` |
 | **Other** | `show` |
 
-> **ARIA boolean vs string:** Boolean ARIA attrs (like `aria-pressed`) are coerced to `"true"`/`"false"`. String ARIA attrs (like `aria-label`) pass through the actual value, and are removed when set to `null`/`undefined`.
+> **ARIA boolean vs string:** Boolean ARIA attrs (like `aria-pressed`) are coerced to `"true"`/`"false"`. String ARIA attrs (like `aria-label`) pass through the actual value and are removed when set to `null`/`undefined`.
 >
 > **When to use `htmlAttrs()`:** Great for prototyping and apps that use many different attributes. For production bundles where you want minimal overhead, cherry-pick individual handlers instead.
 
@@ -266,10 +266,10 @@ bindDom(root, store, { handlers: [tooltip, bgColor] });
 
 ## Handler Override
 
-User handlers override built-in handlers with the same `attr`. This lets you customize default behavior:
+User-supplied handlers override built-in handlers with the same `attr`. This lets you customize default behavior:
 
 ```javascript
-// Override data-hidden to use display:none instead of hidden property
+// Override data-hidden to use display:none instead of the hidden property
 const customHidden = {
   attr: 'data-hidden',
   apply(el, val) {
@@ -278,7 +278,6 @@ const customHidden = {
 };
 
 bindDom(root, store, { handlers: [customHidden] });
-// Now data-hidden uses style.display instead of el.hidden
 ```
 
 Built-in handlers that can be overridden: `data-hidden`, `data-disabled`, `data-checked`, `data-required`, `data-aria-expanded`, `data-aria-hidden`.
@@ -322,11 +321,10 @@ bindDom(root, store, {
 ```javascript
 import { htmlAttrs } from 'lume-js/handlers';
 
-// One import to enable all standard HTML attributes
 bindDom(root, store, { handlers: [htmlAttrs()] });
 ```
 
-### Multiple bindDom calls with different handlers
+### Multiple `bindDom` calls with different handlers
 
 ```javascript
 // Form section needs form handlers

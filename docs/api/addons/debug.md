@@ -1,6 +1,6 @@
 # createDebugPlugin(options)
 
-Developer-friendly logging and inspection of reactive state operations.
+`createDebugPlugin` logs every read, write, and notification on a store to the console. Use it during development to see exactly which state changes triggered which updates — and which keys are being read more than you expect.
 
 ## Import
 
@@ -10,7 +10,7 @@ import { createDebugPlugin, debug } from 'lume-js/addons';
 
 ## createDebugPlugin(options)
 
-Creates a debug plugin instance for a reactive state store.
+Creates a debug plugin for a store. Pass it in the `plugins` array when calling `state()`.
 
 ### Signature
 
@@ -67,7 +67,7 @@ config.logGet = true;  // Now GET operations will log
 
 ## debug (Global Controls)
 
-Global debug object for controlling all debug plugins.
+`debug` is a global object that controls all active debug plugins at once. Use it to toggle logging, filter by key name, or inspect operation counts without touching each store individually.
 
 ### Methods
 
@@ -129,4 +129,3 @@ Debug logs use colored output:
 
 **← Previous: [watch()](watch.md)** | **Next: [Guides](../../guides/README.md) →**
 
-> **Demo:** See the [Debug Demo](/examples/debug-demo/) for interactive usage.

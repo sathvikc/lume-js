@@ -1,115 +1,70 @@
-# state(initialState, options)
+# state(initialValue)
 
-Creates a reactive state object with optional plugin support.
+Creates a reactive proxy of a plain object.
 
 ## Signature
 
-```typescript
-function state<T extends object>(
-  initialState: T, 
-  options?: StateOptions
-): ReactiveState<T>;
-
-interface StateOptions {
-  plugins?: Plugin[];
-}
+```ts
+function state<T extends object>(initialValue: T, options?: { plugins?: any[] }): T
 ```
 
 ## Parameters
 
-- `initialState` (Object): The initial state object. Must be a plain object, not a primitive.
-- `options` (Object, optional): Configuration options
-  - `plugins` (Array): Array of plugins to extend state behavior
+- `initialValue` — A plain object. Must not be a primitive, class instance, `Map`, or `Set`.
+- `options.plugins` — Optional array of plugin objects to extend state behavior.
 
 ## Returns
 
-- A reactive Proxy of the `initialState` with `$subscribe` method.
+A `Proxy` of `initialValue` with identical shape. Reads inside an `effect` are tracked; writes notify subscribers.
 
 ## Description
 
-`state()` wraps the provided object in a Proxy. It intercepts property access and assignment to enable automatic dependency tracking for `effect()` and `computed()`.
+`state()` wraps the object in a `Proxy` that intercepts `get` and `set`. The `get` trap returns `target[key]` directly — it does **not** auto-wrap nested objects in a new proxy. Writes are batched via `queueMicrotask` and flush on the next microtask.
 
-## Examples
-
-### Basic Usage
-
-```javascript
+```js
 import { state } from 'lume-js';
 
+const store = state({ count: 0 });
+
+store.count;     // read — tracked inside an effect
+store.count = 5; // write — notification queued via microtask
+```
+
+## Nested reactivity
+
+Nested objects are **not** automatically reactive. The `get` trap returns the raw value — it does not wrap sub-objects in a proxy. To make a nested object reactive, wrap it in its own `state()` call:
+
+```js
+// NOT reactive — nested write is silent
 const store = state({
-  count: 0,
-  name: 'Lume'
+  settings: { theme: 'dark', lang: 'en' }
 });
+store.settings.theme = 'light'; // subscribers NOT notified
 
-store.count++; // Triggers updates
-```
-
-### Nested State
-
-Nested objects are **not** automatically reactive. You must wrap them in `state()` explicitly if you want them to be reactive.
-
-```javascript
+// Reactive — settings is its own proxy
 const store = state({
-  user: state({ // ✅ Nested state
-    name: 'Alice'
-  }),
-  settings: { // ❌ Plain object (not reactive)
-    theme: 'dark'
-  }
+  settings: state({ theme: 'dark', lang: 'en' })
 });
+store.settings.theme = 'light'; // notifies subscribers of 'theme'
 ```
 
-### Methods
+## What's not reactive
 
-Reactive state objects have a special method:
+| Type | Supported | Notes |
+|------|-----------|-------|
+| Plain objects (top-level keys) | Yes | Fully reactive |
+| Nested plain objects | Partial | Must be wrapped in `state()` for reactivity |
+| Arrays | Partial | Replacing the array key triggers; `push`/`splice` do not |
+| `Map` / `Set` | No | Use plain objects / arrays instead |
+| Class instances | Partial | Proxy wraps them, but private fields bypass reactivity |
+| Functions | No | Not proxied — store methods stay plain |
 
-#### `$subscribe(key, callback)`
+## See also
 
-Subscribes to changes on a specific key.
-
-- `key` (String): The property name to watch.
-- `callback` (Function): Called with `(newValue)` immediately and whenever it changes.
-- **Returns**: An unsubscribe function.
-
-```javascript
-const unsub = store.$subscribe('count', (val) => {
-  console.log('Count changed:', val);
-});
-
-// Later
-unsub();
-```
-
-### With Plugins (v2.0+)
-
-Extend state with custom behaviors using plugins:
-
-```javascript
-const debugPlugin = {
-  name: 'debug',
-  onGet: (key, value) => {
-    console.log(`GET ${key}:`, value);
-    return value;
-  },
-  onSet: (key, newValue, oldValue) => {
-    console.log(`SET ${key}:`, oldValue, '→', newValue);
-    return newValue;
-  }
-};
-
-const store = state(
-  { count: 0 },
-  { plugins: [debugPlugin] }
-);
-
-store.count = 5; // Logs: SET count: 0 → 5
-console.log(store.count); // Logs: GET count: 5
-```
-
-**See [Plugin Documentation](plugins.md) for full plugin API.**
+- [How reactivity works](../../guides/reactivity.md) — detailed explanation of the proxy internals
+- [effect()](effect.md) — auto-tracked side-effects
+- [watch()](../addons/watch.md) — explicit single-key watcher
 
 ---
 
-**← Previous: [Build Tic-Tac-Toe](../../tutorials/build-tic-tac-toe.md)** | **Next: [bindDom()](bindDom.md) →**
-
-> **Deep Dive:** Why does `state()` only accept objects? Read the [Design Decision](../../design/design-decisions.md#why-only-objects-in-state-not-primitives).
+**← Previous: [Performance](../../guides/performance.md)** | **Next: [bindDom()](bindDom.md) →**

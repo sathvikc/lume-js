@@ -1,48 +1,95 @@
 # Performance
 
-Lume.js is fast by default, but here are some tips for large applications.
+Lume's update model is O(subscribers) — only the effects that read a changed key re-run, nothing else. The patterns below keep that guarantee working well as your app grows.
 
-## 1. Use `repeat` for Lists
+## Use `repeat` for lists
 
-Never use `innerHTML` to render large lists. It destroys and recreates DOM elements. Use the `repeat` addon, which reuses DOM elements.
+`innerHTML` rebuilds the entire list on every change — event listeners, focus state, and scroll position are all destroyed. `repeat` keys elements by ID and only touches what changed.
 
-## 2. Use `computed` for Expensive Calculations
+```js
+import { repeat } from 'lume-js/addons';
 
-If you have a heavy calculation (like filtering a large list), wrap it in `computed()`. It will only re-calculate when dependencies change.
+// Keyed DOM reuse — only changed rows re-render
+repeat(listEl, store, 'todos', {
+  key: todo => todo.id,
+  render: (todo, el) => { el.textContent = todo.text; }
+});
 
-```javascript
-// Good
-const filtered = computed(() => items.filter(...));
-
-// Bad (runs on every render if inside effect)
+// Destroys and recreates every node on every update
 effect(() => {
-  const filtered = items.filter(...); 
+  listEl.innerHTML = store.todos.map(t => `<li>${t.text}</li>`).join('');
 });
 ```
 
-## 3. Batch Updates
+## Use `computed` for expensive derivations
 
-Lume automatically batches updates in the same microtask.
+`computed` caches its result and only re-evaluates when its dependencies change. If multiple effects read the same derived value, the underlying function runs once, not once per effect.
 
-```javascript
-// Only triggers ONE update
-store.count++;
-store.count++;
-store.count++;
+```js
+import { computed } from 'lume-js/addons';
+
+// Filters once, caches until todos changes
+const remaining = computed(() => store.todos.filter(t => !t.done).length);
+
+// Re-filters inside every effect that reads it
+effect(() => {
+  const count = store.todos.filter(t => !t.done).length;
+  badge.textContent = count;
+});
 ```
 
-## 4. Event Delegation (Automatic)
+## Keep state flat
 
-`bindDom` uses event delegation internally — a single `input` listener on the root element handles all form inputs. This means:
+Lume does **not** auto-proxy nested objects — only top-level keys on a `state()` proxy trigger subscribers. Deep nesting means you must wrap each nested object in its own `state()` call for reactivity, which adds overhead and complexity.
 
-- 100 inputs = 1 event listener (not 100)
-- No extra work needed — it's automatic
-- Efficient memory usage for large forms
+```js
+// Flat — easy to subscribe precisely
+const store = state({
+  userId: 1,
+  userName: 'Ada',
+  userEmail: 'ada@example.com',
+});
 
-## 5. Avoid Deeply Nested State
+// Deep — fine for nested data, avoid for hot-path state
+const store = state({
+  user: { profile: { contact: { email: 'ada@example.com' } } }
+});
+```
 
-While supported, deeply nested state can be harder to manage. Try to keep your state flat where possible.
+## Scope `bindDom` narrowly
+
+`bindDom` scans the subtree with `querySelectorAll`. Binding a small component root is faster than binding `document.body` for a large page.
+
+```js
+// Only scans the modal subtree
+bindDom(document.getElementById('modal'), store);
+
+// Scans the entire document
+bindDom(document.body, store);
+```
+
+## Event delegation is automatic
+
+`bindDom` attaches a single `input` event listener at the root — not one per form control. One hundred inputs cost one listener. There is nothing to configure.
+
+```js
+// All 100 inputs share one listener — nothing extra to do
+bindDom(formRoot, store);
+```
+
+## Cleanup when done
+
+Every `effect` and `bindDom` call returns a dispose function. Call it when the component unmounts to prevent memory leaks.
+
+```js
+const stopEffect = effect(() => { /* … */ });
+const cleanupDom = bindDom(el, store);
+
+// When tearing down:
+stopEffect();
+cleanupDom();
+```
 
 ---
 
-**← Previous: [Testing](testing.md)** | **[Back to Home](../../README.md)**
+**← Previous: [Lists & repeat](lists.md)** | **Next: [state()](../api/core/state.md) →**

@@ -1,6 +1,6 @@
 # Tutorial: Build a Todo App
 
-In this tutorial, we will build a fully functional Todo App.
+Build a fully functional todo app — add, toggle, delete, filter, and persist — using nothing but a single HTML file and a CDN import. No build step required.
 
 **What you will learn:**
 - Handling form inputs
@@ -129,41 +129,45 @@ Try adding a few items. They should appear instantly!
 
 ## Step 5: Toggling and Deleting
 
-Now let's make the checkboxes and delete buttons work. We'll add event listeners inside the `render` function of `repeat`.
+Event listeners belong in `create` — it runs once per DOM element, so you won't accidentally attach duplicate listeners on every update.
 
-Update your `render` function:
+Replace your `create` function with this complete version:
 
 ```javascript
-render: (todo, el) => {
-  // ... (previous innerHTML code) ...
+create: (todo, el) => {
+  el.className = 'todo-item';
+  el.innerHTML = `
+    <input type="checkbox" class="toggle">
+    <span class="text"></span>
+    <button class="delete">×</button>
+  `;
 
-  // Handle Toggle
   el.querySelector('.toggle').addEventListener('change', () => {
-    // Immutable update: Map to a new array
-    store.todos = store.todos.map(t => 
+    store.todos = store.todos.map(t =>
       t.id === todo.id ? { ...t, done: !t.done } : t
     );
   });
 
-  // Handle Delete
   el.querySelector('.delete').addEventListener('click', () => {
-    // Immutable update: Filter to a new array
     store.todos = store.todos.filter(t => t.id !== todo.id);
   });
-
-  // ... (previous population code) ...
 }
 ```
+
+Notice the pattern: `create` sets up structure and listeners, `update` (from the previous step) handles data. They don't overlap.
 
 ## Step 6: Computed Filtering
 
 Let's add a feature to show only "Active" or "Completed" items.
 
-First, add a filter to our state:
+First, add a `filter` key to the store. Update your `state()` call to include it:
 
 ```javascript
 const store = state({
-  todos: [...],
+  todos: [
+    { id: 1, text: 'Learn Lume.js', done: false },
+    { id: 2, text: 'Build something cool', done: false }
+  ],
   filter: 'all' // 'all', 'active', 'completed'
 });
 ```
@@ -182,12 +186,13 @@ const visibleTodos = computed(() => {
 });
 ```
 
-Finally, update `repeat` to use `visibleTodos` instead of `store.todos`.
+Finally, update `repeat` to read from `visibleTodos` instead of `store` directly. Computed objects work as stores — just use `'value'` as the key:
 
 ```javascript
-// Change 'store' to 'visibleTodos' (computed objects work like stores!)
-repeat(listContainer, visibleTodos, 'value', { 
-  // ... same options ... 
+repeat(listContainer, visibleTodos, 'value', {
+  key: todo => todo.id,
+  create: (todo, el) => { /* same as before */ },
+  update: (todo, el) => { /* same as before */ }
 });
 ```
 
@@ -337,4 +342,4 @@ Now refresh the page. Your todos are still there!
 
 ---
 
-**Next: [Working with Arrays](../tutorials/working-with-arrays.md) →**
+**← Previous: [stringAttr](../api/handlers/stringAttr.md)** | **Next: [Build Tic-Tac-Toe](build-tic-tac-toe.md) →**

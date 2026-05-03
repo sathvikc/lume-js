@@ -1,95 +1,143 @@
 # repeat(container, store, key, options)
 
-Efficiently renders a list of items based on an array in the state.
+The right tool for any list that changes. `repeat` renders a keyed list from a reactive array and reuses existing DOM nodes across updates — so adding, removing, or reordering items only touches what actually changed.
 
 ## Signature
 
-```typescript
+```ts
 function repeat(
   container: HTMLElement | string,
   store: object,
   key: string,
   options: {
-    key: (item: any) => any;
+    key: (item: any) => string | number;
     render?: (item: any, el: HTMLElement, index: number) => void;
     create?: (item: any, el: HTMLElement, index: number) => void;
-    update?: (item: any, el: HTMLElement, index: number, context: { isFirstRender: boolean }) => void;
+    update?: (item: any, el: HTMLElement, index: number, ctx: { isFirstRender: boolean }) => void;
     element?: string | (() => HTMLElement);
+    preserveFocus?: Function | null;
+    preserveScroll?: Function | null;
   }
-): () => void;
+): () => void
 ```
+
+Imported from `lume-js/addons`.
 
 ## Parameters
 
-- `container`: The DOM element (or selector string) to render into.
-- `store`: The reactive state object.
-- `key`: The property name of the array in the state.
-- `options`:
-    - `key` (Function): Returns a unique ID for each item. **Critical for performance.**
-    - `render` (Function, optional): Called for all items (both new and existing). Use for simple cases.
-    - `create` (Function, optional): Called once when a new element is created (for DOM structure).
-    - `update` (Function, optional): `(item, el, index, { isFirstRender }) => void`. Called for data binding. Skipped if same object reference AND same index.
-    - `element` (String or Function, optional): The HTML tag or factory (default: `div`).
+- `container` — The element (or CSS selector string) to render into.
+- `store` — A reactive store or computed whose key holds the array.
+- `key` — The property name of the array in `store`.
+- `options.key` — **Required.** Returns a stable unique identifier per item. Used to match DOM nodes across updates.
+- `options.render` — Mutates the element directly. (Return value is ignored). Called for new and updated items.
+- `options.create` — Called once when a new DOM element is created. Use for DOM structure and event listeners.
+- `options.update` — Called for data binding. Receives `{ isFirstRender }` so you can animate only on updates. **Skipped when the item reference and index are both unchanged from the previous render** (optimization). Use `render` instead if you always need to re-apply data regardless of reference equality.
+- `options.element` — Tag name or factory for the wrapper element. Default: `'div'`.
+- `options.preserveFocus` — Optional strategy for preserving focus during re-renders. Default: `defaultFocusPreservation`.
+- `options.preserveScroll` — Optional strategy for preserving scroll position during re-renders. Default: `defaultScrollPreservation`.
+
+Use `render` alone for simple read-only lists. Use `create + update` for lists with event listeners — `create` runs once when the element is created, `update` runs on every data change.
 
 ## Returns
 
-- A cleanup function.
+A cleanup function.
 
-## Description
+## Pattern 1 — Simple (render only)
 
-`repeat` synchronizes a DOM list with an array in your state. It uses the `key` function to track item identity, ensuring that DOM elements are reused, reordered, or removed efficiently rather than re-rendered from scratch.
+Best for read-only lists where no event listeners are needed on items.
 
-**Important:** You must use **immutable updates** for the array (e.g., `store.items = [...newItems]`) for `repeat` to detect changes.
-
-## Pattern 1: Simple (render only)
-
-Best for simple items where you don't need DOM/data separation.
-
-```javascript
+```js
 import { state } from 'lume-js';
 import { repeat } from 'lume-js/addons';
 
-const store = state({ users: [{ id: 1, name: 'Alice' }] });
+const store = state({
+  todos: [
+    { id: 1, text: 'Buy milk', done: false },
+    { id: 2, text: 'Walk dog', done: true  },
+  ]
+});
 
-repeat('#user-list', store, 'users', {
-  key: user => user.id,
-  render: (user, el) => {
-    el.textContent = user.name;  // Called on every update
+repeat(document.getElementById('list'), store, 'todos', {
+  key: todo => todo.id,
+  element: 'li',
+  render: (todo, el) => {
+    el.className = todo.done ? 'done' : '';
+    el.textContent = todo.text;
   }
 });
 ```
 
-## Pattern 2: Clean API (create + update) — Recommended
+## Pattern 2 — create + update (recommended)
 
-Best for complex items with event listeners and DOM structure.
+Best for items with event listeners. `create` runs once per DOM element; `update` runs on every data change.
 
-```javascript
-repeat('#user-list', store, 'users', {
-  key: user => user.id,
-  create: (user, el) => {
-    // Called ONCE - create DOM structure and attach listeners
-    el.innerHTML = '<span class="name"></span><button>Delete</button>';
-    el.querySelector('button').onclick = () => deleteUser(user.id);
+```js
+repeat('#todo-list', store, 'todos', {
+  key: todo => todo.id,
+  element: 'li',
+
+  create: (todo, el) => {
+    el.innerHTML = `
+      <input type="checkbox" class="toggle">
+      <span class="text"></span>
+      <button class="delete">×</button>
+    `;
+    el.querySelector('.toggle').onchange = () => {
+      store.todos = store.todos.map(t =>
+        t.id === todo.id ? { ...t, done: !t.done } : t
+      );
+    };
+    el.querySelector('.delete').onclick = () => {
+      store.todos = store.todos.filter(t => t.id !== todo.id);
+    };
   },
-  update: (user, el, index, { isFirstRender }) => {
-    // Called on each render - bind data
-    // isFirstRender = true on initial, false on subsequent
-    el.querySelector('.name').textContent = user.name;
-    
-    if (!isFirstRender) {
-      el.classList.add('updated');  // Animate only on updates
-    }
+
+  update: (todo, el, index, { isFirstRender }) => {
+    el.querySelector('.toggle').checked = todo.done;
+    el.querySelector('.text').textContent = todo.text;
+    el.classList.toggle('done', todo.done);
+    if (!isFirstRender) el.classList.add('updated'); // animate on change
   }
 });
 ```
 
-## Performance
+## Array operations
 
-- **Reference optimization**: `update` is skipped if the item object reference hasn't changed
-- **Keyed diffing**: Elements are reused by key, not recreated
-- **Minimal DOM operations**: Only changed elements are touched
+| Array change | DOM effect |
+|--------------|------------|
+| New key added (immutable replace) | Appends/inserts new row |
+| Key removed (immutable replace) | Removes row |
+| Reorder — same keys (immutable replace) | Moves existing nodes, `update` fires (index changed) |
+| Same key, item ref changed | Only that row's `update` fires |
+
+## Using with `computed`
+
+Pass a `computed` as the store and `'value'` as the key:
+
+```js
+import { computed } from 'lume-js/addons';
+
+const filtered = computed(() =>
+  store.todos.filter(t => store.filter === 'all' || !t.done)
+);
+
+repeat(listEl, filtered, 'value', {
+  key: t => t.id,
+  render: (t, el) => { el.textContent = t.text; }
+});
+```
+
+## Caveats
+
+- **Keys must be unique.** Duplicate keys log a warning; both items end up sharing the same DOM element, which produces incorrect rendering.
+- **Each rendered element must have exactly one root.** Wrap fragments in a `<div>` or `<li>`.
+
+## See also
+
+- [Lists & repeat guide](../../guides/lists.md)
+- [computed()](computed.md)
+- [Todo app tutorial](../../tutorials/build-todo-app.md)
 
 ---
 
-**← Previous: [computed()](computed.md)** | **Next: [Guides](../../guides/forms.md) →**
-
+**← Previous: [computed()](computed.md)** | **Next: [show](../handlers/show.md) →**

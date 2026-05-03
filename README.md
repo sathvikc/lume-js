@@ -48,7 +48,16 @@ import { state, bindDom } from 'lume-js';
 ```
 
 ### Browser Support
-Works in all modern browsers (Chrome 49+, Firefox 18+, Safari 10+, Edge 79+). **IE11 is NOT supported.**
+
+| Browser | Minimum version |
+|---------|-----------------|
+| Chrome  | 49+             |
+| Firefox | 18+             |
+| Safari  | 10+             |
+| Edge    | 79+             |
+| IE11    | ❌ Not supported |
+
+IE11 cannot be polyfilled — Lume uses `Proxy`.
 
 ---
 
@@ -166,8 +175,6 @@ import { computed, watch, repeat } from 'lume-js/addons';
 - **`computed(fn)`** — Cached derived values with auto-tracking
 - **`watch(store, key, fn)`** — Subscribe to state changes
 - **`repeat(container, store, key, options)`** — Keyed list rendering with element reuse
-
-> **Note:** The `repeat` addon is *experimental*. Its API may evolve in future releases.
 
 ---
 

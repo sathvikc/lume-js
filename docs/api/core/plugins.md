@@ -1,9 +1,9 @@
 # Plugins API
 
-> **Version:** 2.0.0+  
+> **Version:** 2.0.0+
 > **Status:** Stable
 
-The plugin system allows you to extend Lume.js state with custom behaviors. Plugins can intercept and modify state operations, add logging, validation, persistence, and more.
+The plugin system lets you extend Lume state with custom behaviors — logging, validation, persistence, transformation, and more. Plugins intercept state operations through a small set of hooks.
 
 ## Table of Contents
 
@@ -44,12 +44,12 @@ A plugin is a plain object with a `name` property and optional hook functions:
 
 ```typescript
 interface Plugin {
-  name: string;                // Required: unique identifier
-  onInit?: () => void;         // Called when state is created
-  onGet?: (key: string, value: any) => any;  // Intercept get operations
-  onSet?: (key: string, newValue: any, oldValue: any) => any;  // Intercept set operations
-  onSubscribe?: (key: string) => void;  // Called when subscriber added
-  onNotify?: (key: string, value: any) => void;  // Before subscribers notified
+  name: string;                                                    // Required: unique identifier
+  onInit?: () => void;                                             // Called when state is created
+  onGet?: (key: string, value: any) => any;                       // Intercept reads
+  onSet?: (key: string, newValue: any, oldValue: any) => any;     // Intercept writes
+  onSubscribe?: (key: string) => void;                             // Called when a subscriber is added
+  onNotify?: (key: string, value: any) => void;                   // Before subscribers are notified
 }
 ```
 
@@ -57,12 +57,8 @@ interface Plugin {
 
 Called synchronously when the state object is created.
 
-**Use cases:**
-- Initialize plugin state
-- Set up external connections
-- Register global handlers
+**Use cases:** initialize plugin state, set up external connections, register global handlers.
 
-**Example:**
 ```javascript
 const plugin = {
   name: 'logger',
@@ -77,18 +73,13 @@ const plugin = {
 Called when a property is accessed, before the value is returned.
 
 **Parameters:**
-- `key` (string) - Property key being accessed
-- `value` (any) - Current value (possibly transformed by previous plugins)
+- `key` — Property key being accessed.
+- `value` — Current value (possibly transformed by earlier plugins in the chain).
 
-**Returns:** Transformed value or undefined to keep current value
+**Returns:** Transformed value, or the original `value` to pass it through unchanged.
 
-**Use cases:**
-- Transform values on read
-- Log property access
-- Implement computed properties
-- Lazy loading
+**Use cases:** transform values on read, log access, implement computed properties, lazy loading.
 
-**Example:**
 ```javascript
 const transformPlugin = {
   name: 'transform',
@@ -106,19 +97,14 @@ const transformPlugin = {
 Called when a property is updated, before subscribers are notified.
 
 **Parameters:**
-- `key` (string) - Property key being updated
-- `newValue` (any) - New value (possibly transformed by previous plugins)
-- `oldValue` (any) - Previous value
+- `key` — Property key being updated.
+- `newValue` — New value (possibly transformed by earlier plugins).
+- `oldValue` — Previous value.
 
-**Returns:** Transformed value or undefined to keep current value
+**Returns:** The value to store. Return `oldValue` to reject the change.
 
-**Use cases:**
-- Validate input
-- Transform values on write
-- Prevent updates
-- Track history
+**Use cases:** validate input, transform values on write, prevent updates, track history.
 
-**Example:**
 ```javascript
 const validationPlugin = {
   name: 'validation',
@@ -137,14 +123,10 @@ const validationPlugin = {
 Called when a new subscriber is added to a property.
 
 **Parameters:**
-- `key` (string) - Property key being subscribed to
+- `key` — Property key being subscribed to.
 
-**Use cases:**
-- Track active subscriptions
-- Lazy load data when needed
-- Initialize watchers
+**Use cases:** track active subscriptions, lazy load data, initialize watchers.
 
-**Example:**
 ```javascript
 const trackPlugin = {
   name: 'tracker',
@@ -156,23 +138,18 @@ const trackPlugin = {
 
 ### Hook: `onNotify(key, value)`
 
-Called during microtask flush, before subscribers are notified.
+Called during microtask flush, before subscribers are notified. This is the right place for side effects.
 
 **Parameters:**
-- `key` (string) - Property key that changed
-- `value` (any) - New value being notified
+- `key` — Property key that changed.
+- `value` — New value being notified.
 
-**Use cases:**
-- Log notifications
-- Sync with external systems
-- Trigger side effects
+**Use cases:** log notifications, sync with external systems, trigger side effects.
 
-**Example:**
 ```javascript
 const syncPlugin = {
   name: 'sync',
   onNotify: (key, value) => {
-    // Sync to server, localStorage, etc.
     localStorage.setItem(key, JSON.stringify(value));
   }
 };
@@ -180,27 +157,25 @@ const syncPlugin = {
 
 ## Hook Execution Order
 
-Hooks execute in a specific order during state operations:
-
-### Property Access (Get)
+### Property access (get)
 
 ```
 1. Property accessed: store.count
-2. onGet hooks (all plugins, in order)
-3. Value returned to caller
+2. onGet hooks run (all plugins, in registration order)
+3. Transformed value returned to caller
 ```
 
-### Property Update (Set)
+### Property update (set)
 
 ```
 1. Property set: store.count = 5
-2. onSet hooks (all plugins, in order)
-3. Value stored in state
+2. onSet hooks run (all plugins, in registration order)
+3. Final value stored
 4. Change queued for microtask
-5. --- Microtask boundary ---
-6. onNotify hooks (all plugins, in order)
-7. Subscribers notified
-8. Effects run (if any)
+--- microtask boundary ---
+5. onNotify hooks run (all plugins, in registration order)
+6. Subscribers notified
+7. Effects re-run
 ```
 
 ### Diagram
@@ -229,9 +204,9 @@ store.count = 5
 
 ## Chain Pattern
 
-When multiple plugins are registered, they form a chain where each plugin receives the output of the previous plugin.
+When multiple plugins are registered, each plugin receives the output of the previous one.
 
-### Get Chain
+### Get chain
 
 ```javascript
 const plugin1 = {
@@ -252,15 +227,13 @@ const store = state(
 console.log(store.count); // (5 * 2) + 10 = 20
 ```
 
-### Set Chain
+### Set chain
 
 ```javascript
 const plugin1 = {
   name: 'clamp',
   onSet: (key, value) => {
-    if (key === 'age') {
-      return Math.max(0, Math.min(150, value)); // Clamp 0-150
-    }
+    if (key === 'age') return Math.max(0, Math.min(150, value));
     return value;
   }
 };
@@ -268,9 +241,7 @@ const plugin1 = {
 const plugin2 = {
   name: 'round',
   onSet: (key, value) => {
-    if (key === 'age') {
-      return Math.round(value); // Round to integer
-    }
+    if (key === 'age') return Math.round(value);
     return value;
   }
 };
@@ -286,41 +257,36 @@ console.log(store.age); // Math.round(Math.min(150, 175.7)) = 150
 
 ## Best Practices
 
-### 1. Keep Plugins Focused
+### Keep plugins focused
 
 Each plugin should do one thing well.
 
 ```javascript
 // Good: Single responsibility
 const validationPlugin = { name: 'validation', onSet: validateData };
-const loggingPlugin = { name: 'logging', onGet: logAccess };
+const loggingPlugin    = { name: 'logging',    onGet: logAccess };
 
-// Bad: Mixed responsibilities
+// Avoid: Mixed responsibilities in one plugin
 const godPlugin = {
   name: 'everything',
-  onGet: (key, value) => { /* validate + log + transform + ... */ }
+  onGet: (key, value) => { /* validate + log + transform + … */ }
 };
 ```
 
-### 2. Return Early When Not Applicable
+### Return early for non-applicable keys
 
 ```javascript
 const ageValidator = {
   name: 'age-validator',
   onSet: (key, newValue, oldValue) => {
-    // Only validate age property
     if (key !== 'age') return newValue;
-    
-    // Validation logic
-    if (newValue < 0 || newValue > 150) {
-      return oldValue;
-    }
+    if (newValue < 0 || newValue > 150) return oldValue;
     return newValue;
   }
 };
 ```
 
-### 3. Handle Errors Gracefully
+### Handle errors gracefully
 
 Lume catches errors in plugin hooks and logs them, but your plugin should handle expected errors:
 
@@ -332,42 +298,39 @@ const safePlugin = {
       return JSON.parse(value);
     } catch (e) {
       console.warn(`Failed to parse ${key}:`, e);
-      return value; // Return original value
+      return value;
     }
   }
 };
 ```
 
-### 4. Avoid Side Effects in onGet
+### Keep `onGet` pure
 
-onGet runs frequently and should be pure when possible:
+`onGet` runs on every property read. Side effects here (fetch calls, writes to other keys) will fire far more often than you expect. Use `onNotify` for side effects instead.
 
 ```javascript
-// Good: Pure transformation
+// Good: pure transformation
 const plugin = {
   name: 'format',
-  onGet: (key, value) => value.toUpperCase()
+  onGet: (key, value) => typeof value === 'string' ? value.toUpperCase() : value
 };
 
-// Bad: Side effects
+// Avoid: side effects in onGet
 const plugin = {
   name: 'bad',
   onGet: (key, value) => {
-    fetch('/api/log', { method: 'POST', body: key }); // Side effect!
+    fetch('/api/log', { method: 'POST', body: key }); // fires on every read!
     return value;
   }
 };
 ```
 
-### 5. Use onNotify for Side Effects
-
-onNotify is designed for side effects like persistence:
+### Use `onNotify` for side effects
 
 ```javascript
 const persistPlugin = {
   name: 'persist',
   onNotify: (key, value) => {
-    // Side effects are OK here
     localStorage.setItem(key, JSON.stringify(value));
   }
 };
@@ -383,14 +346,14 @@ const validationPlugin = {
   onSet: (key, newValue, oldValue) => {
     const rules = {
       email: (v) => typeof v === 'string' && v.includes('@'),
-      age: (v) => typeof v === 'number' && v >= 0 && v <= 150
+      age:   (v) => typeof v === 'number' && v >= 0 && v <= 150
     };
-    
+
     if (rules[key] && !rules[key](newValue)) {
       console.error(`Validation failed for ${key}`);
-      return oldValue; // Reject change
+      return oldValue;
     }
-    
+
     return newValue;
   }
 };
@@ -408,7 +371,6 @@ const historyPlugin = {
   }
 };
 
-// Undo function
 function undo(store) {
   if (historyPlugin.stack.length > 0) {
     const { key, value } = historyPlugin.stack.pop();
@@ -422,50 +384,23 @@ function undo(store) {
 ```javascript
 const persistPlugin = {
   name: 'persist',
-  
+
   onInit: () => {
-    // Load from localStorage on init
     persistPlugin.loaded = true;
   },
-  
+
   onGet: (key, value) => {
-    // Lazy load from localStorage
     if (persistPlugin.loaded && value === undefined) {
       const stored = localStorage.getItem(key);
       return stored ? JSON.parse(stored) : value;
     }
     return value;
   },
-  
+
   onNotify: (key, value) => {
-    // Save to localStorage on change
     localStorage.setItem(key, JSON.stringify(value));
   }
 };
-```
-
-### Computed Properties
-
-```javascript
-const computedPlugin = {
-  name: 'computed',
-  onGet: (key, value) => {
-    if (key === 'fullName') {
-      // Access other properties to compute value
-      // Note: This creates a dependency!
-      const store = computedPlugin.store;
-      return `${store.firstName} ${store.lastName}`;
-    }
-    return value;
-  }
-};
-
-// Store reference for computed access
-const store = state(
-  { firstName: 'John', lastName: 'Doe', fullName: null },
-  { plugins: [computedPlugin] }
-);
-computedPlugin.store = store; // Store reference
 ```
 
 ### Transform / Normalize
@@ -478,7 +413,7 @@ const normalizePlugin = {
       return newValue.toLowerCase().trim();
     }
     if (key === 'phone' && typeof newValue === 'string') {
-      return newValue.replace(/\D/g, ''); // Remove non-digits
+      return newValue.replace(/\D/g, ''); // digits only
     }
     return newValue;
   }
@@ -487,29 +422,22 @@ const normalizePlugin = {
 
 ## Performance
 
-### Plugin Overhead
+Plugin hooks add minimal overhead — typically 10–30% per operation depending on complexity. Each hook call is synchronous, and multiple plugins execute sequentially.
 
-- Plugins add minimal overhead (~10-30% depending on complexity)
-- Each hook call is synchronous
-- Multiple plugins execute sequentially
-
-### Optimization Tips
-
-1. **Filter early**: Return immediately for non-applicable keys
-2. **Avoid heavy computations**: Keep hook logic lightweight
-3. **Cache when possible**: Store computed results
-4. **Limit plugin count**: Use 1-3 plugins for typical apps
-
-### Benchmarks
+**Tips:**
+- Filter early: return immediately for non-applicable keys.
+- Keep hook logic lightweight.
+- Cache computed results when needed.
+- For typical apps, 1–3 plugins is plenty.
 
 Typical overhead on a modern system (M1 Mac):
 
 | Operation | No Plugins | 1 Plugin | 3 Plugins | 10 Plugins |
 |-----------|------------|----------|-----------|------------|
-| Get | 0.001ms | 0.002ms | 0.004ms | 0.010ms |
-| Set | 0.002ms | 0.003ms | 0.006ms | 0.015ms |
+| Get | 0.001 ms | 0.002 ms | 0.004 ms | 0.010 ms |
+| Set | 0.002 ms | 0.003 ms | 0.006 ms | 0.015 ms |
 
-For 99% of applications, plugin overhead is negligible.
+For the vast majority of applications, plugin overhead is negligible.
 
 ## Error Handling
 
@@ -549,8 +477,7 @@ const store = state<{ count: number }>(
 );
 ```
 
-## See Also
+## See also
 
-- [Design Decisions](../../design/design-decisions.md) - Why plugins work this way
-- [Plugin Demo Example](../../examples/plugin-demo/) - Working examples
-- [State API](./state.md) - Core state documentation
+- [Design Decisions](../../design/design-decisions.md) — Why plugins work this way
+- [State API](./state.md) — Core state documentation

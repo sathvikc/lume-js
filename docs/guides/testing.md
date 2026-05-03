@@ -1,10 +1,10 @@
 # Testing
 
-Since Lume.js uses standard JavaScript objects and DOM, testing is straightforward.
+Lume uses standard JavaScript objects and the standard DOM, so testing requires no special setup. Unit tests run without a DOM, and DOM tests work with any environment that provides one (Vitest ships with jsdom).
 
-## Unit Testing State
+## Unit testing state
 
-You can test your state logic without any DOM.
+State logic is plain JavaScript — test it directly without touching the DOM.
 
 ```javascript
 import { state } from 'lume-js';
@@ -17,9 +17,9 @@ test('increment count', () => {
 });
 ```
 
-## Testing DOM Updates
+## Testing DOM updates
 
-You can use `jsdom` (included in Vitest) to test DOM updates.
+Lume batches DOM updates via `queueMicrotask`, so after writing to the store you need to yield to the microtask queue before asserting. A zero-millisecond `setTimeout` is the simplest way to do this.
 
 ```javascript
 import { state, bindDom } from 'lume-js';
@@ -30,15 +30,13 @@ test('updates DOM', async () => {
   const store = state({ text: 'Hello' });
   bindDom(document.body, store);
 
-  // Initial render
   expect(document.querySelector('span').textContent).toBe('Hello');
 
-  // Update
   store.text = 'World';
-  
-  // Wait for microtask (Lume updates are async)
+
+  // Wait for the microtask flush
   await new Promise(resolve => setTimeout(resolve, 0));
-  
+
   expect(document.querySelector('span').textContent).toBe('World');
 });
 ```

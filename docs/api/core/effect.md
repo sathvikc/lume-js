@@ -1,105 +1,97 @@
-# effect(callback, deps?)
+# effect(fn)
 
-Runs a function immediately and re-runs it whenever dependencies change.
+Runs a function immediately and re-runs it whenever any store key it reads changes.
 
 ## Signature
 
-```typescript
-// Auto-tracking mode (default)
-function effect(callback: () => void): () => void;
-
-// Explicit deps mode (no magic)
-function effect(callback: () => void, deps: [store, ...keys][]): () => void;
+```ts
+function effect(
+  fn: () => void,
+  deps?: Array<[store: object, ...keys: string[]]>
+): () => void
 ```
+
+Imported from `lume-js`.
 
 ## Parameters
 
-- `callback` (Function): The function to run reactively.
-- `deps` (Optional Array): Explicit dependencies as `[store, 'key1', 'key2', ...]` tuples.
+- `fn` — The function to run reactively. Must be synchronous. Return value is ignored.
 
 ## Returns
 
-- A cleanup function that stops the effect.
+A dispose function. Call it to stop the effect and free its subscriptions.
 
----
+## How it works
 
-## Auto-Tracking Mode (Default)
+`effect` sets a global tracking context, runs `fn`, then clears it. Every store `get` that fires during the run registers the current effect as a subscriber for that key. On any subsequent write to a tracked key, the effect is queued in a microtask and re-runs. Before each re-run, previous subscriptions are torn down and rebuilt from the new read set, so stale dependencies are dropped automatically.
 
-Tracks dependencies automatically by detecting which state properties are accessed.
+You can also pass an explicit `deps` array of `[store, ...keys]` tuples to skip auto-tracking and subscribe to specific keys only.
 
-```javascript
-const store = state({ count: 0, name: 'Alice' });
+```js
+import { state, effect } from 'lume-js';
 
-const cleanup = effect(() => {
-  // Accessing store.count makes it a dependency
-  console.log(`The count is ${store.count}`);
+const store = state({ count: 0, name: 'Ada' });
+
+const stop = effect(() => {
+  console.log(`Count: ${store.count}`);
+  // store.name is NOT read, so it is NOT a dependency
 });
 
-store.count++; // ✓ Logs: "The count is 1"
-store.name = 'Bob'; // ✗ Does NOT trigger (name not accessed)
+store.count++;    // logs "Count: 1"
+store.name = 'Z'; // nothing — name is not tracked
+stop();           // effect stops
+store.count++;    // nothing — disposed
 ```
 
-**Best for:** UI updates, rendering logic.
+## Conditional dependencies
 
----
+Dependencies are determined by which keys are **actually read** in a given run. If a read is behind a condition, the subscription only exists while that branch is active.
 
-## Explicit Deps Mode (No Magic)
+```js
+const store = state({ show: true, value: 42 });
 
-You specify exactly what triggers re-runs. No auto-tracking occurs.
-
-```javascript
-const store = state({ count: 0, name: 'Alice' });
-
-const cleanup = effect(() => {
-  // Accessing store.name does NOT create a dependency
-  analytics.track('count', store.count, store.name);
-}, [[store, 'count']]);  // Only re-runs when count changes
-
-store.count++; // ✓ Effect re-runs
-store.name = 'Bob'; // ✗ Effect does NOT re-run
+effect(() => {
+  if (store.show) {
+    console.log(store.value); // only subscribed when show is true
+  }
+});
 ```
 
-**Best for:** Side-effects, logging, analytics, API calls.
+## Avoiding infinite loops
 
----
+Writing to a store key inside an effect that reads the same key causes an infinite loop. If you need to derive a value, use [`computed`](../addons/computed.md) instead. Reading one key and writing a different key is fine:
 
-## Multiple Dependencies
-
-```javascript
-// Multiple keys from same store
+```js
+// Reads store.a, writes store.b — no loop
 effect(() => {
-  console.log(store.a, store.b, store.c);
-}, [[store, 'a', 'b', 'c']]);
-
-// Multiple stores
-const userStore = state({ name: 'Alice' });
-const cartStore = state({ total: 0 });
-
-effect(() => {
-  console.log(`${userStore.name}'s cart: $${cartStore.total}`);
-}, [[userStore, 'name'], [cartStore, 'total']]);
-
-// Nested stores
-const app = state({ 
-  user: state({ profile: state({ name: 'Alice' }) }) 
+  store.b = store.a * 2;
 });
 
+// Reads and writes store.count — infinite loop
 effect(() => {
-  console.log(app.user.profile.name);
-}, [[app.user.profile, 'name']]);  // Reference the nested store directly
+  store.count = store.count + 1;
+});
 ```
 
+## Cleanup
+
+The dispose function returned by `effect()` tears down all subscriptions. Call it to stop the effect:
+
+```js
+const stop = effect(() => {
+  document.title = `Count: ${store.count}`;
+});
+
+// Later:
+stop(); // unsubscribes and stops re-running
+```
+
+## See also
+
+- [watch()](../addons/watch.md) — explicit single-key subscription (no auto-tracking)
+- [computed()](../addons/computed.md) — cached derived value
+- [How reactivity works](../../guides/reactivity.md)
+
 ---
 
-## Notes
-
-- Effects run asynchronously (microtask) to batch updates.
-- In explicit mode, `globalThis.__LUME_CURRENT_EFFECT__` is NOT set.
-- Clean up effects when done to prevent memory leaks.
-
----
-
-**← Previous: [bindDom()](bindDom.md)** | **Next: [computed()](../addons/computed.md) →**
-
-> **Deep Dive:** [Design Decision: Why two modes?](../../design/design-decisions.md#why-support-explicit-dependencies-in-effect)
-
+**← Previous: [bindDom()](bindDom.md)** | **Next: [watch()](../addons/watch.md) →**

@@ -1,8 +1,10 @@
 # Forms
 
-Lume.js makes form handling simple with two-way binding.
+Lume handles form state through the same `data-bind` attribute used everywhere else. There is no special form API — bindings are two-way on form controls by default.
 
-## Basic Inputs
+## Basic inputs
+
+Add `data-bind` to any form control and `bindDom` wires it up automatically.
 
 ```html
 <input data-bind="name">
@@ -13,7 +15,7 @@ Lume.js makes form handling simple with two-way binding.
 </select>
 ```
 
-```javascript
+```js
 const store = state({
   name: '',
   bio: '',
@@ -23,74 +25,64 @@ const store = state({
 bindDom(document.body, store);
 ```
 
-## Checkboxes & Radios
+## Checkboxes and radios
+
+Checkboxes bind to a boolean. Radio groups bind to a string value — whichever radio's `value` attribute matches the store value gets checked.
 
 ```html
-<!-- Single Checkbox (Boolean) -->
+<!-- Single checkbox — store.acceptedTerms === true | false -->
 <input type="checkbox" data-bind="acceptedTerms">
 
-<!-- Radio Buttons (String) -->
+<!-- Radio group — store.theme === 'light' | 'dark' -->
 <input type="radio" name="theme" value="light" data-bind="theme">
 <input type="radio" name="theme" value="dark" data-bind="theme">
 ```
 
 ## Validation
 
-You can use `effect()` or `$subscribe()` to validate inputs.
+Use `watch` to run validation logic whenever a specific field changes. Write the result back to an error key in the store.
 
-```javascript
+```js
+import { watch } from 'lume-js/addons';
+
 const store = state({
   email: '',
   error: ''
 });
 
-store.$subscribe('email', (email) => {
-  if (!email.includes('@')) {
-    store.error = 'Invalid email';
-  } else {
-    store.error = '';
-  }
+watch(store, 'email', (email) => {
+  store.error = email.includes('@') ? '' : 'Invalid email';
 });
+```
+
+```html
+<input data-bind="email" type="email">
+<span data-bind="error"></span>
 ```
 
 ## Submitting
 
-Use standard `submit` events.
+Use a standard `submit` event. The store already holds the current values — read them directly.
 
-```javascript
+```js
 document.querySelector('form').addEventListener('submit', (e) => {
   e.preventDefault();
   console.log('Submitting:', store.name, store.email);
 });
 ```
 
-## Reactive Form Attributes
+## Reactive form attributes
 
-Use built-in `data-*` attributes to control form state reactively:
+The built-in `data-hidden` and `data-disabled` attributes let you control form state reactively without extra imports:
 
 ```html
-<form id="signup">
-  <input data-bind="email" data-required="emailRequired">
-  <span data-bind="error"></span>
-  <button data-disabled="isSubmitting">Submit</button>
-  <div data-hidden="isSubmitting">Form content</div>
-</form>
+<button data-disabled="isSubmitting">Submit</button>
+<div data-hidden="isSubmitting">Form content</div>
 ```
 
-```javascript
-const store = state({
-  email: '',
-  error: '',
-  emailRequired: true,
-  isSubmitting: false
-});
+For `readonly` and other form attributes not covered by the built-ins, import `formHandlers`:
 
-bindDom(document.getElementById('signup'), store);
-```
-
-For additional form attributes like `readonly`, import from `lume-js/handlers`:
-
-```javascript
+```js
 import { formHandlers } from 'lume-js/handlers';
 
 bindDom(root, store, { handlers: formHandlers });
@@ -102,4 +94,4 @@ bindDom(root, store, { handlers: formHandlers });
 
 ---
 
-**← Previous: [API: repeat()](../api/addons/repeat.md)** | **Next: [Routing](routing.md) →**
+**← Previous: [Lists & repeat](lists.md)** | **Next: [Animations](animations.md) →**
