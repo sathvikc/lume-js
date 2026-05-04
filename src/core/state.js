@@ -235,7 +235,9 @@ export function state(obj) {
     if (typeof fn !== 'function') {
       throw new Error('$beforeFlush requires a function');
     }
-    beforeFlushHooks.push(fn);
+    if (beforeFlushHooks.indexOf(fn) === -1) {
+      beforeFlushHooks.push(fn);
+    }
     return () => {
       const idx = beforeFlushHooks.indexOf(fn);
       if (idx !== -1) {

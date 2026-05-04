@@ -319,6 +319,19 @@ describe('state edge cases', () => {
     expect(() => store.$beforeFlush(123)).toThrow('$beforeFlush requires a function');
   });
 
+  it('$beforeFlush deduplicates the same function reference', async () => {
+    const store = state({ count: 0 });
+    const spy = vi.fn();
+
+    store.$beforeFlush(spy);
+    store.$beforeFlush(spy);
+
+    store.count = 1;
+    await Promise.resolve();
+
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
   it('isolates subscriber errors so remaining subscribers still receive updates', async () => {
     const store = state({ count: 0 });
     const goodSpy = vi.fn();
