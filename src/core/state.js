@@ -33,8 +33,6 @@
  * @example
  * const store = state({ count: 0 });
  */
-// Internal symbol used to mark reactive proxies (non-enumerable via Proxy trap)
-const REACTIVE_MARKER = Symbol('__LUME_REACTIVE__');
 
 export function state(obj) {
   // Validate input
@@ -88,8 +86,6 @@ export function state(obj) {
 
   const proxy = new Proxy(obj, {
     get(target, key) {
-      // Reactive marker check (avoid tracking for internal symbol)
-      if (key === REACTIVE_MARKER) return true;
       // Skip effect tracking for internal meta methods (e.g. $subscribe)
       if (typeof key === 'string' && key.startsWith('$')) {
         return target[key];
