@@ -38,6 +38,12 @@
 // Active read observers — only populated during withReadObserver scopes.
 // This keeps state.js pure: tracking only happens when someone explicitly
 // asks to observe reads within a synchronous function call.
+//
+// Note: This Set is module-level, so all reactive state instances and effects
+// within the SAME module instance share it. This is standard behavior for
+// auto-tracking reactive libraries (Vue, MobX, Solid, etc.). Multiple copies
+// of the lume-js module (e.g. from different bundled chunks) each get their
+// own independent Set via ES module / CommonJS isolation.
 const readers = new Set();
 
 /**
