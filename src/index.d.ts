@@ -33,7 +33,7 @@ export type Subscriber<T> = (value: T) => void;
  *   }
  * };
  * 
- * const store = state({ count: 0 }, { plugins: [debugPlugin] });
+ * const store = withPlugins(state({ count: 0 }), [debugPlugin]);
  * ```
  */
 export interface Plugin {
@@ -121,17 +121,6 @@ export interface TypedPlugin<T extends object> {
 }
 
 /**
- * Options for state creation
- */
-export interface StateOptions {
-  /**
-   * Array of plugins to apply to this state object
-   * Plugins execute in the order they are registered
-   */
-  plugins?: Plugin[];
-}
-
-/**
  * Reactive state object with $subscribe method
  */
 export type ReactiveState<T extends object> = T & {
@@ -179,29 +168,8 @@ export type ReactiveState<T extends object> = T & {
  * unsub();
  * ```
  * 
- * @example
- * ```typescript
- * // With plugins
- * const store = state(
- *   { count: 0 },
- *   { 
- *     plugins: [
- *       {
- *         name: 'logger',
- *         onGet: (key, value) => {
- *           console.log(`GET ${key}:`, value);
- *           return value;
- *         }
- *       }
- *     ]
- *   }
- * );
- * ```
  */
-export function state<T extends object>(
-  obj: T,
-  options?: StateOptions
-): ReactiveState<T>;
+export function state<T extends object>(obj: T): ReactiveState<T>;
 
 /**
  * Handler interface for extending bindDom with custom reactive data-* attributes.
