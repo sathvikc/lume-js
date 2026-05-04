@@ -719,6 +719,32 @@ describe('repeat', () => {
       consoleWarn.mockRestore();
     });
 
+    it('skips duplicate keys to avoid DOM corruption', () => {
+      const store = state({
+        items: [
+          { id: 1, name: 'Alice' },
+          { id: 1, name: 'Bob' }, // Duplicate key!
+          { id: 2, name: 'Charlie' }
+        ]
+      });
+      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => { });
+
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        render: (item, el) => {
+          el.textContent = item.name;
+        }
+      });
+
+      // Duplicate shares the same key, so only unique-key elements are created.
+      // The first item must not be corrupted by the duplicate overwriting it.
+      expect(container.children.length).toBe(2);
+      expect(container.children[0].textContent).toBe('Alice');
+      expect(container.children[1].textContent).toBe('Charlie');
+
+      consoleWarn.mockRestore();
+    });
+
     it('catches and logs render errors', () => {
       const store = state({ items: [{ id: 1 }] });
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => { });
