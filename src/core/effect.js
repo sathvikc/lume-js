@@ -28,13 +28,24 @@
  * - Compatible with per-state batching
  */
 
+// Module-scoped effect context (prevents third-party spoofing via globalThis)
+let currentEffect = null;
+
+/**
+ * Get the currently executing effect context (for state.js tracking).
+ * @returns {object|null} Current effect context
+ */
+export function getCurrentEffect() {
+  return currentEffect;
+}
+
 /**
  * Creates an effect that runs reactively
  *
  * @param {function} fn - Function to run reactively
  * @param {Array<[object, string]>} [deps] - Optional explicit dependencies as [store, key] tuples
  * @returns {function} Cleanup function to stop the effect
- * 
+ *
  * @example
  * // Auto-tracking (default)
  * const store = state({ count: 0 });
@@ -119,8 +130,8 @@ export function effect(fn, deps) {
 
       // Set as current effect (for state.js to detect)
       // Save previous context to support nested effects/computed
-      const previousEffect = globalThis.__LUME_CURRENT_EFFECT__;
-      globalThis.__LUME_CURRENT_EFFECT__ = effectContext;
+      const previousEffect = currentEffect;
+      currentEffect = effectContext;
       isRunning = true;
 
       try {
@@ -130,7 +141,7 @@ export function effect(fn, deps) {
         throw error;
       } finally {
         // Restore previous context (not undefined) to support nesting
-        globalThis.__LUME_CURRENT_EFFECT__ = previousEffect;
+        currentEffect = previousEffect;
         isRunning = false;
       }
     };

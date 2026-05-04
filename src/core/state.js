@@ -1,3 +1,5 @@
+import { getCurrentEffect } from './effect.js';
+
 /**
  * Lume-JS Reactive State Core
  *
@@ -109,40 +111,37 @@ export function state(obj) {
       const value = target[key];
 
       // Effect tracking — check if we're inside an effect context
-      if (typeof globalThis.__LUME_CURRENT_EFFECT__ !== 'undefined') {
-        const currentEffect = globalThis.__LUME_CURRENT_EFFECT__;
+      const currentEffect = getCurrentEffect();
+      if (currentEffect && !currentEffect.tracking[key]) {
+        // Mark as tracked
+        currentEffect.tracking[key] = true;
 
-        if (currentEffect && !currentEffect.tracking[key]) {
-          // Mark as tracked
-          currentEffect.tracking[key] = true;
+        // Subscribe to changes for this key (skip initial call for effects)
+        const unsubscribe = (() => {
+          if (!listeners[key]) listeners[key] = [];
 
-          // Subscribe to changes for this key (skip initial call for effects)
-          const unsubscribe = (() => {
-            if (!listeners[key]) listeners[key] = [];
+          const effectFn = () => {
+            // Queue effect in this state's pending set
+            // Set deduplicates - effect runs once even if multiple keys change
+            pendingEffects.add(currentEffect.execute);
+          };
 
-            const effectFn = () => {
-              // Queue effect in this state's pending set
-              // Set deduplicates - effect runs once even if multiple keys change
-              pendingEffects.add(currentEffect.execute);
-            };
+          listeners[key].push(effectFn);
 
-            listeners[key].push(effectFn);
-
-            // Return unsubscribe function (no initial call for effects)
-            return () => {
-              if (listeners[key]) {
-                const idx = listeners[key].indexOf(effectFn);
-                if (idx !== -1) {
-                  listeners[key].splice(idx, 1);
-                  if (listeners[key].length === 0) delete listeners[key];
-                }
+          // Return unsubscribe function (no initial call for effects)
+          return () => {
+            if (listeners[key]) {
+              const idx = listeners[key].indexOf(effectFn);
+              if (idx !== -1) {
+                listeners[key].splice(idx, 1);
+                if (listeners[key].length === 0) delete listeners[key];
               }
-            };
-          })();
+            }
+          };
+        })();
 
-          // Store cleanup function
-          currentEffect.cleanups.push(unsubscribe);
-        }
+        // Store cleanup function
+        currentEffect.cleanups.push(unsubscribe);
       }
 
       return value;
