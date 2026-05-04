@@ -41,8 +41,13 @@
  *     key: todo => todo.id,
  *     create: (todo, el) => {
  *       // Called ONCE when element is created - build DOM structure
- *       el.innerHTML = `<span class="name"></span><button>Delete</button>`;
- *       el.querySelector('button').onclick = () => deleteTodo(todo.id);
+ *       const nameSpan = document.createElement('span');
+ *       nameSpan.className = 'name';
+ *       el.appendChild(nameSpan);
+ *       const btn = document.createElement('button');
+ *       btn.textContent = 'Delete';
+ *       btn.onclick = () => deleteTodo(todo.id);
+ *       el.appendChild(btn);
  *     },
  *     update: (todo, el, index, { isFirstRender }) => {
  *       // Called on every update - bind data
