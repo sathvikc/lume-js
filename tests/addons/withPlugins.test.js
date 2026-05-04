@@ -325,6 +325,38 @@ describe('withPlugins', () => {
       expect(store.age).toBe(30);
     });
 
+    it('onNotify does not fire when onSet blocks the update', async () => {
+      const onNotify = vi.fn();
+      const validationPlugin = {
+        name: 'validate',
+        onSet: (key, newValue, oldValue) => {
+          if (key === 'age' && newValue < 0) return oldValue;
+          return newValue;
+        },
+        onNotify
+      };
+      const store = withPlugins(state({ age: 25 }), [validationPlugin]);
+      const spy = vi.fn();
+      store.$subscribe('age', spy);
+      spy.mockClear();
+      onNotify.mockClear();
+
+      store.age = -5; // blocked by onSet
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(store.age).toBe(25);
+      expect(onNotify).not.toHaveBeenCalled();
+      expect(spy).not.toHaveBeenCalled();
+
+      store.age = 30; // allowed
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(onNotify).toHaveBeenCalledWith('age', 30);
+      expect(spy).toHaveBeenCalledWith(30);
+    });
+
     it('history plugin tracks changes', async () => {
       const history = [];
       const historyPlugin = {
