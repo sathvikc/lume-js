@@ -145,17 +145,39 @@ describe('computed', () => {
     const store = state({ count: 1 });
     const calc = vi.fn(() => store.count * 2);
     const c = computed(calc);
-    
+
     expect(c.value).toBe(2);
     expect(calc).toHaveBeenCalledTimes(1);
-    
+
     // Dispose the computed
     c.dispose();
-    
+
     // Changes should not trigger recomputation after disposal
     calc.mockClear();
     store.count = 5;
     await new Promise(resolve => setTimeout(resolve, 0));
+    expect(calc).not.toHaveBeenCalled();
+  });
+
+  it('does not recompute from stale microtasks after dispose', async () => {
+    const store = state({ count: 1 });
+    const calc = vi.fn(() => store.count * 2);
+    const c = computed(calc);
+
+    expect(c.value).toBe(2);
+    expect(calc).toHaveBeenCalledTimes(1);
+
+    // Trigger a change that queues a microtask inside the effect
+    store.count = 2;
+
+    // Dispose immediately BEFORE the microtask clears isInComputation
+    c.dispose();
+    calc.mockClear();
+
+    // Wait for any pending microtasks
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // Should NOT have recomputed from the stale microtask
     expect(calc).not.toHaveBeenCalled();
   });
 
