@@ -206,6 +206,40 @@ describe('computed', () => {
     // If effect becomes async in the future, this test will catch it
   });
 
+  it('suppresses self-triggered flush to prevent circular dependency hang', async () => {
+    const store = state({ count: 0 });
+
+    // Circular: computed reads count, then mutates count
+    const c = computed(() => {
+      const val = store.count;
+      store.count = val + 1; // Mutates what we depend on
+      return val;
+    });
+
+    expect(c.value).toBe(0); // Initial run sets store.count = 1
+
+    // Wait for microtasks to flush — without suppression this would infinite-loop
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    // The flush triggered by store.count = 1 was suppressed.
+    // Value stays at 0; the computed did not re-run.
+    expect(c.value).toBe(0);
+    expect(store.count).toBe(1);
+
+    // External mutations still work after the self-trigger was suppressed
+    store.count = 10;
+    await new Promise(resolve => setTimeout(resolve, 10));
+    // Now the effect ran from the external mutation, which also did store.count = 11
+    expect(c.value).toBe(10);
+    expect(store.count).toBe(11);
+
+    // Another external mutation
+    store.count = 100;
+    await new Promise(resolve => setTimeout(resolve, 10));
+    expect(c.value).toBe(100);
+    expect(store.count).toBe(101);
+  });
+
   it('throws error when accessing value before initialization completes', () => {
     // Create computed for testing initialization
     const store = state({ count: 5 });

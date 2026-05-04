@@ -686,13 +686,14 @@ effect(() => {
 ```
 
 **Reasoning:**
-- **Honest Admission:** Auto-tracking uses a module-scoped context variable. This is less magical than a `globalThis` property, but still implicit.
+- **Honest Admission:** Auto-tracking uses `withReadObserver` — a scope-based read observer that is only active during the synchronous execution of an effect's body. This is less magical than a `globalThis` property or a permanently-installed hook, but still implicit within the scope.
 - **Why Keep Auto-tracking?**
   1. **Backward Compatibility:** Converting existing code would be painful.
   2. **Simplicity:** It's still the easiest way to write simple View logic (`el.textContent = store.count`).
 - **Why Explicit Deps?**
   - **Philosophy Alignment:** Fits "explicit over magic". You know exactly what triggers the effect.
   - **Safety:** Prevents infinite loops and accidental tracking (e.g., reading a value for logging shouldn't trigger a re-run).
+- **Architecture Note:** `state.js` does not permanently know about `effect.js`. Read tracking is only active when a function is executed inside `withReadObserver(onRead, fn)`. Multiple observers (nested effects, devtools, computed) are supported simultaneously via a `Set` of active readers.
 
 **Why `[store, key]` tuple syntax?**
 - Lume.js uses proxies, not "refs" or "signals" as values.

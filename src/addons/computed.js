@@ -28,8 +28,9 @@ import { effect } from '../core/effect.js';
  * properties are accessed. When any dependency changes, the value
  * is automatically recomputed.
  *
- * ⚠️ Circular dependencies are unsupported. If a computed mutates a state
- * property it depends on, it will queue infinite microtask flushes.
+ * ⚠️ Circular self-mutations are automatically suppressed. If a computed
+ * mutates a state property it depends on, the flush triggered by that
+ * mutation is skipped to prevent an infinite microtask loop.
  *
  * @param {function} fn - Function that computes the value
  * @returns {object} Object with .value property and methods
@@ -61,10 +62,18 @@ export function computed(fn) {
 
   let cachedValue;
   let isInitialized = false;
+  let isInComputation = false;
   const subscribers = [];
 
   // Use effect to automatically track dependencies
   const cleanupEffect = effect(() => {
+    // Skip re-entry from a flush triggered by our own synchronous mutation.
+    // The mutation inside fn() queues a microtask flush; we stay flagged
+    // until a subsequent microtask clears it, so that flush is dropped.
+    if (isInComputation) return;
+
+    isInComputation = true;
+
     try {
       const newValue = fn();
 
@@ -86,6 +95,10 @@ export function computed(fn) {
         // Notify subscribers of error state
         subscribers.forEach(callback => callback(cachedValue));
       }
+    } finally {
+      // Defer clearing the flag so any flush microtask queued by fn()
+      // sees it still set and skips re-entry.
+      queueMicrotask(() => { isInComputation = false; });
     }
   });
 
@@ -134,6 +147,7 @@ export function computed(fn) {
       cleanupEffect();
       subscribers.length = 0;
       isInitialized = false;
+      isInComputation = false;
     }
   };
 }

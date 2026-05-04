@@ -72,7 +72,7 @@
 
 | Priority | What | Why Defer |
 |----------|------|-----------|
-| **6** | **Decouple effect from state** | Important for universal core goal, but requires careful refactoring |
+| ~~**6**~~ | ~~**Decouple effect from state**~~ | ✅ **DONE** - `withReadObserver` scope-based read tracking; `state.js` has zero permanent effect references |
 | **7** | **spaMode for bindDom** | Only needed for SPAs with innerHTML; can wait for demand |
 | **8** | **Framework adapters** | Nice-to-have, but Lume already works with any framework manually |
 | **9** | **Form validation addon** | Common need, but users can build it themselves |
@@ -191,7 +191,7 @@ Core: state + plugins only (~1KB)
 ├── Works in Node.js, Deno, Browser, CLI
 
 Addons (tree-shakeable):
-├── effect.js (~300B) — moved from core, uses plugin system
+├── effect.js (~300B) — auto-tracking via `withReadObserver`, fully decoupled from state.js
 ├── bindDom.js (~500B) — moved from core, DOM-specific
 ├── computed.js
 ├── watch.js

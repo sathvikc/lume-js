@@ -1,11 +1,10 @@
-import { getCurrentEffect } from './effect.js';
-
 /**
  * Lume-JS Reactive State Core
  *
  * Provides minimal reactive state with standard JavaScript.
  * Features automatic microtask batching for performance.
- * Supports automatic dependency tracking for effects.
+ * Read tracking is opt-in via withReadObserver — state.js has zero permanent
+ * dependency on effect.js or any other module.
  *
  * Features:
  * - Lightweight and Go-style
@@ -13,7 +12,7 @@ import { getCurrentEffect } from './effect.js';
  * - $subscribe for listening to key changes
  * - Cleanup with unsubscribe
  * - Per-state microtask batching for writes
- * - Effect dependency tracking support (deduped per state flush)
+ * - Scope-based read tracking via withReadObserver (multi-observer safe)
  *
  * Usage:
  *   import { state } from "lume-js";
@@ -36,6 +35,30 @@ import { getCurrentEffect } from './effect.js';
  * const store = state({ count: 0 });
  */
 
+// Active read observers — only populated during withReadObserver scopes.
+// This keeps state.js pure: tracking only happens when someone explicitly
+// asks to observe reads within a synchronous function call.
+const readers = new Set();
+
+/**
+ * Run a function with a read observer active.
+ * The observer receives (proxy, key, registerEffect) for every property read.
+ * Multiple observers can be active simultaneously (nested effects, devtools, etc.)
+ *
+ * Internal API — used by effect.js for auto-tracking. May be stabilized
+ * for third-party addons in a future release.
+ * @param {function} onRead - Called on each property access inside fn
+ * @param {function} fn - The function to run under observation
+ */
+export function withReadObserver(onRead, fn) {
+  readers.add(onRead);
+  try {
+    return fn();
+  } finally {
+    readers.delete(onRead);
+  }
+}
+
 export function state(obj) {
   // Validate input
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
@@ -55,6 +78,8 @@ export function state(obj) {
    * Flush order per state:
    * 1) Notify subscribers for changed keys (key → subscribers)
    * 2) Run each queued effect exactly once (Set-based dedupe)
+   * 3) Repeat up to 100 iterations to handle cascading updates,
+   *    then log an error to prevent infinite loops.
    *
    * Notes:
    * - Batching is per state; effects that depend on multiple states
@@ -65,39 +90,53 @@ export function state(obj) {
 
     flushScheduled = true;
     queueMicrotask(() => {
-      flushScheduled = false;
+      let iterations = 0;
+      const MAX_ITERATIONS = 100;
 
-      // Run registered before-flush hooks (e.g. plugin onNotify)
-      for (let i = 0; i < beforeFlushHooks.length; i++) {
-        beforeFlushHooks[i]();
-      }
+      while ((pendingNotifications.size > 0 || pendingEffects.size > 0) && iterations < MAX_ITERATIONS) {
+        iterations++;
 
-      // Notify all subscribers of changed keys
-      for (const [key, value] of pendingNotifications) {
-        if (listeners[key]) {
-          const subs = listeners[key];
-          let i = 0;
-          while (i < subs.length) {
-            const fn = subs[i];
-            fn(value);
-            // Only advance if fn wasn't removed (something shifted into its place)
-            if (subs[i] === fn) i++;
+        // Run registered before-flush hooks (e.g. plugin onNotify)
+        for (let i = 0; i < beforeFlushHooks.length; i++) {
+          beforeFlushHooks[i]();
+        }
+
+        // Notify all subscribers of changed keys
+        for (const [key, value] of pendingNotifications) {
+          if (listeners[key]) {
+            const subs = listeners[key];
+            let i = 0;
+            while (i < subs.length) {
+              const fn = subs[i];
+              fn(value);
+              // Only advance if fn wasn't removed (something shifted into its place)
+              if (subs[i] === fn) i++;
+            }
           }
+        }
+
+        pendingNotifications.clear();
+
+        // Run each effect exactly once (Set deduplicates)
+        const effects = new Array(pendingEffects.size);
+        let idx = 0;
+        for (const effect of pendingEffects) {
+          effects[idx++] = effect;
+        }
+        pendingEffects.clear();
+        for (let i = 0; i < effects.length; i++) {
+          effects[i]();
         }
       }
 
-      pendingNotifications.clear();
+      if (iterations >= MAX_ITERATIONS) {
+        console.error(
+          '[Lume.js state] Maximum flush iterations reached (100). ' +
+          'This usually indicates an infinite loop caused by an effect or computed mutating state it depends on.'
+        );
+      }
 
-      // Run each effect exactly once (Set deduplicates)
-      const effects = new Array(pendingEffects.size);
-      let idx = 0;
-      for (const effect of pendingEffects) {
-        effects[idx++] = effect;
-      }
-      pendingEffects.clear();
-      for (let i = 0; i < effects.length; i++) {
-        effects[i]();
-      }
+      flushScheduled = false;
     });
   }
 
@@ -114,38 +153,34 @@ export function state(obj) {
 
       const value = target[key];
 
-      // Effect tracking — check if we're inside an effect context
-      const currentEffect = getCurrentEffect();
-      if (currentEffect && !currentEffect.tracking[key]) {
-        // Mark as tracked
-        currentEffect.tracking[key] = true;
-
-        // Subscribe to changes for this key (skip initial call for effects)
-        const unsubscribe = (() => {
+      // Notify active read observers (effects, devtools, etc.)
+      if (readers.size > 0) {
+        const registerEffect = (key, executeFn) => {
           if (!listeners[key]) listeners[key] = [];
 
-          const effectFn = () => {
+          const callback = () => {
             // Queue effect in this state's pending set
             // Set deduplicates - effect runs once even if multiple keys change
-            pendingEffects.add(currentEffect.execute);
+            pendingEffects.add(executeFn);
           };
 
-          listeners[key].push(effectFn);
+          listeners[key].push(callback);
 
           // Return unsubscribe function (no initial call for effects)
           return () => {
             if (listeners[key]) {
-              const idx = listeners[key].indexOf(effectFn);
+              const idx = listeners[key].indexOf(callback);
               if (idx !== -1) {
                 listeners[key].splice(idx, 1);
                 if (listeners[key].length === 0) delete listeners[key];
               }
             }
           };
-        })();
+        };
 
-        // Store cleanup function
-        currentEffect.cleanups.push(unsubscribe);
+        for (const reader of readers) {
+          reader(proxy, key, registerEffect);
+        }
       }
 
       return value;

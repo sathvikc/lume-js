@@ -2,7 +2,8 @@
 
 ## [2.0.0-beta.2] - 2026-05-03
 
-### Security
+### Architecture
+- **Replaced `registerEffectSystem` with `withReadObserver` scope-based read tracking:** `state.js` no longer holds a permanent reference to `effect.js`. Read tracking is only active during the synchronous execution of an effect's body via `withReadObserver(onRead, fn)`. Multiple simultaneous observers (nested effects, devtools) are supported via a `Set` of active readers. `state.js` is pure when no reader is active.
 - **Replaced `globalThis.__LUME_CURRENT_EFFECT__`** with module-scoped `currentEffect` + `getCurrentEffect()` export — eliminates third-party spoofing of dependency tracking
 
 ### Fixed
@@ -25,7 +26,7 @@
 - **Developer Experience:** Named constants `MAX_LOG_LEN` / `TRUNCATED_LEN` in debug addon; removed dead `json &&` guard
 - **TypeScript:** `TypedPlugin` re-exported from `lume-js/addons`
 - **Documentation:** Added JSDoc warnings for circular computed dependencies and `bindDom` path-healing limitations
-- **Tests:** 294 tests | 100% stmts/branches/funcs/lines across all 15 source files
+- **Tests:** 295 tests | 100% stmts/branches/funcs/lines across all 15 source files
 
 ---
 
