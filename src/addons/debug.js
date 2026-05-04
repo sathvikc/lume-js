@@ -66,6 +66,9 @@ function incrementStat(label, type, key) {
   map.set(key, (map.get(key) || 0) + 1);
 }
 
+const MAX_LOG_LEN = 100;
+const TRUNCATED_LEN = MAX_LOG_LEN - 3;
+
 /**
  * Format value for logging (truncate long values)
  * @param {any} value
@@ -74,8 +77,8 @@ function incrementStat(label, type, key) {
 function formatValue(value) {
   try {
     const json = JSON.stringify(value);
-    if (json && json.length > 100) {
-      return json.slice(0, 97) + '...';
+    if (json.length > MAX_LOG_LEN) {
+      return json.slice(0, TRUNCATED_LEN) + '...';
     }
     return json;
   } catch {
