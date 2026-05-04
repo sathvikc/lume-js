@@ -388,5 +388,30 @@ describe('effect', () => {
 
       cleanup();
     });
+
+    it('effect tracking context is not spoofable via globalThis', async () => {
+      const store = state({ count: 0 });
+      const spoofedExecute = vi.fn();
+
+      // Spoof the global effect context before any real effect is created
+      globalThis.__LUME_CURRENT_EFFECT__ = {
+        tracking: {},
+        cleanups: [],
+        execute: spoofedExecute
+      };
+
+      // Read store.count while spoofed — the spoofed execute gets subscribed
+      store.count;
+
+      // Trigger a flush — the spoofed execute should NOT be called
+      store.count = 1;
+      await Promise.resolve();
+
+      // If globalThis is used, spoofedExecute would be queued and called
+      expect(spoofedExecute).not.toHaveBeenCalled();
+
+      // Restore to avoid leaking the spoofed context
+      delete globalThis.__LUME_CURRENT_EFFECT__;
+    });
   });
 });
