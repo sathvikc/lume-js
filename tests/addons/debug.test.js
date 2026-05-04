@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { state } from 'src/core/state.js';
 import { createDebugPlugin, debug } from 'src/addons/debug.js';
+import { withPlugins } from 'src/addons/withPlugins.js';
 
 describe('debug addon', () => {
     let consoleSpy;
@@ -60,9 +61,7 @@ describe('debug addon', () => {
         });
 
         it('logs SET operations by default', async () => {
-            const store = state({ count: 0 }, {
-                plugins: [createDebugPlugin({ label: 'counter' })]
-            });
+            const store = withPlugins(state({ count: 0 }), [createDebugPlugin({ label: 'counter' })]);
 
             consoleSpy.log.mockClear();
             store.count = 5;
@@ -74,9 +73,7 @@ describe('debug addon', () => {
         });
 
         it('does NOT log GET operations by default', () => {
-            const store = state({ count: 0 }, {
-                plugins: [createDebugPlugin({ label: 'counter' })]
-            });
+            const store = withPlugins(state({ count: 0 }), [createDebugPlugin({ label: 'counter' })]);
 
             consoleSpy.log.mockClear();
             const _ = store.count;
@@ -87,9 +84,7 @@ describe('debug addon', () => {
         });
 
         it('logs GET operations when logGet: true', () => {
-            const store = state({ count: 0 }, {
-                plugins: [createDebugPlugin({ label: 'counter', logGet: true })]
-            });
+            const store = withPlugins(state({ count: 0 }), [createDebugPlugin({ label: 'counter', logGet: true })]);
 
             consoleSpy.log.mockClear();
             const _ = store.count;
@@ -100,9 +95,7 @@ describe('debug addon', () => {
         });
 
         it('logs NOTIFY when subscribers are notified', async () => {
-            const store = state({ count: 0 }, {
-                plugins: [createDebugPlugin({ label: 'counter' })]
-            });
+            const store = withPlugins(state({ count: 0 }), [createDebugPlugin({ label: 'counter' })]);
 
             store.$subscribe('count', () => { });
             consoleSpy.log.mockClear();
@@ -131,9 +124,7 @@ describe('debug addon', () => {
         it('shows stack trace when trace option is enabled', () => {
             const traceSpy = vi.spyOn(console, 'trace').mockImplementation(() => { });
 
-            const store = state({ count: 0 }, {
-                plugins: [createDebugPlugin({ label: 'traced', trace: true })]
-            });
+            const store = withPlugins(state({ count: 0 }), [createDebugPlugin({ label: 'traced', trace: true })]);
 
             consoleSpy.log.mockClear();
             store.count = 5;
@@ -150,12 +141,10 @@ describe('debug addon', () => {
             // This tests that options are read dynamically, not destructured at creation time
             const config = { logGet: false };
 
-            const store = state({ count: 0 }, {
-                plugins: [createDebugPlugin({
+            const store = withPlugins(state({ count: 0 }), [createDebugPlugin({
                     label: 'dynamic',
                     get logGet() { return config.logGet; }
-                })]
-            });
+                })]);
 
             // Initially logGet is false, should NOT log GET
             consoleSpy.log.mockClear();
@@ -193,9 +182,7 @@ describe('debug addon', () => {
         });
 
         it('does not log when disabled', () => {
-            const store = state({ count: 0 }, {
-                plugins: [createDebugPlugin()]
-            });
+            const store = withPlugins(state({ count: 0 }), [createDebugPlugin()]);
 
             debug.disable();
             consoleSpy.log.mockClear();
@@ -212,9 +199,7 @@ describe('debug addon', () => {
 
     describe('debug.filter()', () => {
         it('filters by string pattern', () => {
-            const store = state({ count: 0, name: 'test' }, {
-                plugins: [createDebugPlugin()]
-            });
+            const store = withPlugins(state({ count: 0, name: 'test' }), [createDebugPlugin()]);
 
             debug.filter('count');
             consoleSpy.log.mockClear();
@@ -228,9 +213,7 @@ describe('debug addon', () => {
         });
 
         it('filters by RegExp pattern', () => {
-            const store = state({ userId: 1, userName: 'test', age: 25 }, {
-                plugins: [createDebugPlugin()]
-            });
+            const store = withPlugins(state({ userId: 1, userName: 'test', age: 25 }), [createDebugPlugin()]);
 
             debug.filter(/^user/);
             consoleSpy.log.mockClear();
@@ -255,9 +238,7 @@ describe('debug addon', () => {
 
         it('passes through when filter is non-string/non-RegExp type', () => {
             // Covers matchesFilter fallback: when filter is set to unusual type (e.g. number)
-            const store = state({ count: 0 }, {
-                plugins: [createDebugPlugin()]
-            });
+            const store = withPlugins(state({ count: 0 }), [createDebugPlugin()]);
 
             // Set filter to a number (not null, not string, not RegExp)
             debug.filter(42);
@@ -280,9 +261,7 @@ describe('debug addon', () => {
         });
 
         it('tracks get/set/notify counts', async () => {
-            const store = state({ count: 0 }, {
-                plugins: [createDebugPlugin({ label: 'test', logGet: true })]
-            });
+            const store = withPlugins(state({ count: 0 }), [createDebugPlugin({ label: 'test', logGet: true })]);
 
             // Perform operations
             store.count = 2; // SET twice (2 operations)
@@ -300,12 +279,8 @@ describe('debug addon', () => {
         });
 
         it('tracks multiple stores separately', () => {
-            const store1 = state({ a: 0 }, {
-                plugins: [createDebugPlugin({ label: 'store1' })]
-            });
-            const store2 = state({ b: 0 }, {
-                plugins: [createDebugPlugin({ label: 'store2' })]
-            });
+            const store1 = withPlugins(state({ a: 0 }), [createDebugPlugin({ label: 'store1' })]);
+            const store2 = withPlugins(state({ b: 0 }), [createDebugPlugin({ label: 'store2' })]);
 
             store1.a = 1;
             store2.b = 2;
@@ -319,9 +294,7 @@ describe('debug addon', () => {
         });
 
         it('stats() is silent - does not log to console', () => {
-            const store = state({ count: 0 }, {
-                plugins: [createDebugPlugin({ label: 'test' })]
-            });
+            const store = withPlugins(state({ count: 0 }), [createDebugPlugin({ label: 'test' })]);
 
             store.count = 1;
             consoleSpy.log.mockClear();
@@ -350,9 +323,7 @@ describe('debug addon', () => {
         it('logStats() logs formatted table when has data', () => {
             const tableSpy = vi.spyOn(console, 'table').mockImplementation(() => { });
 
-            const store = state({ count: 0 }, {
-                plugins: [createDebugPlugin({ label: 'test' })]
-            });
+            const store = withPlugins(state({ count: 0 }), [createDebugPlugin({ label: 'test' })]);
 
             store.count = 1;
             consoleSpy.log.mockClear();
@@ -370,9 +341,7 @@ describe('debug addon', () => {
         it('logStats() shows 0 for notifies when key was set but not yet notified', () => {
             const tableSpy = vi.spyOn(console, 'table').mockImplementation(() => { });
 
-            const store = state({ count: 0, name: 'test' }, {
-                plugins: [createDebugPlugin({ label: 'statstest', logGet: true })]
-            });
+            const store = withPlugins(state({ count: 0, name: 'test' }), [createDebugPlugin({ label: 'statstest', logGet: true })]);
 
             // Only read name (generates gets but no sets or notifies for name)
             void store.name;
@@ -396,9 +365,7 @@ describe('debug addon', () => {
 
     describe('debug.resetStats()', () => {
         it('clears all collected statistics', () => {
-            const store = state({ count: 0 }, {
-                plugins: [createDebugPlugin({ label: 'test' })]
-            });
+            const store = withPlugins(state({ count: 0 }), [createDebugPlugin({ label: 'test' })]);
 
             store.count = 1;
 
@@ -414,9 +381,7 @@ describe('debug addon', () => {
 
     describe('formatValue edge cases', () => {
         it('handles circular references gracefully (JSON.stringify throws)', () => {
-            const store = state({ data: null }, {
-                plugins: [createDebugPlugin({ label: 'circular' })]
-            });
+            const store = withPlugins(state({ data: null }), [createDebugPlugin({ label: 'circular' })]);
 
             // Create circular reference
             const circular = {};
@@ -436,9 +401,7 @@ describe('debug addon', () => {
         });
 
         it('truncates large values (JSON > 100 chars)', () => {
-            const store = state({ data: null }, {
-                plugins: [createDebugPlugin({ label: 'large' })]
-            });
+            const store = withPlugins(state({ data: null }), [createDebugPlugin({ label: 'large' })]);
 
             // Create a value whose JSON representation exceeds 100 characters
             const largeValue = {
@@ -458,9 +421,7 @@ describe('debug addon', () => {
         });
 
         it('handles values that stringify to exactly 100 chars without truncation', () => {
-            const store = state({ data: null }, {
-                plugins: [createDebugPlugin({ label: 'exact' })]
-            });
+            const store = withPlugins(state({ data: null }), [createDebugPlugin({ label: 'exact' })]);
 
             // Create a value close to 100 chars but not over
             const shortValue = { a: 'x'.repeat(80) };

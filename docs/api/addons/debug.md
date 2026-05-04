@@ -5,12 +5,13 @@
 ## Import
 
 ```javascript
-import { createDebugPlugin, debug } from 'lume-js/addons';
+import { state } from 'lume-js';
+import { withPlugins, createDebugPlugin, debug } from 'lume-js/addons';
 ```
 
 ## createDebugPlugin(options)
 
-Creates a debug plugin for a store. Pass it in the `plugins` array when calling `state()`.
+Creates a debug plugin object. Wrap it with `withPlugins()` to apply it to a store.
 
 ### Signature
 
@@ -30,17 +31,17 @@ interface DebugPluginOptions {
 
 ```javascript
 import { state } from 'lume-js';
-import { createDebugPlugin } from 'lume-js/addons';
+import { withPlugins, createDebugPlugin } from 'lume-js/addons';
 
-const store = state({ count: 0 }, { 
-  plugins: [createDebugPlugin({ 
+const store = withPlugins(state({ count: 0 }), [
+  createDebugPlugin({ 
     label: 'counter',
     logGet: true,
     logSet: true,
     logNotify: true,
     trace: true  // Show stack traces for debugging
-  })] 
-});
+  })
+]);
 
 store.count++;
 // Console: [counter] SET count: 0 → 1
@@ -54,12 +55,12 @@ Options can use getters for runtime toggling:
 ```javascript
 const config = { logGet: false };
 
-const store = state({ count: 0 }, { 
-  plugins: [createDebugPlugin({ 
+const store = withPlugins(state({ count: 0 }), [
+  createDebugPlugin({ 
     label: 'myStore',
     get logGet() { return config.logGet; }
-  })]
-});
+  })
+]);
 
 // Toggle at runtime
 config.logGet = true;  // Now GET operations will log

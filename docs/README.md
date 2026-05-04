@@ -104,7 +104,7 @@ console.log(total.value);  // cached until items changes
 | Import | Contents |
 |--------|----------|
 | `lume-js` | `state`, `bindDom`, `effect` |
-| `lume-js/addons` | `watch`, `computed`, `repeat`, `createDebugPlugin`, `debug`, `isReactive`, `defaultFocusPreservation`, `defaultScrollPreservation` |
+| `lume-js/addons` | `watch`, `computed`, `repeat`, `withPlugins`, `createDebugPlugin`, `debug`, `isReactive`, `defaultFocusPreservation`, `defaultScrollPreservation` |
 | `lume-js/handlers` | `show`, `boolAttr`, `ariaAttr`, `classToggle`, `stringAttr`, `formHandlers`, `a11yHandlers`, `htmlAttrs` |
 
 ## Documentation

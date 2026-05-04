@@ -5,11 +5,10 @@
  * Critical for adoption - hard to debug = hard to adopt.
  * 
  * Usage:
- *   import { createDebugPlugin, debug } from "lume-js/addons";
+ *   import { state } from "lume-js";
+ *   import { withPlugins, createDebugPlugin, debug } from "lume-js/addons";
  *   
- *   const store = state({ count: 0 }, { 
- *     plugins: [createDebugPlugin({ label: 'myStore' })] 
- *   });
+ *   const store = withPlugins(state({ count: 0 }), [createDebugPlugin({ label: 'myStore' })]);
  *   
  *   debug.enable();  // Enable logging
  *   debug.filter('count');  // Only log 'count' key
@@ -96,15 +95,11 @@ function formatValue(value) {
  * @returns {object} Plugin object for state()
  * 
  * @example
- * const store = state({ count: 0 }, { 
- *   plugins: [createDebugPlugin({ label: 'counter' })] 
- * });
+ * const store = withPlugins(state({ count: 0 }), [createDebugPlugin({ label: 'counter' })]);
  * 
  * @example
  * // With stack traces for debugging where state changes originate
- * const store = state({ count: 0 }, { 
- *   plugins: [createDebugPlugin({ label: 'counter', trace: true })] 
- * });
+ * const store = withPlugins(state({ count: 0 }), [createDebugPlugin({ label: 'counter', trace: true })]);
  */
 export function createDebugPlugin(options = {}) {
   const label = options.label ?? 'store';

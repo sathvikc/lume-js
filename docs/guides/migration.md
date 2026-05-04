@@ -32,7 +32,7 @@ Everything else continues to work without modification.
 - `data-show` attribute (via `show` handler) — conditional visibility, positive counterpart to `data-hidden`
 - `data-class-*` attributes (via `classToggle()` factory) — per-class CSS toggle (e.g. `data-class-active`)
 - `show`, `classToggle()`, `stringAttr`, `boolAttr`, `ariaAttr` handlers — import from `lume-js/handlers`
-- Plugin system for `state()` — pass `{ plugins: [...] }` as second argument (used by `createDebugPlugin`)
+- `withPlugins(store, plugins)` — apply plugins (logging, validation, transforms) to a store, import from `lume-js/addons`
 - `createDebugPlugin` / `debug` — developer logging addon (import from `lume-js/addons`)
 
 ## Unchanged

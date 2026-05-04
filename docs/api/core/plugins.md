@@ -1,9 +1,11 @@
-# Plugins API
+# withPlugins API
 
 > **Version:** 2.0.0+
 > **Status:** Stable
 
 The plugin system lets you extend Lume state with custom behaviors — logging, validation, persistence, transformation, and more. Plugins intercept state operations through a small set of hooks.
+
+Plugins are applied via `withPlugins()`, an addon wrapper. The core `state()` function has no plugin support — this keeps the core minimal and fast.
 
 ## Table of Contents
 
@@ -19,6 +21,7 @@ The plugin system lets you extend Lume state with custom behaviors — logging, 
 
 ```javascript
 import { state } from 'lume-js';
+import { withPlugins } from 'lume-js/addons';
 
 const debugPlugin = {
   name: 'debug',
@@ -32,10 +35,7 @@ const debugPlugin = {
   }
 };
 
-const store = state(
-  { count: 0 },
-  { plugins: [debugPlugin] }
-);
+const store = withPlugins(state({ count: 0 }), [debugPlugin]);
 ```
 
 ## Plugin Interface
@@ -219,10 +219,7 @@ const plugin2 = {
   onGet: (key, value) => typeof value === 'number' ? value + 10 : value
 };
 
-const store = state(
-  { count: 5 },
-  { plugins: [plugin1, plugin2] }
-);
+const store = withPlugins(state({ count: 5 }), [plugin1, plugin2]);
 
 console.log(store.count); // (5 * 2) + 10 = 20
 ```
@@ -246,10 +243,7 @@ const plugin2 = {
   }
 };
 
-const store = state(
-  { age: 0 },
-  { plugins: [plugin1, plugin2] }
-);
+const store = withPlugins(state({ age: 0 }), [plugin1, plugin2]);
 
 store.age = 175.7;
 console.log(store.age); // Math.round(Math.min(150, 175.7)) = 150
@@ -451,7 +445,7 @@ const buggyPlugin = {
   }
 };
 
-const store = state({ count: 0 }, { plugins: [buggyPlugin] });
+const store = withPlugins(state({ count: 0 }), [buggyPlugin]);
 
 store.count; // Logs error, returns original value
 // Console: [Lume.js] Plugin "buggy" error in onGet: Error: Oops!
@@ -462,22 +456,21 @@ store.count; // Logs error, returns original value
 Full TypeScript definitions are provided:
 
 ```typescript
-import { state, Plugin } from 'lume-js';
+import { state } from 'lume-js';
+import { withPlugins, Plugin } from 'lume-js/addons';
 
 const myPlugin: Plugin = {
   name: 'example',
-  onGet: (key: string, value: any): any => {
+  onGet: (key: string, value: unknown): unknown => {
     return value;
   }
 };
 
-const store = state<{ count: number }>(
-  { count: 0 },
-  { plugins: [myPlugin] }
-);
+const store = withPlugins(state({ count: 0 }), [myPlugin]);
 ```
 
 ## See also
 
 - [Design Decisions](../../design/design-decisions.md) — Why plugins work this way
 - [State API](./state.md) — Core state documentation
+- [addons/debug](../addons/debug.md) — Built-in debug plugin using withPlugins
