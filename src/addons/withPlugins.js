@@ -114,9 +114,11 @@ export function withPlugins(store, plugins = []) {
         }
       }
 
-      // Queue onNotify to run before subscribers (same microtask as state flush)
-      pendingNotifications.set(key, newValue);
-      scheduleNotifyFlush();
+      // Only queue onNotify if the value actually changed after plugin chain
+      if (!Object.is(newValue, oldValue)) {
+        pendingNotifications.set(key, newValue);
+        scheduleNotifyFlush();
+      }
 
       target[key] = newValue;
       return true;
