@@ -9,6 +9,11 @@ describe('state', () => {
     expect(() => state([])).toThrow('state() requires a plain object');
   });
 
+  it('throws for frozen or sealed objects', () => {
+    expect(() => state(Object.freeze({ x: 1 }))).toThrow('state() requires a mutable plain object');
+    expect(() => state(Object.seal({ x: 1 }))).toThrow('state() requires a mutable plain object');
+  });
+
   it('gets and sets properties', () => {
     const store = state({ count: 0 });
     expect(store.count).toBe(0);
@@ -262,8 +267,9 @@ describe('state', () => {
 
   it('reactive brand symbol is present but not enumerable', () => {
     const store = state({ x: 1 });
-    expect(store[Symbol.for('lume.reactive')]).toBe(true);
-    expect(Object.keys(store)).not.toContain(Symbol.for('lume.reactive'));
+    const brands = Object.getOwnPropertySymbols(store);
+    expect(brands.some(s => String(s) === 'Symbol(lume.reactive)')).toBe(true);
+    expect(Object.keys(store)).not.toContain('Symbol(lume.reactive)');
   });
 });
 

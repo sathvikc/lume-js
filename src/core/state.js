@@ -64,6 +64,9 @@ export function state(obj) {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
     throw new Error('state() requires a plain object');
   }
+  if (Object.isFrozen(obj) || Object.isSealed(obj)) {
+    throw new Error('state() requires a mutable plain object');
+  }
 
   // Object.create(null) - no prototype chain lookups
   const listeners = Object.create(null);
@@ -155,7 +158,7 @@ export function state(obj) {
   }
 
   // Brand symbol for type-level reactive identification
-  const REACTIVE_BRAND = Symbol.for('lume.reactive');
+  const REACTIVE_BRAND = Symbol('lume.reactive');
   obj[REACTIVE_BRAND] = true;
 
   const proxy = new Proxy(obj, {
