@@ -115,6 +115,7 @@ export function effect(fn, deps) {
   // AUTO-TRACKING MODE: no deps (existing behavior)
   else {
     const executeWithTracking = () => {
+      /* v8 ignore next -- defensive guard: synchronous re-entry is unreachable through the public API */
       if (isRunning) return;
 
       // Clean up previous subscriptions (while/pop is faster than forEach)
