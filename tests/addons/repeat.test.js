@@ -154,6 +154,27 @@ describe('repeat', () => {
       expect(container.children[1].textContent).toBe('Alice');
     });
 
+    it('works with object-style subscribe (RxJS-like Subscription)', () => {
+      const store = {
+        items: [{ id: 1, name: 'Alice' }],
+        subscribe(fn) {
+          this._fn = fn;
+          return { unsubscribe: () => { this._fn = null; } };
+        }
+      };
+
+      const cleanup = repeat(container, store, 'items', {
+        key: item => item.id,
+        render: (item, el) => { el.textContent = item.name; }
+      });
+
+      expect(container.children.length).toBe(1);
+
+      // Cleanup should call unsubscribe() without error
+      cleanup();
+      expect(container.children.length).toBe(0);
+    });
+
     it('handles non-reactive store gracefully', () => {
       // Spy on console.warn to verify warning is logged
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });

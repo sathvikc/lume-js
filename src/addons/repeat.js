@@ -338,8 +338,12 @@ export function repeat(container, store, arrayKey, options) {
     unsubscribe = store.$subscribe(arrayKey, updateList);
   } else if (typeof store.subscribe === 'function') {
     // Generic subscribe (e.g. computed) — subscribe first, then initial render
-    unsubscribe = store.subscribe(() => updateList());
+    const subResult = store.subscribe(() => updateList());
     updateList();
+    // Normalize both function-style and object-style (RxJS Subscription) returns
+    unsubscribe = typeof subResult === 'function'
+      ? subResult
+      : () => { subResult?.unsubscribe?.(); };
   } else {
     // Non-reactive store — render once and return cleanup
     updateList();
@@ -354,7 +358,9 @@ export function repeat(container, store, arrayKey, options) {
   }
 
   return () => {
-    unsubscribe();
+    if (typeof unsubscribe === 'function') {
+      unsubscribe();
+    }
     // Clear DOM elements (replaceChildren is faster than loop)
     containerEl.replaceChildren();
     elementsByKey.clear();
