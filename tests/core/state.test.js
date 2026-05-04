@@ -318,4 +318,55 @@ describe('state edge cases', () => {
     const store = state({ count: 0 });
     expect(() => store.$beforeFlush(123)).toThrow('$beforeFlush requires a function');
   });
+
+  it('isolates subscriber errors so remaining subscribers still receive updates', async () => {
+    const store = state({ count: 0 });
+    const goodSpy = vi.fn();
+    const badSpy = vi.fn((val) => { if (val !== 0) throw new Error('bad subscriber'); });
+
+    store.$subscribe('count', badSpy);
+    store.$subscribe('count', goodSpy);
+
+    badSpy.mockClear();
+    goodSpy.mockClear();
+
+    store.count = 1;
+    await Promise.resolve();
+
+    expect(badSpy).toHaveBeenCalledWith(1);
+    expect(goodSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('continues scheduling flushes after a subscriber error', async () => {
+    const store = state({ count: 0 });
+    const spy = vi.fn();
+
+    store.$subscribe('count', (val) => { if (val !== 0) throw new Error('bad'); });
+    store.$subscribe('count', spy);
+
+    spy.mockClear();
+
+    store.count = 1;
+    await Promise.resolve();
+    expect(spy).toHaveBeenCalledWith(1);
+    spy.mockClear();
+
+    store.count = 2;
+    await Promise.resolve();
+    expect(spy).toHaveBeenCalledWith(2);
+  });
+
+  it('isolates beforeFlush hook errors so subscribers still run', async () => {
+    const store = state({ count: 0 });
+    const spy = vi.fn();
+
+    store.$beforeFlush(() => { throw new Error('hook bad'); });
+    store.$subscribe('count', spy);
+
+    spy.mockClear();
+
+    store.count = 1;
+    await Promise.resolve();
+    expect(spy).toHaveBeenCalledWith(1);
+  });
 });

@@ -93,40 +93,56 @@ export function state(obj) {
       let iterations = 0;
       const MAX_ITERATIONS = 100;
 
-      while ((pendingNotifications.size > 0 || pendingEffects.size > 0) && iterations < MAX_ITERATIONS) {
-        iterations++;
+      try {
+        while ((pendingNotifications.size > 0 || pendingEffects.size > 0) && iterations < MAX_ITERATIONS) {
+          iterations++;
 
-        // Run registered before-flush hooks (e.g. plugin onNotify)
-        for (let i = 0; i < beforeFlushHooks.length; i++) {
-          beforeFlushHooks[i]();
-        }
+          // Run registered before-flush hooks (e.g. plugin onNotify)
+          for (let i = 0; i < beforeFlushHooks.length; i++) {
+            try {
+              beforeFlushHooks[i]();
+            } catch (err) {
+              console.error('[Lume.js state] Error in beforeFlush hook:', err);
+            }
+          }
 
-        // Notify all subscribers of changed keys
-        for (const [key, value] of pendingNotifications) {
-          if (listeners[key]) {
-            const subs = listeners[key];
-            let i = 0;
-            while (i < subs.length) {
-              const fn = subs[i];
-              fn(value);
-              // Only advance if fn wasn't removed (something shifted into its place)
-              if (subs[i] === fn) i++;
+          // Notify all subscribers of changed keys
+          for (const [key, value] of pendingNotifications) {
+            if (listeners[key]) {
+              const subs = listeners[key];
+              let i = 0;
+              while (i < subs.length) {
+                const fn = subs[i];
+                try {
+                  fn(value);
+                } catch (err) {
+                  console.error(`[Lume.js state] Error notifying subscriber for key "${String(key)}":`, err);
+                }
+                // Only advance if fn wasn't removed (something shifted into its place)
+                if (subs[i] === fn) i++;
+              }
+            }
+          }
+
+          pendingNotifications.clear();
+
+          // Run each effect exactly once (Set deduplicates)
+          const effects = new Array(pendingEffects.size);
+          let idx = 0;
+          for (const effect of pendingEffects) {
+            effects[idx++] = effect;
+          }
+          pendingEffects.clear();
+          for (let i = 0; i < effects.length; i++) {
+            try {
+              effects[i]();
+            } catch (err) {
+              console.error('[Lume.js state] Error in effect:', err);
             }
           }
         }
-
-        pendingNotifications.clear();
-
-        // Run each effect exactly once (Set deduplicates)
-        const effects = new Array(pendingEffects.size);
-        let idx = 0;
-        for (const effect of pendingEffects) {
-          effects[idx++] = effect;
-        }
-        pendingEffects.clear();
-        for (let i = 0; i < effects.length; i++) {
-          effects[i]();
-        }
+      } finally {
+        flushScheduled = false;
       }
 
       if (iterations >= MAX_ITERATIONS) {
@@ -135,8 +151,6 @@ export function state(obj) {
           'This usually indicates an infinite loop caused by an effect or computed mutating state it depends on.'
         );
       }
-
-      flushScheduled = false;
     });
   }
 
