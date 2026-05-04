@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { state, effect, bindDom } from 'src/index.js';
-import { computed, watch } from 'src/addons/index.js';
+import { computed, watch, withPlugins } from 'src/addons/index.js';
 import { show, classToggle, stringAttr, boolAttr } from 'src/handlers/index.js';
 import { repeat } from 'src/addons/repeat.js';
 
@@ -242,7 +242,7 @@ describe('integration: state + plugins + debug', () => {
       },
     };
 
-    const store = state({ volume: 50 }, { plugins: [clampPlugin] });
+    const store = withPlugins(state({ volume: 50 }), [clampPlugin]);
 
     const root = setupDOM(`<div><input type="range" data-bind="volume" min="0" max="100" /></div>`);
     const cleanup = bindDom(root, store);

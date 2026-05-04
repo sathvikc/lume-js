@@ -73,7 +73,7 @@ import { show, classToggle, stringAttr } from 'lume-js/handlers';
 | Subpath | What's inside |
 |---------|---------------|
 | `lume-js` | `state`, `bindDom`, `effect` |
-| `lume-js/addons` | `watch`, `computed`, `repeat`, `createDebugPlugin`, `debug`, `isReactive`, `defaultFocusPreservation`, `defaultScrollPreservation` |
+| `lume-js/addons` | `watch`, `computed`, `repeat`, `withPlugins`, `createDebugPlugin`, `debug`, `isReactive`, `defaultFocusPreservation`, `defaultScrollPreservation` |
 | `lume-js/handlers` | `show`, `classToggle`, `stringAttr`, `boolAttr`, `ariaAttr`, `htmlAttrs`, `formHandlers`, `a11yHandlers` |
 
 ## Browser support

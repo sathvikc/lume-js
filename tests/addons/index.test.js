@@ -29,4 +29,9 @@ describe('addons public API', () => {
     expect(addons).toHaveProperty('isReactive');
     expect(typeof addons.isReactive).toBe('function');
   });
+
+  it('exposes withPlugins', () => {
+    expect(addons).toHaveProperty('withPlugins');
+    expect(typeof addons.withPlugins).toBe('function');
+  });
 });

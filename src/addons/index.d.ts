@@ -395,3 +395,40 @@ export const debug: Debug;
  */
 export function isReactive(obj: unknown): obj is ReactiveState<object>;
 
+/**
+ * Plugin interface for withPlugins().
+ * All hooks are optional.
+ */
+export interface Plugin {
+  /** Display name used in error messages */
+  name?: string;
+  /** Called once when withPlugins() is called */
+  onInit?(): void;
+  /** Intercept/transform property reads. Return a value to override, or void to pass through. */
+  onGet?(key: string, value: unknown): unknown;
+  /** Intercept/transform property writes. Return a value to override, or void to pass through. */
+  onSet?(key: string, newValue: unknown, oldValue: unknown): unknown;
+  /** Called before subscribers are notified of a change. */
+  onNotify?(key: string, value: unknown): void;
+  /** Called when $subscribe is invoked on the store. */
+  onSubscribe?(key: string): void;
+}
+
+/**
+ * Wrap a reactive state proxy with plugin hooks.
+ * Plugins can intercept get/set/notify/subscribe operations.
+ *
+ * @param store - A reactive proxy from state()
+ * @param plugins - Array of plugin objects
+ * @returns A new proxy wrapping the store with plugin behavior
+ *
+ * @example
+ * ```typescript
+ * import { state } from 'lume-js';
+ * import { withPlugins, createDebugPlugin } from 'lume-js/addons';
+ *
+ * const store = withPlugins(state({ count: 0 }), [createDebugPlugin({ label: 'counter' })]);
+ * ```
+ */
+export function withPlugins<T extends object>(store: ReactiveState<T>, plugins: Plugin[]): ReactiveState<T>;
+
