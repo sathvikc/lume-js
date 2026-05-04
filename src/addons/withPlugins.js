@@ -41,27 +41,26 @@ export function withPlugins(store, plugins = []) {
   }
 
   // Track pending notifications for onNotify hooks.
-  // We intercept set and queue notifications before flushing via a microtask,
-  // mirroring the order from the original core (onNotify before subscribers).
+  // Instead of a separate microtask, we hook into the underlying state's
+  // flush via $beforeFlush so onNotify and subscribers share one microtask.
   const pendingNotifications = new Map();
-  let flushScheduled = false;
 
-  function scheduleNotifyFlush() {
-    if (flushScheduled) return;
-    flushScheduled = true;
-    queueMicrotask(() => {
-      flushScheduled = false;
-      for (const [key, value] of pendingNotifications) {
-        for (const p of plugins) {
-          try {
-            p.onNotify?.(key, value);
-          } catch (e) {
-            console.error(`[Lume.js] Plugin "${p.name}" error in onNotify:`, e);
-          }
+  function runNotifyHooks() {
+    for (const [key, value] of pendingNotifications) {
+      for (const p of plugins) {
+        try {
+          p.onNotify?.(key, value);
+        } catch (e) {
+          console.error(`[Lume.js] Plugin "${p.name}" error in onNotify:`, e);
         }
       }
-      pendingNotifications.clear();
-    });
+    }
+    pendingNotifications.clear();
+  }
+
+  // Register once on the underlying state; hook survives for lifetime of store.
+  if (typeof store.$beforeFlush === 'function') {
+    store.$beforeFlush(runNotifyHooks);
   }
 
   return new Proxy(store, {
@@ -117,7 +116,6 @@ export function withPlugins(store, plugins = []) {
       // Only queue onNotify if the value actually changed after plugin chain
       if (!Object.is(newValue, oldValue)) {
         pendingNotifications.set(key, newValue);
-        scheduleNotifyFlush();
       }
 
       target[key] = newValue;

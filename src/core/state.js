@@ -44,6 +44,7 @@ export function state(obj) {
   const listeners = Object.create(null);
   const pendingNotifications = new Map(); // Per-state pending changes
   const pendingEffects = new Set(); // Dedupe effects per state
+  const beforeFlushHooks = [];
   let flushScheduled = false;
 
   /**
@@ -63,6 +64,11 @@ export function state(obj) {
     flushScheduled = true;
     queueMicrotask(() => {
       flushScheduled = false;
+
+      // Run registered before-flush hooks (e.g. plugin onNotify)
+      for (let i = 0; i < beforeFlushHooks.length; i++) {
+        beforeFlushHooks[i]();
+      }
 
       // Notify all subscribers of changed keys
       for (const [key, value] of pendingNotifications) {
@@ -169,6 +175,23 @@ export function state(obj) {
    */
   // Set on obj (not proxy) to avoid triggering the set trap.
   // The get trap already returns target[key] directly for $-prefixed keys.
+  /**
+   * Register a callback to run before each flush.
+   * Returns an unsubscribe function.
+   */
+  obj.$beforeFlush = (fn) => {
+    if (typeof fn !== 'function') {
+      throw new Error('$beforeFlush requires a function');
+    }
+    beforeFlushHooks.push(fn);
+    return () => {
+      const idx = beforeFlushHooks.indexOf(fn);
+      if (idx !== -1) {
+        beforeFlushHooks.splice(idx, 1);
+      }
+    };
+  };
+
   obj.$subscribe = (key, fn) => {
     if (typeof fn !== 'function') {
       throw new Error('Subscriber must be a function');
