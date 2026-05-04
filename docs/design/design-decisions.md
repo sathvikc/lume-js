@@ -289,9 +289,11 @@ store.$subscribe('items', (items) => {
 // ✅ Future addon approach
 import { repeat } from 'lume-js/addons';
 
-repeat(container, store.items, item => `
-  <li>${item.name}</li>
-`);
+repeat(container, store, 'items', {
+  key: item => item.id,
+  create: (item, el) => { el.textContent = item.name; },
+  update: (item, el) => { el.textContent = item.name; }
+});
 ```
 
 ```html
@@ -611,9 +613,10 @@ const debugPlugin = {
   }
 };
 
-const store = state(
-  { count: 0 },
-  { plugins: [debugPlugin] }
+import { withPlugins } from 'lume-js/addons';
+const store = withPlugins(
+  state({ count: 0 }),
+  [debugPlugin]
 );
 ```
 
@@ -683,7 +686,7 @@ effect(() => {
 ```
 
 **Reasoning:**
-- **Honest Admission:** Auto-tracking relies on global state magic (`globalThis...`). In hindsight, this violates Lume's "no magic" philosophy.
+- **Honest Admission:** Auto-tracking uses a module-scoped context variable. This is less magical than a `globalThis` property, but still implicit.
 - **Why Keep Auto-tracking?**
   1. **Backward Compatibility:** Converting existing code would be painful.
   2. **Simplicity:** It's still the easiest way to write simple View logic (`el.textContent = store.count`).
@@ -751,7 +754,7 @@ bindDom(root, store, {
 6. **Tree-shakeable:** Only import the handlers you use (`lume-js/handlers`)
 7. **No core modification:** New attributes never require changing `bindDom` source
 
-**Handler system design (v2.0.0-beta.1):**
+**Handler system design (v2.0.0-beta.2):**
 - Built-in handlers (always active): `hidden`, `disabled`, `checked`, `required`, `aria-expanded`, `aria-hidden`
 - User handlers override built-ins with same `attr` (Map deduplication)
 - Arrays auto-flattened (supports `classToggle()` returning multiple handlers)

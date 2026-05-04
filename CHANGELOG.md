@@ -1,5 +1,34 @@
 # Changelog
 
+## [2.0.0-beta.2] - 2026-05-03
+
+### Security
+- **Replaced `globalThis.__LUME_CURRENT_EFFECT__`** with module-scoped `currentEffect` + `getCurrentEffect()` export — eliminates third-party spoofing of dependency tracking
+
+### Fixed
+- **`withPlugins` onNotify flush blocked writes:** `onNotify` no longer fires when `onSet` returns `oldValue` to block an update
+- **`repeat` duplicate keys DOM corruption:** Duplicate keys are now skipped instead of overwriting element references in the keyed Map
+- **`state()` phantom options parameter:** Removed non-existent `options` from TypeScript declaration and JSDoc examples
+- **Runtime reactive brand symbol:** `Symbol.for('lume.reactive')` is now actually stamped by `state.js` (was fictional in beta.1)
+
+### Performance
+- **Eliminated double microtask flush in `withPlugins`:** Collapsed `onNotify` + subscriber flushes into single microtask via `$beforeFlush` hook
+- **Eliminated per-flush array allocations in `state.flush`:** Replaced `[...listeners[key]]` spread and `[...pendingEffects]` with stable-index `while` loops and pre-sized arrays
+- **Replaced `filter`-based unsubscribe with `indexOf+splice`:** O(n) without allocation, correctly removes only first matching instance
+
+### Changed
+- **Plugin system stripped from core:** `state(obj, { plugins })` → `withPlugins(state(obj), [plugins])` from `lume-js/addons`
+- **`isReactive()` moved to `lume-js/addons`:** Duck-typing via `$subscribe` check; no longer in core export
+- **`resolvePath()` inlined into `bindDom.js`:** Deleted `src/core/utils.js` and `tests/core/utils.test.js`
+
+### Improved
+- **Developer Experience:** Named constants `MAX_LOG_LEN` / `TRUNCATED_LEN` in debug addon; removed dead `json &&` guard
+- **TypeScript:** `TypedPlugin` re-exported from `lume-js/addons`
+- **Documentation:** Added JSDoc warnings for circular computed dependencies and `bindDom` path-healing limitations
+- **Tests:** 294 tests | 100% stmts/branches/funcs/lines across all 15 source files
+
+---
+
 ## [2.0.0-beta.1] - 2026-02-28
 
 ### Added
@@ -86,7 +115,7 @@
 ### Added
 - **Plugin System (v2.0 Phase 1)**
   - 5 lifecycle hooks: `onInit`, `onGet`, `onSet`, `onSubscribe`, `onNotify`
-  - Opt-in plugin support via `state(obj, { plugins: [...] })`
+  - Opt-in plugin support via `withPlugins(state(obj), [plugins])` wrapper (addon)
   - Chain pattern for `onGet` and `onSet` hooks (each plugin receives output of previous)
   - Full TypeScript definitions for plugin interface
   - Comprehensive plugin documentation at `docs/api/core/plugins.md`

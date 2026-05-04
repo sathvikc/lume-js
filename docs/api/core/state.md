@@ -5,13 +5,12 @@ Creates a reactive proxy of a plain object.
 ## Signature
 
 ```ts
-function state<T extends object>(initialValue: T, options?: { plugins?: any[] }): T
+function state<T extends object>(initialValue: T): ReactiveState<T>
 ```
 
 ## Parameters
 
 - `initialValue` — A plain object. Must not be a primitive, class instance, `Map`, or `Set`.
-- `options.plugins` — Optional array of plugin objects to extend state behavior.
 
 ## Returns
 

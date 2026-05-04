@@ -29,7 +29,7 @@ function state(target) {
 
 ## Tracking
 
-When an effect starts running, Lume sets a global context (`globalThis.__LUME_CURRENT_EFFECT__`) to point at that effect. On every property read, the proxy checks for an active context and registers the effect as a subscriber for that key.
+When an effect starts running, Lume sets a module-scoped context variable to point at that effect. On every property read, the proxy checks for an active context and registers the effect as a subscriber for that key.
 
 ```js
 effect(() => {

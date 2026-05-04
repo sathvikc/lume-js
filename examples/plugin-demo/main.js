@@ -1,4 +1,5 @@
 import { state, bindDom } from 'lume-js';
+import { withPlugins } from 'lume-js/addons';
 
 // ============================================================================
 // 1. DEBUG PLUGIN
@@ -55,9 +56,9 @@ function addDebugLog(type, message) {
 }
 
 // Create state with debug plugin
-const debugStore = state(
-  { name: '', age: 0 },
-  { plugins: [debugPlugin] }
+const debugStore = withPlugins(
+  state({ name: '', age: 0 }),
+  [debugPlugin]
 );
 
 // Bind to DOM - only bind to debug section
@@ -124,9 +125,9 @@ function showValidationSuccess(field, message) {
 }
 
 // Create state with validation plugin
-const validationStore = state(
-  { email: '', age: 0 },
-  { plugins: [validationPlugin] }
+const validationStore = withPlugins(
+  state({ email: '', age: 0 }),
+  [validationPlugin]
 );
 
 // Manual binding for validation example (to show validation feedback)
@@ -174,9 +175,9 @@ const history = {
 };
 
 // Create state with history plugin
-const historyStore = state(
-  { count: 0 },
-  { plugins: [historyPlugin] }
+const historyStore = withPlugins(
+  state({ count: 0 }),
+  [historyPlugin]
 );
 
 // Bind to DOM - only bind to history section
@@ -279,9 +280,9 @@ const transformPlugin = {
 };
 
 // Create state with transform plugin
-const transformStore = state(
-  { text: '' },
-  { plugins: [transformPlugin] }
+const transformStore = withPlugins(
+  state({ text: '' }),
+  [transformPlugin]
 );
 
 // Bind to DOM - only bind to transform section

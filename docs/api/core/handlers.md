@@ -1,6 +1,6 @@
 # Handlers API
 
-> **Version:** 2.0.0-beta.1+
+> **Version:** 2.0.0-beta.2+
 > **Import:** `import { ... } from 'lume-js/handlers'`
 > **Size:** 0.33 KB gzipped
 

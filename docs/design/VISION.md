@@ -295,13 +295,14 @@ When `innerHTML` recreates DOM:
 import { createDebugPlugin, debug } from 'lume-js/addons';
 
 // Per-store debug plugin (simple - static options)
-const store = state({ count: 0 }, { 
-  plugins: [createDebugPlugin({ 
+const store = withPlugins(
+  state({ count: 0 }),
+  [createDebugPlugin({
     label: 'myStore',
     logGet: true,   // Log GET operations
     trace: true     // Show stack traces
-  })] 
-});
+  })]
+);
 
 // Global controls
 debug.enable();           // Enable logging
@@ -313,12 +314,13 @@ debug.resetStats();       // Clear statistics
 
 // Advanced: Dynamic options with getters (for UI toggles)
 const config = { logGet: false };
-const store2 = state({ name: '' }, { 
-  plugins: [createDebugPlugin({ 
+const store2 = withPlugins(
+  state({ name: '' }),
+  [createDebugPlugin({
     label: 'dynamic',
     get logGet() { return config.logGet; }  // Reads at runtime
-  })] 
-});
+  })]
+);
 config.logGet = true;  // Toggle at runtime
 ```
 
