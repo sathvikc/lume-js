@@ -160,14 +160,10 @@ function resolvePath(obj, pathArr) {
   for (let i = 0; i < pathArr.length; i++) {
     const key = pathArr[i];
     if (current === null || current === undefined) {
-      throw new Error(
-        `Cannot access property "${key}" of ${current} at path: ${pathArr.slice(0, i + 1).join('.')}`
-      );
+      return null;
     }
     if (!(key in current)) {
-      throw new Error(
-        `Property "${key}" does not exist at path: ${pathArr.slice(0, i + 1).join('.')}`
-      );
+      return null;
     }
     current = current[key];
   }
@@ -186,11 +182,9 @@ function resolveProp(store, path) {
 
   const pathArr = path.split(".");
   const key = pathArr.pop();
-  let target;
+  const target = resolvePath(store, pathArr);
 
-  try {
-    target = resolvePath(store, pathArr);
-  } catch {
+  if (target === null || target === undefined) {
     console.warn(`[Lume.js] Invalid path "${path}"`);
     return null;
   }
