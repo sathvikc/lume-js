@@ -35,9 +35,9 @@ If your page imports from more than one Lume subpath, an import map removes the 
 <script type="importmap">
 {
   "imports": {
-    "lume-js":          "https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.1/src/index.js",
-    "lume-js/addons":   "https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.1/src/addons/index.js",
-    "lume-js/handlers": "https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.1/src/handlers/index.js"
+    "lume-js":          "https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.2/src/index.js",
+    "lume-js/addons":   "https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.2/src/addons/index.js",
+    "lume-js/handlers": "https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.2/src/handlers/index.js"
   }
 }
 </script>

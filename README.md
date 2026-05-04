@@ -4,13 +4,13 @@
 
 Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required, no framework lock-in.
 
-> **Current Release:** v1.0.0 (stable) | **Next Release:** v2.0.0-beta.1  
+> **Current Release:** v1.0.0 (stable) | **Next Release:** v2.0.0-beta.2  
 > Install stable: `npm install lume-js@1.0.0`  
 > Install next: `npm install lume-js@next`
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.0.0--beta.1-orange.svg)](package.json)
-[![Tests](https://img.shields.io/badge/tests-231%20passing-brightgreen.svg)](tests/)
+[![Version](https://img.shields.io/badge/version-2.0.0--beta.2-orange.svg)](package.json)
+[![Tests](https://img.shields.io/badge/tests-294%20passing-brightgreen.svg)](tests/)
 [![Size](https://img.shields.io/badge/core-2.39KB-blue.svg)](scripts/check-size.js)
 
 ## Why Lume.js?

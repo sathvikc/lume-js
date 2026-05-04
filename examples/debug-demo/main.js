@@ -1,5 +1,5 @@
 import { state, effect, bindDom } from 'lume-js';
-import { createDebugPlugin, debug, repeat, watch } from 'lume-js/addons';
+import { createDebugPlugin, debug, repeat, watch, withPlugins } from 'lume-js/addons';
 
 // ============================================================================
 // CONFIGURATION - Single source of truth (reactive)
@@ -16,25 +16,27 @@ const config = state({
 // STORES
 // ============================================================================
 
-const counterStore = state({ count: 0 }, {
-    plugins: [createDebugPlugin({
+const counterStore = withPlugins(
+    state({ count: 0 }),
+    [createDebugPlugin({
         label: 'counter',
         get logGet() { return config.logGet; },
         get logSet() { return config.logSet; },
         get logNotify() { return config.logNotify; },
         get trace() { return config.trace; }
     })]
-});
+);
 
-const userStore = state({ name: '', age: 0 }, {
-    plugins: [createDebugPlugin({
+const userStore = withPlugins(
+    state({ name: '', age: 0 }),
+    [createDebugPlugin({
         label: 'user',
         get logGet() { return config.logGet; },
         get logSet() { return config.logSet; },
         get logNotify() { return config.logNotify; },
         get trace() { return config.trace; }
     })]
-});
+);
 
 // Expose for console
 window.counterStore = counterStore;
