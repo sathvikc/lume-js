@@ -142,29 +142,26 @@ describe('effect', () => {
     expect(store.count).toBe(5);
   });
 
-  it('should prevent re-entry during effect execution', () => {
+  it('should not re-enter synchronously when state is mutated during execution', async () => {
     const store = state({ count: 0 });
-    let executeCalls = 0;
-    let effectRef;
+    let runs = 0;
 
-    effectRef = effect(() => {
-      executeCalls++;
+    effect(() => {
+      runs++;
       store.count; // Track count
 
-      // Try to manually trigger the effect again during execution
-      if (executeCalls === 1) {
-        // Access the effect's execute function and try to call it
-        // This simulates re-entry during execution
-        const currentEffect = globalThis.__LUME_CURRENT_EFFECT__;
-        if (currentEffect) {
-          // This should be prevented by the isRunning guard
-          currentEffect.execute();
-        }
+      if (runs === 1) {
+        // Mutate during execution — flush is async, so effect does not re-enter now
+        store.count = 1;
       }
     });
 
-    // Should only run once due to re-entry prevention
-    expect(executeCalls).toBe(1);
+    // Should only have run once (initial synchronous run)
+    expect(runs).toBe(1);
+
+    // After microtask flush, effect runs again — not synchronously
+    await Promise.resolve();
+    expect(runs).toBe(2);
   });
 
   // ========================================
