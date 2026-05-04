@@ -812,6 +812,14 @@ describe('bindDom', () => {
       cleanup();
       warnSpy.mockRestore();
     });
+
+    it('propagates unexpected errors instead of swallowing them', () => {
+      const root = setupDOM(`<div><span data-bind="user.name"></span></div>`);
+      const store = state({
+        get user() { throw new Error('getter boom'); }
+      });
+      expect(() => bindDom(root, store)).toThrow('getter boom');
+    });
   });
 
   describe('edge cases', () => {
