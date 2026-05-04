@@ -101,6 +101,10 @@ export function state(obj) {
     });
   }
 
+  // Brand symbol for type-level reactive identification
+  const REACTIVE_BRAND = Symbol.for('lume.reactive');
+  obj[REACTIVE_BRAND] = true;
+
   const proxy = new Proxy(obj, {
     get(target, key) {
       // Skip effect tracking for internal meta methods (e.g. $subscribe)

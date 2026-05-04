@@ -139,7 +139,7 @@ export type ReactiveState<T extends object> = T & {
    * Brand to identify reactive state objects at the type level
    * @internal
    */
-  readonly __reactive?: unique symbol;
+  readonly [Symbol.for('lume.reactive')]?: true;
 };
 
 /**

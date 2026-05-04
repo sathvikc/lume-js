@@ -260,9 +260,10 @@ describe('state', () => {
     expect(isReactive(outer.inner)).toBe(true);
   });
 
-  it('marker is not enumerable on reactive proxy', () => {
+  it('reactive brand symbol is present but not enumerable', () => {
     const store = state({ x: 1 });
-    expect(Object.keys(store)).not.toContain('__LUME_REACTIVE__');
+    expect(store[Symbol.for('lume.reactive')]).toBe(true);
+    expect(Object.keys(store)).not.toContain(Symbol.for('lume.reactive'));
   });
 });
 
