@@ -65,22 +65,31 @@ export function state(obj) {
       flushScheduled = false;
 
       // Notify all subscribers of changed keys
-      // Snapshot listeners array to handle unsubscribes during iteration
       for (const [key, value] of pendingNotifications) {
         if (listeners[key]) {
-          // Spread operator is faster than Array.from()
-          const subscribersSnapshot = [...listeners[key]];
-          subscribersSnapshot.forEach(fn => fn(value));
+          const subs = listeners[key];
+          let i = 0;
+          while (i < subs.length) {
+            const fn = subs[i];
+            fn(value);
+            // Only advance if fn wasn't removed (something shifted into its place)
+            if (subs[i] === fn) i++;
+          }
         }
       }
 
       pendingNotifications.clear();
 
       // Run each effect exactly once (Set deduplicates)
-      // Spread operator is faster than Array.from()
-      const effects = [...pendingEffects];
+      const effects = new Array(pendingEffects.size);
+      let idx = 0;
+      for (const effect of pendingEffects) {
+        effects[idx++] = effect;
+      }
       pendingEffects.clear();
-      effects.forEach(effect => effect());
+      for (let i = 0; i < effects.length; i++) {
+        effects[i]();
+      }
     });
   }
 
