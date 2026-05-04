@@ -211,6 +211,39 @@ export function repeat(container, store, arrayKey, options) {
       : document.createElement(element);
   }
 
+  function reconcileDOM(container, nextEls) {
+    let ptr = container.firstChild;
+
+    for (let i = 0; i < nextEls.length; i++) {
+      const desired = nextEls[i];
+
+      if (ptr === desired) {
+        ptr = ptr.nextSibling;
+        continue;
+      }
+
+      container.insertBefore(desired, ptr);
+    }
+
+    // Remove leftover children not in nextEls
+    while (ptr) {
+      const next = ptr.nextSibling;
+      container.removeChild(ptr);
+      ptr = next;
+    }
+  }
+
+  function applyPreservation(container, fn, isReorder) {
+    const shouldPreserve = document.body.contains(container);
+    const restoreFocus = shouldPreserve && preserveFocus ? preserveFocus(container) : null;
+    const restoreScroll = shouldPreserve && preserveScroll ? preserveScroll(container, { isReorder }) : null;
+
+    fn();
+
+    if (restoreFocus) restoreFocus();
+    if (restoreScroll) restoreScroll();
+  }
+
   function updateList() {
     const items = store[arrayKey];
 
@@ -219,21 +252,14 @@ export function repeat(container, store, arrayKey, options) {
       return;
     }
 
-    // Skip preservation if container is not in document (performance optimization)
-    const shouldPreserve = document.body.contains(containerEl);
-
     // Only compute isReorder if scroll preservation needs it
     let isReorder = false;
-    if (shouldPreserve && preserveScroll) {
+    if (preserveScroll) {
       const previousKeys = new Set(elementsByKey.keys());
       const currentKeys = new Set(items.map(item => key(item)));
       isReorder = previousKeys.size === currentKeys.size &&
         [...previousKeys].every(k => currentKeys.has(k));
     }
-
-    // Save state before DOM manipulation
-    const restoreFocus = shouldPreserve && preserveFocus ? preserveFocus(containerEl) : null;
-    const restoreScroll = shouldPreserve && preserveScroll ? preserveScroll(containerEl, { isReorder }) : null;
 
     seenKeys.clear();
     const nextKeys = new Set();
@@ -289,41 +315,20 @@ export function repeat(container, store, arrayKey, options) {
       nextEls.push(el);
     }
 
-    // Reconcile actual DOM ordering
-    let ptr = containerEl.firstChild;
+    applyPreservation(containerEl, () => {
+      reconcileDOM(containerEl, nextEls);
 
-    for (let i = 0; i < nextEls.length; i++) {
-      const desired = nextEls[i];
-
-      if (ptr === desired) {
-        ptr = ptr.nextSibling;
-        continue;
-      }
-
-      containerEl.insertBefore(desired, ptr);
-    }
-
-    // Remove leftover children not in nextEls
-    while (ptr) {
-      const next = ptr.nextSibling;
-      containerEl.removeChild(ptr);
-      ptr = next;
-    }
-
-    // Clean maps: remove keys not in nextKeys
-    if (elementsByKey.size !== nextKeys.size) {
-      for (const k of elementsByKey.keys()) {
-        if (!nextKeys.has(k)) {
-          elementsByKey.delete(k);
-          prevItemsByKey.delete(k);
-          prevIndexByKey.delete(k);
+      // Clean maps: remove keys not in nextKeys
+      if (elementsByKey.size !== nextKeys.size) {
+        for (const k of elementsByKey.keys()) {
+          if (!nextKeys.has(k)) {
+            elementsByKey.delete(k);
+            prevItemsByKey.delete(k);
+            prevIndexByKey.delete(k);
+          }
         }
       }
-    }
-
-    // Restore state after DOM manipulation
-    if (restoreFocus) restoreFocus();
-    if (restoreScroll) restoreScroll();
+    }, isReorder);
   }
 
   // Subscription — $subscribe calls updateList immediately (initial render),
