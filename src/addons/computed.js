@@ -63,6 +63,7 @@ export function computed(fn) {
   let cachedValue;
   let isInitialized = false;
   let isInComputation = false;
+  let disposed = false;
   const subscribers = [];
 
   // Use effect to automatically track dependencies
@@ -70,7 +71,7 @@ export function computed(fn) {
     // Skip re-entry from a flush triggered by our own synchronous mutation.
     // The mutation inside fn() queues a microtask flush; we stay flagged
     // until a subsequent microtask clears it, so that flush is dropped.
-    if (isInComputation) return;
+    if (isInComputation || disposed) return;
 
     isInComputation = true;
 
@@ -98,7 +99,11 @@ export function computed(fn) {
     } finally {
       // Defer clearing the flag so any flush microtask queued by fn()
       // sees it still set and skips re-entry.
-      queueMicrotask(() => { isInComputation = false; });
+      queueMicrotask(() => {
+        if (!disposed) {
+          isInComputation = false;
+        }
+      });
     }
   });
 
@@ -144,6 +149,7 @@ export function computed(fn) {
      * Clean up computed value and stop tracking
      */
     dispose() {
+      disposed = true;
       cleanupEffect();
       subscribers.length = 0;
       isInitialized = false;
