@@ -176,6 +176,26 @@ describe('state', () => {
     expect(spyB).toHaveBeenCalledWith('z');
   });
 
+  it('unsubscribe removes only one instance when same callback is subscribed twice', async () => {
+    const store = state({ name: 'a' });
+    const spy = vi.fn();
+    const unsub1 = store.$subscribe('name', spy);
+    const unsub2 = store.$subscribe('name', spy);
+    expect(spy).toHaveBeenCalledTimes(2); // immediate calls
+    spy.mockClear();
+
+    unsub1(); // should only remove the first subscription
+    store.name = 'b';
+    await Promise.resolve();
+    expect(spy).toHaveBeenCalledTimes(1); // second subscription still active
+
+    spy.mockClear();
+    unsub2(); // remove the second
+    store.name = 'c';
+    await Promise.resolve();
+    expect(spy).not.toHaveBeenCalled();
+  });
+
   it('invokes all subscribers scheduled at flush even if one unsubscribes another during notification', async () => {
     const store = state({ val: 0 });
 

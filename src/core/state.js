@@ -116,8 +116,11 @@ export function state(obj) {
             // Return unsubscribe function (no initial call for effects)
             return () => {
               if (listeners[key]) {
-                listeners[key] = listeners[key].filter(subscriber => subscriber !== effectFn);
-                if (listeners[key].length === 0) delete listeners[key];
+                const idx = listeners[key].indexOf(effectFn);
+                if (idx !== -1) {
+                  listeners[key].splice(idx, 1);
+                  if (listeners[key].length === 0) delete listeners[key];
+                }
               }
             };
           })();
@@ -171,8 +174,11 @@ export function state(obj) {
     // Return unsubscribe function
     return () => {
       if (listeners[key]) {
-        listeners[key] = listeners[key].filter(subscriber => subscriber !== fn);
-        if (listeners[key].length === 0) delete listeners[key];
+        const idx = listeners[key].indexOf(fn);
+        if (idx !== -1) {
+          listeners[key].splice(idx, 1);
+          if (listeners[key].length === 0) delete listeners[key];
+        }
       }
     };
   };
