@@ -175,7 +175,11 @@ function resolvePath(obj, pathArr) {
 }
 
 /**
- * Resolve path to target and key
+ * Resolve path to target and key.
+ *
+ * ⚠️ Path bindings are resolved once at bind time. If an intermediate
+ * object in the path is null/undefined at bindDom call time, the binding
+ * is permanently dead and will not self-heal when the path later becomes valid.
  */
 function resolveProp(store, path) {
   if (!path) return null;
