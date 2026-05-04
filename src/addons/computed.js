@@ -27,7 +27,10 @@ import { effect } from '../core/effect.js';
  * The computation function runs immediately and tracks which state
  * properties are accessed. When any dependency changes, the value
  * is automatically recomputed.
- * 
+ *
+ * ⚠️ Circular dependencies are unsupported. If a computed mutates a state
+ * property it depends on, it will queue infinite microtask flushes.
+ *
  * @param {function} fn - Function that computes the value
  * @returns {object} Object with .value property and methods
  * 
