@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as api from 'src/index.js';
+import * as all from 'src/all.js';
 
 describe('public API', () => {
   it('exposes state, bindDom, and effect', () => {
@@ -13,6 +14,20 @@ describe('public API', () => {
 
   it('does not expose isReactive (moved to lume-js/addons)', () => {
     expect(api).not.toHaveProperty('isReactive');
+  });
+
+  it('all.js re-exports core, addons, and handlers for CDN builds', () => {
+    expect(all).toHaveProperty('state');
+    expect(all).toHaveProperty('bindDom');
+    expect(all).toHaveProperty('effect');
+    expect(all).toHaveProperty('withPlugins');
+    expect(all).toHaveProperty('isReactive');
+    expect(all).toHaveProperty('computed');
+    expect(all).toHaveProperty('watch');
+    expect(all).toHaveProperty('repeat');
+    expect(all).toHaveProperty('createDebugPlugin');
+    expect(all).toHaveProperty('show');
+    expect(all).toHaveProperty('classToggle');
   });
 
   it('handles automatic microtask batching', async () => {

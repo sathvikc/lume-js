@@ -233,6 +233,19 @@ describe('withPlugins', () => {
     });
   });
 
+  describe('$-prefixed key passthrough', () => {
+    it('passes through non-$subscribe $-prefixed keys without interception', () => {
+      const onGet = vi.fn((key, value) => 'intercepted');
+      const store = state({ x: 1 });
+      // Manually attach another $-prefixed meta property to the raw object
+      store.$custom = 'hello';
+      const wrapped = withPlugins(store, [{ name: 'test', onGet }]);
+      // $custom is $-prefixed but not $subscribe — should pass through, not call onGet
+      expect(wrapped.$custom).toBe('hello');
+      expect(onGet).not.toHaveBeenCalledWith('$custom', expect.anything());
+    });
+  });
+
   describe('plugin isolation', () => {
     it('plugins are scoped to their wrapped store instance', () => {
       const plugin1 = { name: 'store1-plugin', onGet: vi.fn((key, value) => value) };

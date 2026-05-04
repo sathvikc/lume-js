@@ -121,6 +121,21 @@ describe('debug addon', () => {
             expect(consoleSpy.log).not.toHaveBeenCalled();
         });
 
+        it('onNotify skips $ prefixed keys without logging or incrementing stats', () => {
+            debug.resetStats();
+            const plugin = createDebugPlugin({ label: 'notifytest' });
+
+            consoleSpy.log.mockClear();
+            // Call onNotify with a $-prefixed key directly
+            plugin.onNotify('$subscribe', 'fn');
+
+            // Should not log anything
+            expect(consoleSpy.log).not.toHaveBeenCalled();
+            // Should not increment stats for that key
+            const stats = debug.stats();
+            expect(stats.notifytest?.notifies?.['$subscribe']).toBeUndefined();
+        });
+
         it('shows stack trace when trace option is enabled', () => {
             const traceSpy = vi.spyOn(console, 'trace').mockImplementation(() => { });
 
