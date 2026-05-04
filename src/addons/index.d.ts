@@ -5,7 +5,9 @@
  * Import from "lume-js/addons" for tree-shaking.
  */
 
-import type { Unsubscribe, Subscriber, ReactiveState } from '../index.js';
+import type { Unsubscribe, Subscriber, ReactiveState, TypedPlugin } from '../index.js';
+
+export type { TypedPlugin };
 
 /**
  * Computed value container returned by computed().
