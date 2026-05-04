@@ -284,4 +284,37 @@ describe('state edge cases', () => {
     await Promise.resolve();
     expect(spy).toHaveBeenCalledWith(-0);
   });
+
+  it('$beforeFlush runs before subscribers in a flush', async () => {
+    const store = state({ count: 0 });
+    const order = [];
+    store.$beforeFlush(() => order.push('beforeFlush'));
+    store.$subscribe('count', () => order.push('subscriber'));
+    order.length = 0;
+
+    store.count = 1;
+    await Promise.resolve();
+    expect(order).toEqual(['beforeFlush', 'subscriber']);
+  });
+
+  it('$beforeFlush returns an unsubscribe function', async () => {
+    const store = state({ count: 0 });
+    const spy = vi.fn();
+    const unsub = store.$beforeFlush(spy);
+
+    store.count = 1;
+    await Promise.resolve();
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    spy.mockClear();
+    unsub();
+    store.count = 2;
+    await Promise.resolve();
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('$beforeFlush throws for non-function input', () => {
+    const store = state({ count: 0 });
+    expect(() => store.$beforeFlush(123)).toThrow('$beforeFlush requires a function');
+  });
 });
