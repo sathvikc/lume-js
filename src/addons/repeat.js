@@ -246,6 +246,7 @@ export function repeat(container, store, arrayKey, options) {
 
       if (seenKeys.has(k)) {
         console.warn(`[Lume.js] repeat(): duplicate key "${k}"`);
+        continue;
       }
       seenKeys.add(k);
       nextKeys.add(k);
