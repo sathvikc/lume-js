@@ -26,6 +26,13 @@
  *   const cleanup = bindDom(document.body, store);
  */
 
+/** Emit a development warning only if console is available. */
+function warn(msg) {
+  if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+    console.warn(msg);
+  }
+}
+
 // --- Default Handlers (always active, backwards compatible) ---
 
 const boolHandler = (name) => ({
@@ -185,12 +192,12 @@ function resolveProp(store, path) {
   const target = resolvePath(store, pathArr);
 
   if (target === null || target === undefined) {
-    console.warn(`[Lume.js] Invalid path "${path}"`);
+    warn(`[Lume.js] Invalid path "${path}"`);
     return null;
   }
 
   if (!target?.$subscribe) {
-    console.warn(`[Lume.js] Target for "${path}" is not reactive`);
+    warn(`[Lume.js] Target for "${path}" is not reactive`);
     return null;
   }
 
