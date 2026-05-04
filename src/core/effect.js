@@ -1,28 +1,32 @@
+import { withReadObserver } from './state.js';
+
 /**
  * Lume-JS Effect
- * 
+ *
  * Reactive effects with two modes:
- * 1. Auto-tracking (default): Tracks dependencies automatically
+ * 1. Auto-tracking (default): Tracks dependencies automatically via withReadObserver
  * 2. Explicit deps: You specify exactly what triggers re-runs
- * 
- * Part of core because it's fundamental to modern reactivity.
- * 
+ *
+ * Auto-tracking uses scope-based read observation — state.js has zero permanent
+ * dependency on this module. Read tracking is only active during the synchronous
+ * execution of an effect's body.
+ *
  * Usage:
  *   import { effect } from "lume-js";
- *   
+ *
  *   // Auto-tracking mode (existing behavior)
  *   effect(() => {
  *     console.log('Count is:', store.count);
  *     // Automatically re-runs when store.count changes
  *   });
- *   
+ *
  *   // Explicit deps mode (new - no magic)
  *   effect(() => {
  *     console.log('Count is:', store.count);
  *   }, [[store, 'count']]);  // Only re-runs when store.count changes
- * 
+ *
  * Features:
- * - Automatic dependency collection (default)
+ * - Automatic dependency collection via withReadObserver scope (default)
  * - Explicit dependencies for side-effects
  * - Returns cleanup function
  * - Compatible with per-state batching
@@ -31,13 +35,7 @@
 // Module-scoped effect context (prevents third-party spoofing via globalThis)
 let currentEffect = null;
 
-/**
- * Get the currently executing effect context (for state.js tracking).
- * @returns {object|null} Current effect context
- */
-export function getCurrentEffect() {
-  return currentEffect;
-}
+// withReadObserver is used below to scope read tracking to synchronous effect execution.
 
 /**
  * Creates an effect that runs reactively
@@ -118,11 +116,14 @@ export function effect(fn, deps) {
       /* v8 ignore next -- defensive guard: synchronous re-entry is unreachable through the public API */
       if (isRunning) return;
 
-      // Clean up previous subscriptions (while/pop is faster than forEach)
-      while (cleanups.length) cleanups.pop()();
+      // Save previous subscriptions instead of cleaning immediately.
+      // If fn() doesn't read any state (early return / error), we restore
+      // them so the effect stays reactive.
+      const oldCleanups = [...cleanups];
+      cleanups.length = 0;
 
       // Create effect context for tracking
-      const effectContext = {
+      const myContext = {
         fn,
         cleanups,
         execute: executeWithTracking,
@@ -132,18 +133,36 @@ export function effect(fn, deps) {
       // Set as current effect (for state.js to detect)
       // Save previous context to support nested effects/computed
       const previousEffect = currentEffect;
-      currentEffect = effectContext;
+      currentEffect = myContext;
       isRunning = true;
 
       try {
-        fn();
+        const onRead = (proxy, key, registerEffect) => {
+          // Only the currently active effect (not a nested one) creates subscriptions
+          if (currentEffect !== myContext) return;
+          if (myContext.tracking[key]) return;
+          myContext.tracking[key] = true;
+          myContext.cleanups.push(registerEffect(key, myContext.execute));
+        };
+        withReadObserver(onRead, fn);
       } catch (error) {
+        // On error, restore old subscriptions so the effect stays reactive
+        cleanups.length = 0;
+        cleanups.push(...oldCleanups);
         console.error('[Lume.js effect] Error in effect:', error);
         throw error;
       } finally {
         // Restore previous context (not undefined) to support nesting
         currentEffect = previousEffect;
         isRunning = false;
+      }
+
+      // If fn() created new subscriptions, clean old ones.
+      // If it didn't (e.g., early return), keep old subscriptions intact.
+      if (cleanups.length > 0) {
+        for (const cleanup of oldCleanups) cleanup();
+      } else {
+        cleanups.push(...oldCleanups);
       }
     };
 
