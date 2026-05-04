@@ -136,6 +136,14 @@ export type ReactiveState<T extends object> = T & {
   ): Unsubscribe;
 
   /**
+   * Register a callback to run before each flush.
+   * Dedupes duplicate function references.
+   * @param fn - Callback function
+   * @returns Unsubscribe function for cleanup
+   */
+  $beforeFlush(fn: () => void): Unsubscribe;
+
+  /**
    * Brand to identify reactive state objects at the type level
    * @internal
    */
