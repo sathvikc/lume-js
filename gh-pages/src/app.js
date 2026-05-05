@@ -1,5 +1,5 @@
 import { state, bindDom, effect } from 'lume-js';
-import { watch } from 'lume-js/addons';
+import { watch, createCleanupGroup } from 'lume-js/addons';
 import { classToggle, show, stringAttr } from 'lume-js/handlers';
 
 // --- Toast helper ---
@@ -122,7 +122,7 @@ const outlet      = document.getElementById('outlet');
 const docsShell   = document.getElementById('docs-shell');
 const articleOutlet = document.getElementById('docs-article-outlet');
 
-let currentCleanup    = null;
+let pageCleanup       = createCleanupGroup();
 let _tocCleanup       = null;
 let _docsShellMounted = false;
 let _currentDocSlug   = null;
@@ -204,14 +204,15 @@ watch(store, 'route', async (r) => {
 
     await new Promise(res => setTimeout(res, 120));
 
-    if (currentCleanup) { currentCleanup(); currentCleanup = null; }
+    pageCleanup.dispose();
+    pageCleanup = createCleanupGroup();
 
     outlet.innerHTML = `<div class="page">${renderPage(r)}</div>`;
     mountPage(r);
 
-    currentCleanup = bindDom(outlet, store, {
+    pageCleanup.add(bindDom(outlet, store, {
       handlers: [show, classToggle('active'), stringAttr('href'), link(router)]
-    });
+    }));
 
     syncNav(r);
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -233,12 +234,10 @@ function mountPage(r) {
   if (r.page === 'home') {
     const demoRoot = document.getElementById('demo-root');
     if (demoRoot) {
-      const cleanup = bindDom(demoRoot, demoStore, { handlers: [classToggle('is-even'), show] });
+      pageCleanup.add(bindDom(demoRoot, demoStore, { handlers: [classToggle('is-even'), show] }));
       const snap = { count: demoStore.count, parity: demoStore.parity, isEven: demoStore.isEven, name: demoStore.name };
       Object.assign(demoStore, { count: null, parity: null, isEven: null, name: '' });
       Object.assign(demoStore, snap);
-      const prev = currentCleanup;
-      currentCleanup = () => { cleanup(); if (prev) prev(); };
     }
   }
 }
