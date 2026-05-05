@@ -28,6 +28,8 @@
  * @param {Array<object>} plugins - Array of plugin objects
  * @returns {Proxy} A new proxy wrapping the store with plugin behavior
  */
+import { logError } from '../utils/log.js';
+
 export function withPlugins(store, plugins = []) {
   if (!plugins.length) return store;
 
@@ -36,7 +38,7 @@ export function withPlugins(store, plugins = []) {
     try {
       p.onInit?.();
     } catch (e) {
-      console.error(`[Lume.js] Plugin "${p.name}" error in onInit:`, e);
+      logError(`[Lume.js] Plugin "${p.name}" error in onInit:`, e);
     }
   }
 
@@ -51,7 +53,7 @@ export function withPlugins(store, plugins = []) {
         try {
           p.onNotify?.(key, value);
         } catch (e) {
-          console.error(`[Lume.js] Plugin "${p.name}" error in onNotify:`, e);
+          logError(`[Lume.js] Plugin "${p.name}" error in onNotify:`, e);
         }
       }
     }
@@ -75,7 +77,7 @@ export function withPlugins(store, plugins = []) {
               try {
                 p.onSubscribe?.(subKey);
               } catch (e) {
-                console.error(`[Lume.js] Plugin "${p.name}" error in onSubscribe:`, e);
+                logError(`[Lume.js] Plugin "${p.name}" error in onSubscribe:`, e);
               }
             }
             return method(subKey, fn);
@@ -92,7 +94,7 @@ export function withPlugins(store, plugins = []) {
           const r = p.onGet?.(key, value);
           if (r !== undefined) value = r;
         } catch (e) {
-          console.error(`[Lume.js] Plugin "${p.name}" error in onGet:`, e);
+          logError(`[Lume.js] Plugin "${p.name}" error in onGet:`, e);
         }
       }
 
@@ -109,7 +111,7 @@ export function withPlugins(store, plugins = []) {
           const r = p.onSet?.(key, newValue, oldValue);
           if (r !== undefined) newValue = r;
         } catch (e) {
-          console.error(`[Lume.js] Plugin "${p.name}" error in onSet:`, e);
+          logError(`[Lume.js] Plugin "${p.name}" error in onSet:`, e);
         }
       }
 
