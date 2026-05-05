@@ -8,7 +8,7 @@ Drop a `<script type="module">` into any HTML file and you're done:
 
 ```html
 <script type="module">
-  import { state, bindDom, effect } from 'https://cdn.jsdelivr.net/npm/lume-js@__LUME_VERSION__/dist/index.min.mjs';
+  import { state, bindDom, effect } from 'https://cdn.jsdelivr.net/npm/lume-js@next/dist/index.min.mjs';
 </script>
 ```
 
@@ -18,7 +18,7 @@ For production, pin to an exact version so your page can't break on a new releas
 
 ```html
 <!-- exact version (recommended for production) -->
-'https://cdn.jsdelivr.net/npm/lume-js@__LUME_VERSION__/dist/index.min.mjs'
+'https://cdn.jsdelivr.net/npm/lume-js@next/dist/index.min.mjs'
 
 <!-- latest stable -->
 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs'
@@ -35,9 +35,9 @@ If your page imports from more than one Lume subpath, an import map removes the 
 <script type="importmap">
 {
   "imports": {
-    "lume-js":          "https://cdn.jsdelivr.net/npm/lume-js@__LUME_VERSION__/dist/index.min.mjs",
-    "lume-js/addons":   "https://cdn.jsdelivr.net/npm/lume-js@__LUME_VERSION__/dist/addons.min.mjs",
-    "lume-js/handlers": "https://cdn.jsdelivr.net/npm/lume-js@__LUME_VERSION__/dist/handlers.min.mjs"
+    "lume-js":          "https://cdn.jsdelivr.net/npm/lume-js@next/dist/index.min.mjs",
+    "lume-js/addons":   "https://cdn.jsdelivr.net/npm/lume-js@next/dist/addons.min.mjs",
+    "lume-js/handlers": "https://cdn.jsdelivr.net/npm/lume-js@next/dist/handlers.min.mjs"
   }
 }
 </script>
