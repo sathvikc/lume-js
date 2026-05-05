@@ -10,8 +10,8 @@ Minimal reactive state management using only standard JavaScript and HTML. No cu
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-2.0.0--beta.2-orange.svg)](package.json)
-[![Tests](https://img.shields.io/badge/tests-294%20passing-brightgreen.svg)](tests/)
-[![Size](https://img.shields.io/badge/core-2.15KB-blue.svg)](scripts/check-size.js)
+[![Tests](https://img.shields.io/badge/tests-303%20passing-brightgreen.svg)](tests/)
+[![Size](https://img.shields.io/badge/core-2.45KB-blue.svg)](scripts/check-size.js)
 
 ## Why Lume.js?
 
@@ -19,7 +19,7 @@ Minimal reactive state management using only standard JavaScript and HTML. No cu
 |---------|---------|-----------|-----|-------|
 | Custom Syntax | ❌ No | ✅ `x-data` | ✅ `v-bind` | ✅ JSX |
 | Build Step | ❌ Optional | ❌ Optional | ⚠️ Recommended | ✅ Required |
-| Bundle Size | ~2.15KB | ~15KB | ~35KB | ~45KB |
+| Bundle Size | ~2.45KB | ~15KB | ~35KB | ~45KB |
 | HTML Validation | ✅ Pass | ⚠️ Warnings | ⚠️ Warnings | ❌ JSX |
 | Extensible Handlers | ✅ | ❌ Built-in only | ❌ Built-in only | N/A |
 

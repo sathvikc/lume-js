@@ -102,9 +102,9 @@
   <script type="importmap">
   {
     "imports": {
-      "lume-js":          "https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.2/src/index.js",
-      "lume-js/addons":   "https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.2/src/addons/index.js",
-      "lume-js/handlers": "https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.2/src/handlers/index.js"
+      "lume-js":          "https://cdn.jsdelivr.net/npm/lume-js@__LUME_VERSION__/dist/index.min.mjs",
+      "lume-js/addons":   "https://cdn.jsdelivr.net/npm/lume-js@__LUME_VERSION__/dist/addons.min.mjs",
+      "lume-js/handlers": "https://cdn.jsdelivr.net/npm/lume-js@__LUME_VERSION__/dist/handlers.min.mjs"
     }
   }
   </script>
@@ -132,7 +132,7 @@
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
         "license": "https://github.com/sathvikc/lume-js/blob/main/LICENSE",
         "description": "Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required.",
-        "softwareVersion": "2.0.0-beta.1",
+        "softwareVersion": "__LUME_VERSION__",
         "author": { "@type": "Person", "name": "Sathvik C" },
         "isPartOf": { "@id": "https://sathvikc.github.io/lume-js/#website" }
       }
@@ -179,7 +179,7 @@
           <button
             class="font-mono text-[10.5px] font-medium text-accent-fg bg-accent-soft px-2 py-1 rounded-md ml-1 border border-accent/30 cursor-pointer inline-flex items-center gap-1 whitespace-nowrap transition-all hover:border-accent"
             id="ver-btn" title="Version — click to switch" onclick="store.verMenuOpen = !store.verMenuOpen">
-            v2.0.0-beta.1
+            v__LUME_VERSION__
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
               stroke-linecap="round" stroke-linejoin="round" class="opacity-65">
               <polyline points="6 9 12 15 18 9" />
@@ -197,7 +197,7 @@
             <button
               class="theme-option flex items-center gap-2.5 w-full px-2.5 py-2 border-0 bg-transparent text-fg text-left font-inherit text-[13px] rounded-md cursor-pointer hover:bg-bg-sunken justify-between"
               onclick="store.verMenuOpen=false">
-              <span>v2.0.0-beta.1 <span class="text-[10.5px] text-fg-subtle font-mono">current</span></span>
+              <span>v__LUME_VERSION__ <span class="text-[10.5px] text-fg-subtle font-mono">current</span></span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-fg)" stroke-width="2.5"
                 stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="20 6 9 17 4 12" />
@@ -506,7 +506,7 @@
               class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-mono font-medium border border-border text-fg-muted bg-bg-raised"><span
                 class="w-1.5 h-1.5 rounded-full bg-success animate-pulse-dot"></span> Built with Lume.js</span>
             <span
-              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-mono font-medium border border-border text-fg-muted bg-bg-raised">v2.0.0-beta.1</span>
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-mono font-medium border border-border text-fg-muted bg-bg-raised">v__LUME_VERSION__</span>
           </div>
         </div>
         <div>

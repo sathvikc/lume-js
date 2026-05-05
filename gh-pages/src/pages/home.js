@@ -5,14 +5,14 @@ export function renderHome() {
       <div class="max-w-7xl mx-auto px-4 sm:px-6">
         <span class="inline-flex items-center gap-2 font-mono text-xs font-medium text-accent-fg bg-accent-soft px-2.5 py-1 rounded-full border border-accent/30">
           <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-dot"></span>
-          v2.0.0-beta.1 · now with extensible handlers
+          v__LUME_VERSION__ · now with extensible handlers
         </span>
         <h1 class="hero-title font-serif font-normal leading-[1.1] tracking-[-0.02em] text-fg mt-6 mb-5 text-balance"
             style="font-size: clamp(34px, 10vw, 78px)">
           Reactivity that<br/>follows <em>web standards</em>.
         </h1>
         <p class="text-[19px] text-fg-muted max-w-2xl leading-[1.55] text-pretty mb-8">
-          Lume.js is a minimal reactive state library. It binds plain JavaScript objects to ordinary HTML using <code class="font-mono">data-*</code> attributes — no custom syntax, no compiler, no virtual DOM. 2.4&#8239;KB, shipped.
+          Lume.js is a minimal reactive state library. It binds plain JavaScript objects to ordinary HTML using <code class="font-mono">data-*</code> attributes — no custom syntax, no compiler, no virtual DOM. __LUME_SIZE__&#8239;KB, shipped.
         </p>
         <div class="flex flex-col sm:flex-row gap-3 mb-10 items-stretch sm:items-center">
           <a class="inline-flex items-center justify-center gap-2 px-[18px] py-[13px] rounded-[14px] font-semibold text-sm border border-transparent cursor-pointer transition-all bg-accent text-accent-contrast shadow-[0_6px_18px_-8px_color-mix(in_oklab,var(--accent)_70%,transparent)] hover:brightness-[1.08] hover:-translate-y-px active:scale-[0.98] w-full sm:w-auto"
@@ -27,8 +27,8 @@ export function renderHome() {
           </button>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-8 pt-6 border-t border-dashed border-border mt-4">
-          <div><div class="font-serif font-medium text-[28px] leading-none text-fg tracking-[-0.02em]">2.4<span class="text-base">kb</span></div><div class="font-mono text-[11px] text-fg-subtle uppercase tracking-widest mt-1.5">Core gzipped</div></div>
-          <div><div class="font-serif font-medium text-[28px] leading-none text-fg tracking-[-0.02em]">231</div><div class="font-mono text-[11px] text-fg-subtle uppercase tracking-widest mt-1.5">Tests passing</div></div>
+          <div><div class="font-serif font-medium text-[28px] leading-none text-fg tracking-[-0.02em]">__LUME_SIZE__<span class="text-base">kb</span></div><div class="font-mono text-[11px] text-fg-subtle uppercase tracking-widest mt-1.5">Core gzipped</div></div>
+          <div><div class="font-serif font-medium text-[28px] leading-none text-fg tracking-[-0.02em]">__LUME_TESTS__</div><div class="font-mono text-[11px] text-fg-subtle uppercase tracking-widest mt-1.5">Tests passing</div></div>
           <div><div class="font-serif font-medium text-[28px] leading-none text-fg tracking-[-0.02em]">0</div><div class="font-mono text-[11px] text-fg-subtle uppercase tracking-widest mt-1.5">Dependencies</div></div>
           <div><div class="font-serif font-medium text-[28px] leading-none text-fg tracking-[-0.02em]">100%</div><div class="font-mono text-[11px] text-fg-subtle uppercase tracking-widest mt-1.5">Valid HTML</div></div>
         </div>
@@ -127,7 +127,7 @@ export function renderHome() {
           <div class="p-8 border-r border-b border-border bg-bg-raised sm:last:border-r-0 lg:[&:nth-child(3n)]:border-r-0 [&:nth-last-child(-n+1)]:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 lg:[&:nth-last-child(-n+3)]:border-b-0">
             <div class="font-mono text-[11px] text-fg-subtle mb-5 tracking-[0.05em]">05</div>
             <h3 class="font-serif font-medium text-[22px] leading-[1.2] tracking-[-0.01em] m-0 mb-3 text-fg">Tree-shakeable</h3>
-            <p class="m-0 text-fg-muted text-[14.5px] leading-[1.6]">Import only what you need from <code class="font-mono">/handlers</code> and <code class="font-mono">/addons</code>. The core stays lean — under 2.4&#8239;KB gzipped.</p>
+            <p class="m-0 text-fg-muted text-[14.5px] leading-[1.6]">Import only what you need from <code class="font-mono">/handlers</code> and <code class="font-mono">/addons</code>. The core stays lean — under __LUME_SIZE__&#8239;KB gzipped.</p>
           </div>
           <div class="p-8 bg-bg-raised border-r-0 border-b-0">
             <div class="font-mono text-[11px] text-fg-subtle mb-5 tracking-[0.05em]">06</div>
@@ -151,7 +151,7 @@ export function renderHome() {
             <h3 class="font-serif font-medium text-[22px] tracking-[-0.01em] mt-1.5 mb-4">Drop into any HTML file</h3>
 <pre class="m-0 px-4 py-3.5 bg-bg-code border border-border rounded-[10px] text-[13px] overflow-x-auto"><code class="language-html">&lt;script type="module"&gt;
   import { state, bindDom }
-    from 'https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.2/src/index.js';
+    from 'https://cdn.jsdelivr.net/npm/lume-js@__LUME_VERSION__/src/index.js';
 
   const store = state({ name: 'World' });
   bindDom(document.body, store);
