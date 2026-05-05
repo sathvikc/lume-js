@@ -22,6 +22,8 @@
  *   unsub(); // cleanup
  */
 
+import { logError } from '../utils/log.js';
+
 // Per-state batching – each state object maintains its own microtask flush.
 // This keeps effects simple and aligned with Lume's minimal philosophy.
 
@@ -111,7 +113,7 @@ export function state(obj) {
             try {
               beforeFlushHooks[i]();
             } catch (err) {
-              console.error('[Lume.js state] Error in beforeFlush hook:', err);
+              logError('[Lume.js state] Error in beforeFlush hook:', err);
             }
           }
 
@@ -125,7 +127,7 @@ export function state(obj) {
                 try {
                   fn(value);
                 } catch (err) {
-                  console.error(`[Lume.js state] Error notifying subscriber for key "${String(key)}":`, err);
+                  logError(`[Lume.js state] Error notifying subscriber for key "${String(key)}":`, err);
                 }
                 // Only advance if fn wasn't removed (something shifted into its place)
                 if (subs[i] === fn) i++;
@@ -146,7 +148,7 @@ export function state(obj) {
             try {
               effects[i]();
             } catch (err) {
-              console.error('[Lume.js state] Error in effect:', err);
+              logError('[Lume.js state] Error in effect:', err);
             }
           }
         }
@@ -155,7 +157,7 @@ export function state(obj) {
       }
 
       if (iterations >= MAX_ITERATIONS) {
-        console.error(
+        logError(
           '[Lume.js state] Maximum flush iterations reached (100). ' +
           'This usually indicates an infinite loop caused by an effect or computed mutating state it depends on.'
         );
