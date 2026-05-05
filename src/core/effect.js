@@ -1,4 +1,5 @@
 import { withReadObserver } from './state.js';
+import { logError } from '../utils/log.js';
 
 /**
  * Lume-JS Effect
@@ -76,7 +77,7 @@ export function effect(fn, deps) {
     try {
       fn();
     } catch (error) {
-      console.error('[Lume.js effect] Error in effect:', error);
+      logError('[Lume.js effect] Error in effect:', error);
       throw error;
     } finally {
       isRunning = false;
@@ -149,7 +150,7 @@ export function effect(fn, deps) {
         // On error, restore old subscriptions so the effect stays reactive
         cleanups.length = 0;
         cleanups.push(...oldCleanups);
-        console.error('[Lume.js effect] Error in effect:', error);
+        logError('[Lume.js effect] Error in effect:', error);
         throw error;
       } finally {
         // Restore previous context (not undefined) to support nesting
