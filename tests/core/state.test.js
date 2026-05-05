@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { state } from 'src/core/state.js';
 import { isReactive } from 'src/addons/index.js';
+import * as log from 'src/utils/log.js';
 
 describe('state', () => {
   it('throws for non-object inputs', () => {
@@ -339,6 +340,7 @@ describe('state edge cases', () => {
   });
 
   it('isolates subscriber errors so remaining subscribers still receive updates', async () => {
+    const logErrorSpy = vi.spyOn(log, 'logError').mockImplementation(() => {});
     const store = state({ count: 0 });
     const goodSpy = vi.fn();
     const badSpy = vi.fn((val) => { if (val !== 0) throw new Error('bad subscriber'); });
@@ -354,9 +356,11 @@ describe('state edge cases', () => {
 
     expect(badSpy).toHaveBeenCalledWith(1);
     expect(goodSpy).toHaveBeenCalledWith(1);
+    logErrorSpy.mockRestore();
   });
 
   it('continues scheduling flushes after a subscriber error', async () => {
+    const logErrorSpy = vi.spyOn(log, 'logError').mockImplementation(() => {});
     const store = state({ count: 0 });
     const spy = vi.fn();
 
@@ -373,9 +377,11 @@ describe('state edge cases', () => {
     store.count = 2;
     await Promise.resolve();
     expect(spy).toHaveBeenCalledWith(2);
+    logErrorSpy.mockRestore();
   });
 
   it('isolates beforeFlush hook errors so subscribers still run', async () => {
+    const logErrorSpy = vi.spyOn(log, 'logError').mockImplementation(() => {});
     const store = state({ count: 0 });
     const spy = vi.fn();
 
@@ -387,5 +393,6 @@ describe('state edge cases', () => {
     store.count = 1;
     await Promise.resolve();
     expect(spy).toHaveBeenCalledWith(1);
+    logErrorSpy.mockRestore();
   });
 });
