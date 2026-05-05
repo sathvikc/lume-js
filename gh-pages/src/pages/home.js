@@ -151,7 +151,7 @@ export function renderHome() {
             <h3 class="font-serif font-medium text-[22px] tracking-[-0.01em] mt-1.5 mb-4">Drop into any HTML file</h3>
 <pre class="m-0 px-4 py-3.5 bg-bg-code border border-border rounded-[10px] text-[13px] overflow-x-auto"><code class="language-html">&lt;script type="module"&gt;
   import { state, bindDom }
-    from 'https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.1/src/index.js';
+    from 'https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.2/src/index.js';
 
   const store = state({ name: 'World' });
   bindDom(document.body, store);
