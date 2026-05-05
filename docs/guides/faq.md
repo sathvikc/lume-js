@@ -10,7 +10,7 @@ Yes — that's one of its main advantages. Import from a CDN and write plain Jav
 
 ```html
 <script type="module">
-  import { state, bindDom, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/src/index.js';
+  import { state, bindDom, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
 </script>
 ```
 

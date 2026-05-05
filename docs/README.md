@@ -30,7 +30,7 @@ Paste this into an HTML file and open it in a browser. No npm, no bundler, no co
   <input data-bind="name" placeholder="Your name">
 
   <script type="module">
-    import { state, bindDom } from 'https://cdn.jsdelivr.net/npm/lume-js/src/index.js';
+    import { state, bindDom } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
 
     const store = state({ name: 'World' });
     bindDom(document.body, store);

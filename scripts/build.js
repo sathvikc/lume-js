@@ -24,7 +24,8 @@ import { fileURLToPath } from 'node:url';
 import { readdir, stat } from 'node:fs/promises';
 import { gzip } from 'node:zlib';
 import { promisify } from 'node:util';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
+import { minify as terserMinify } from 'terser';
 
 const gzipAsync = promisify(gzip);
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -100,7 +101,48 @@ await build({
   },
 });
 
-// ── Step 3: Report sizes ────────────────────────────────────────────────────
+// ── Step 3: Minified ESM bundles for CDN ────────────────────────────────────
+console.log('\n📦 Building minified ESM bundles for CDN…\n');
+
+const cdnEntries = {
+  index: resolve(root, 'src/index.js'),
+  addons: resolve(root, 'src/addons/index.js'),
+  handlers: resolve(root, 'src/handlers/index.js'),
+};
+
+for (const [name, entryPath] of Object.entries(cdnEntries)) {
+  await build({
+    root,
+    configFile: false,
+    build: {
+      lib: {
+        entry: entryPath,
+        formats: ['es'],
+        fileName: () => `${name}.min.mjs`,
+      },
+      outDir: 'dist',
+      emptyOutDir: false,
+      minify: false,
+      sourcemap: false,
+      rollupOptions: {
+        output: {
+          inlineDynamicImports: true,
+        },
+      },
+    },
+  });
+
+  const outFile = resolve(root, 'dist', `${name}.min.mjs`);
+  const raw = await readFile(outFile, 'utf-8');
+  const minified = await terserMinify(raw, {
+    ...terserOptions,
+    mangle: { toplevel: true },
+    sourceMap: false,
+  });
+  await writeFile(outFile, minified.code, 'utf-8');
+}
+
+// ── Step 4: Report sizes ────────────────────────────────────────────────────
 console.log('\n📊 Bundle sizes:\n');
 
 const distDir = resolve(root, 'dist');

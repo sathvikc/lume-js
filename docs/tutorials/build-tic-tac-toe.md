@@ -38,8 +38,8 @@ Create an `index.html` file. We'll put everything in here.
   <div id="root"></div>
 
   <script type="module">
-    import { state, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/src/index.js';
-    import { computed } from 'https://cdn.jsdelivr.net/npm/lume-js/src/addons/index.js';
+    import { state, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
+    import { computed } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/addons.min.mjs';
 
     const root = document.getElementById('root');
 
@@ -298,8 +298,8 @@ effect(() => {
   <div id="root"></div>
 
   <script type="module">
-    import { state, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/src/index.js';
-    import { computed } from 'https://cdn.jsdelivr.net/npm/lume-js/src/addons/index.js';
+    import { state, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
+    import { computed } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/addons.min.mjs';
 
     // --- Logic ---
     function calculateWinner(squares) {
