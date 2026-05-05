@@ -434,3 +434,51 @@ export interface Plugin {
  */
 export function withPlugins<T extends object>(store: ReactiveState<T>, plugins: Plugin[]): ReactiveState<T>;
 
+/**
+ * A group that collects cleanup/unsubscribe functions and can dispose them all at once.
+ *
+ * @example
+ * ```typescript
+ * import { createCleanupGroup } from 'lume-js/addons';
+ *
+ * const group = createCleanupGroup();
+ * group.add(bindDom(root, store));
+ * group.add(effect(() => { ... }));
+ * group.add(store.$subscribe('key', fn));
+ *
+ * // Dispose everything at once
+ * group.dispose();
+ * ```
+ */
+export interface CleanupGroup {
+  /** Add a cleanup/unsubscribe function to the group */
+  add(fn: () => void): void;
+  /** Run all collected cleanup functions and clear the group */
+  dispose(): void;
+}
+
+/**
+ * Creates a cleanup group that can collect and dispose multiple
+ * cleanup/unsubscribe functions at once.
+ *
+ * @returns A CleanupGroup instance
+ */
+export function createCleanupGroup(): CleanupGroup;
+
+/**
+ * Reads initial state from a `<script type="application/json">` element
+ * embedded in the server-rendered HTML.
+ *
+ * @param selector - CSS selector for the script element (default: '#__LUME_DATA__')
+ * @returns Parsed JSON object, or empty object if not found or invalid
+ *
+ * @example
+ * ```typescript
+ * import { state } from 'lume-js';
+ * import { hydrateState } from 'lume-js/addons';
+ *
+ * const store = state(hydrateState());
+ * ```
+ */
+export function hydrateState(selector?: string): object;
+
