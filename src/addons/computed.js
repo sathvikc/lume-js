@@ -20,6 +20,7 @@
  */
 
 import { effect } from '../core/effect.js';
+import { logError } from '../utils/log.js';
 
 /**
  * Creates a computed value with automatic dependency tracking
@@ -87,7 +88,7 @@ export function computed(fn) {
         subscribers.forEach(callback => callback(cachedValue));
       }
     } catch (error) {
-      console.error('[Lume.js computed] Error in computation:', error);
+      logError('[Lume.js computed] Error in computation:', error);
       // Set to undefined on error, mark as initialized
       if (!isInitialized || cachedValue !== undefined) {
         cachedValue = undefined;

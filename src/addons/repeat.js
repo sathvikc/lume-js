@@ -5,9 +5,9 @@
  * Renders lists with automatic subscription and element reuse by key.
  * 
  * Core guarantees:
- * ✅ Element reuse by key (same DOM nodes, not recreated)
- * ✅ Minimal DOM operations (only updates what changed)
- * ✅ Memory efficiency (cleanup on remove)
+ * Element reuse by key (same DOM nodes, not recreated)
+ * Minimal DOM operations (only updates what changed)
+ * Memory efficiency (cleanup on remove)
  * 
  * Default behavior (can be disabled/customized):
  * ✅ Focus preservation (maintains activeElement and selection)
@@ -190,7 +190,7 @@ export function repeat(container, store, arrayKey, options) {
       : container;
 
   if (!containerEl) {
-    console.warn(`[Lume.js] repeat(): container "${container}" not found`);
+    logWarn(`[Lume.js] repeat(): container "${container}" not found`);
     return () => { };
   }
 
@@ -253,7 +253,7 @@ export function repeat(container, store, arrayKey, options) {
     const items = store[arrayKey];
 
     if (!Array.isArray(items)) {
-      console.warn(`[Lume.js] repeat(): store.${arrayKey} is not an array`);
+      logWarn(`[Lume.js] repeat(): store.${arrayKey} is not an array`);
       return;
     }
 
@@ -276,7 +276,7 @@ export function repeat(container, store, arrayKey, options) {
       const k = key(item);
 
       if (seenKeys.has(k)) {
-        console.warn(`[Lume.js] repeat(): duplicate key "${k}"`);
+        logWarn(`[Lume.js] repeat(): duplicate key "${k}"`);
         continue;
       }
       seenKeys.add(k);
@@ -314,7 +314,7 @@ export function repeat(container, store, arrayKey, options) {
         prevIndexByKey.set(k, i);
 
       } catch (err) {
-        console.error(`[Lume.js] repeat(): error rendering key "${k}"`, err);
+        logError(`[Lume.js] repeat(): error rendering key "${k}":`, err);
       }
 
       nextEls.push(el);
@@ -352,7 +352,7 @@ export function repeat(container, store, arrayKey, options) {
   } else {
     // Non-reactive store — render once and return cleanup
     updateList();
-    console.warn('[Lume.js] repeat(): store is not reactive (no $subscribe or subscribe method)');
+    logWarn('[Lume.js] repeat(): store is not reactive (no $subscribe or subscribe method)');
     return () => {
       containerEl.replaceChildren();
       elementsByKey.clear();
