@@ -34,4 +34,14 @@ describe('addons public API', () => {
     expect(addons).toHaveProperty('withPlugins');
     expect(typeof addons.withPlugins).toBe('function');
   });
+
+  it('exposes createCleanupGroup', () => {
+    expect(addons).toHaveProperty('createCleanupGroup');
+    expect(typeof addons.createCleanupGroup).toBe('function');
+  });
+
+  it('exposes hydrateState', () => {
+    expect(addons).toHaveProperty('hydrateState');
+    expect(typeof addons.hydrateState).toBe('function');
+  });
 });
