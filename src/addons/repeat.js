@@ -74,6 +74,7 @@
  *     }
  *   });
  */
+import { logWarn, logError } from '../utils/log.js';
 
 /**
  * Default focus preservation strategy
@@ -172,6 +173,7 @@ export function defaultScrollPreservation(container, context = {}) {
  * @param {Function|null} [options.preserveScroll=defaultScrollPreservation] - Scroll preservation strategy (null to disable)
  * @returns {Function} Cleanup function
  */
+
 export function repeat(container, store, arrayKey, options) {
   const {
     key,
