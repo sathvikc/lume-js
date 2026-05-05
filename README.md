@@ -33,7 +33,7 @@ Minimal reactive state management using only standard JavaScript and HTML. No cu
 
 ```html
 <script type="module">
-  import { state, bindDom, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/src/index.js';
+  import { state, bindDom, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
 </script>
 ```
 

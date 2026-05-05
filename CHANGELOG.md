@@ -11,11 +11,20 @@
 - **`repeat` duplicate keys DOM corruption:** Duplicate keys are now skipped instead of overwriting element references in the keyed Map
 - **`state()` phantom options parameter:** Removed non-existent `options` from TypeScript declaration and JSDoc examples
 - **Runtime reactive brand symbol:** `Symbol.for('lume.reactive')` is now actually stamped by `state.js` (was fictional in beta.1)
+- **Frozen/sealed object rejection:** `state()` now throws early instead of silently crashing when stamping the reactive brand on frozen or sealed objects
+- **Flush loop error isolation:** Individual subscriber calls, effect executions, and `beforeFlush` hooks are each wrapped in `try/catch`. Entire `queueMicrotask` body wrapped in `try/finally` to guarantee `flushScheduled` is always reset. Scheduler recovers after catastrophic errors instead of stalling permanently.
+- **`bindDom` path resolution no longer swallows all errors:** `resolvePath()` returns `null` for expected failures (null intermediates, missing properties). Removed blanket `try/catch` from `resolveProp` so unexpected errors propagate with full stack traces.
+- **`repeat()` normalize `subscribe()` return values:** Handles RxJS-style Subscription objects (with `.unsubscribe()` method) in addition to callable unsubscribe functions, preventing `TypeError` during cleanup
+- **`computed.dispose()` cancels stale microtasks:** Added `disposed` flag to guard effect body and microtask callback, preventing `isInComputation` from being reset after disposal
+- **`$beforeFlush` hook deduplication:** Registering the same function reference multiple times no longer causes duplicate execution per flush
 
 ### Performance
 - **Eliminated double microtask flush in `withPlugins`:** Collapsed `onNotify` + subscriber flushes into single microtask via `$beforeFlush` hook
 - **Eliminated per-flush array allocations in `state.flush`:** Replaced `[...listeners[key]]` spread and `[...pendingEffects]` with stable-index `while` loops and pre-sized arrays
 - **Replaced `filter`-based unsubscribe with `indexOf+splice`:** O(n) without allocation, correctly removes only first matching instance
+
+### Environment Hardening
+- **Console-less environment safety:** Added `src/utils/log.js` with `logWarn()` and `logError()` helpers that check `typeof console` before emitting. All core and addon files now import these instead of raw `console.*` calls, preventing `ReferenceError` in service workers and embedded engines.
 
 ### Changed
 - **Plugin system stripped from core:** `state(obj, { plugins })` → `withPlugins(state(obj), [plugins])` from `lume-js/addons`
@@ -25,8 +34,9 @@
 ### Improved
 - **Developer Experience:** Named constants `MAX_LOG_LEN` / `TRUNCATED_LEN` in debug addon; removed dead `json &&` guard
 - **TypeScript:** `TypedPlugin` re-exported from `lume-js/addons`
-- **Documentation:** Added JSDoc warnings for circular computed dependencies and `bindDom` path-healing limitations
-- **Tests:** 295 tests | 100% stmts/branches/funcs/lines across all 15 source files
+- **Documentation:** Added JSDoc warnings for circular computed dependencies and `bindDom` path-healing limitations. Added architectural comment explaining module-level readers Set behavior. Replaced innerHTML example with safe DOM API (`document.createElement()` + `textContent`).
+- **TypeScript:** `$subscribe` method added to `ReactiveState<T>` declaration
+- **Tests:** 303 tests | 100% stmts/branches/funcs/lines across all 15 source files
 
 ---
 

@@ -8,7 +8,7 @@ Drop a `<script type="module">` into any HTML file and you're done:
 
 ```html
 <script type="module">
-  import { state, bindDom, effect } from 'https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.1/src/index.js';
+  import { state, bindDom, effect } from 'https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.2/dist/index.min.mjs';
 </script>
 ```
 
@@ -18,13 +18,13 @@ For production, pin to an exact version so your page can't break on a new releas
 
 ```html
 <!-- exact version (recommended for production) -->
-'https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.1/src/index.js'
+'https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.2/dist/index.min.mjs'
 
 <!-- latest stable -->
-'https://cdn.jsdelivr.net/npm/lume-js/src/index.js'
+'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs'
 
 <!-- latest beta -->
-'https://cdn.jsdelivr.net/npm/lume-js@next/src/index.js'
+'https://cdn.jsdelivr.net/npm/lume-js@next/dist/index.min.mjs'
 ```
 
 ### Import map (recommended for CDN projects)
@@ -35,9 +35,9 @@ If your page imports from more than one Lume subpath, an import map removes the 
 <script type="importmap">
 {
   "imports": {
-    "lume-js":          "https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.2/src/index.js",
-    "lume-js/addons":   "https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.2/src/addons/index.js",
-    "lume-js/handlers": "https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.2/src/handlers/index.js"
+    "lume-js":          "https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.2/dist/index.min.mjs",
+    "lume-js/addons":   "https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.2/dist/addons.min.mjs",
+    "lume-js/handlers": "https://cdn.jsdelivr.net/npm/lume-js@2.0.0-beta.2/dist/handlers.min.mjs"
   }
 }
 </script>

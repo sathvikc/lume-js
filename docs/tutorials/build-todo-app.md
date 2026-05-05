@@ -38,8 +38,8 @@ Create an `index.html` file.
   <ul id="todo-list" class="todo-list"></ul>
 
   <script type="module">
-    import { state, bindDom } from 'https://cdn.jsdelivr.net/npm/lume-js/src/index.js';
-    import { repeat, computed } from 'https://cdn.jsdelivr.net/npm/lume-js/src/addons/index.js';
+    import { state, bindDom } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
+    import { repeat, computed } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/addons.min.mjs';
 
     // Code goes here...
   </script>
@@ -269,8 +269,8 @@ Now refresh the page. Your todos are still there!
   </div>
 
   <script type="module">
-    import { state, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/src/index.js';
-    import { repeat, computed } from 'https://cdn.jsdelivr.net/npm/lume-js/src/addons/index.js';
+    import { state, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
+    import { repeat, computed } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/addons.min.mjs';
 
     // --- State ---
     const saved = localStorage.getItem('lume-todos');
