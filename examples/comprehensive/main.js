@@ -1,4 +1,5 @@
 import { state, bindDom, effect } from 'lume-js';
+import { createCleanupGroup } from 'lume-js/addons';
 
 // Create reactive state
 const store = state({
@@ -18,9 +19,12 @@ const store = state({
     events: 0
 });
 
+// ── Cleanup group: collect all teardowns in one place ──
+const group = createCleanupGroup();
+
 // Bind to DOM
 // Safe to call from anywhere (even in <head>)
-const cleanup = bindDom(document.body, store);
+group.add(bindDom(document.body, store));
 
 // Example 1: Counter (script is loaded at end of body, so DOM is ready)
 document.getElementById('increment').addEventListener('click', () => { store.count++; });
@@ -30,11 +34,11 @@ document.getElementById('reset').addEventListener('click', () => { store.count =
 // Example 5: Manual subscriptions
 const logEl = document.getElementById('log');
 let eventLog = [];
-const unsubEvents = store.$subscribe('events', (value) => {
+group.add(store.$subscribe('events', (value) => {
     eventLog.push(`Event #${value} at ${new Date().toLocaleTimeString()}`);
     if (eventLog.length > 5) eventLog.shift();
     logEl.innerHTML = eventLog.join('<br>');
-});
+}));
 document.getElementById('trigger').addEventListener('click', () => { store.events++; });
 
 // Example 6: Cleanup demo
@@ -74,32 +78,32 @@ document.getElementById('stopUpdates').addEventListener('click', () => {
 console.log('🌟 Lume.js initialized!');
 console.log('Try changing values and check the console!');
 
-store.$subscribe('count', (val) => {
+group.add(store.$subscribe('count', (val) => {
     console.log('Count changed:', val);
-});
+}));
 
-store.user.$subscribe('name', (val) => {
+group.add(store.user.$subscribe('name', (val) => {
     console.log('Name changed:', val);
-});
+}));
 
 // Example 7: Effect - automatic dependency tracking
 // Note: This effect reads from two different state objects: store.user (nested state)
 // and the root store. If both change synchronously, the effect may run once per
 // state that changed (by design with per-state batching).
-const effectCleanup = effect(() => {
+group.add(effect(() => {
     const displayText = `Hello ${store.user.name}, count is ${store.count}`;
     console.log('Effect ran:', displayText);
     document.title = `Lume.js Demo - ${displayText}`;
-});
+}));
 
 // Example 8: Per-state batching demo
 // This effect depends on two root-level keys (same state object), so if both
 // change synchronously, it should run only once due to per-state batching.
-const rootEffectCleanup = effect(() => {
+group.add(effect(() => {
     // Access two root keys so this effect tracks both
     const snapshot = `Root snapshot → count: ${store.count}, events: ${store.events}`;
     console.log('Root effect ran:', snapshot);
-});
+}));
 
 // Button: Update two root keys in one tick → expect one root effect run
 document.getElementById('updateRootTwoKeys')?.addEventListener('click', () => {
@@ -117,9 +121,6 @@ document.getElementById('updateCrossState')?.addEventListener('click', () => {
 
 // Cleanup on page unload (good practice)
 window.addEventListener('beforeunload', () => {
-    cleanup();
-    unsubEvents();
-    effectCleanup();
-    rootEffectCleanup();
+    group.dispose();
     if (timerUnsub) timerUnsub();
 });
