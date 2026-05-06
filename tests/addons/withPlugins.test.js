@@ -405,6 +405,48 @@ describe('withPlugins', () => {
     });
   });
 
+  describe('cleanup', () => {
+    it('$dispose removes the beforeFlush hook', async () => {
+      const onNotify = vi.fn();
+      const store = withPlugins(state({ count: 0 }), [{ name: 'test', onNotify }]);
+
+      store.$dispose();
+      store.count = 5;
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(onNotify).not.toHaveBeenCalled();
+    });
+
+    it('wrapping the same store multiple times does not leak hooks', async () => {
+      const onNotify1 = vi.fn();
+      const onNotify2 = vi.fn();
+      const base = state({ count: 0 });
+
+      const wrapped1 = withPlugins(base, [{ name: 'p1', onNotify: onNotify1 }]);
+      const wrapped2 = withPlugins(base, [{ name: 'p2', onNotify: onNotify2 }]);
+
+      // Mutate through wrapped1 — only its pending map is populated
+      wrapped1.count = 1;
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(onNotify1).toHaveBeenCalledTimes(1);
+      expect(onNotify2).toHaveBeenCalledTimes(0);
+
+      wrapped1.$dispose();
+
+      // Mutate through wrapped2 after wrapped1 is disposed
+      wrapped2.count = 2;
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // wrapped1's hook removed, wrapped2 still active
+      expect(onNotify1).toHaveBeenCalledTimes(1);
+      expect(onNotify2).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('$subscribe passthrough', () => {
     it('does not trigger onSet via $subscribe assignment', () => {
       const setKeys = [];
