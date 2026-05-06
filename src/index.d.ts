@@ -353,6 +353,28 @@ export function effect(fn: () => void): Unsubscribe;
  */
 export function effect(fn: () => void, deps: EffectDependency[]): Unsubscribe;
 
+/**
+ * Run a function with a read observer active.
+ *
+ * The observer receives `(proxy, key, registerEffect)` for every property read
+ * during the synchronous execution of `fn`. Used internally by `effect()` for
+ * auto-tracking, and exposed for building custom reactive primitives.
+ *
+ * @param onRead - Called on each property access inside fn
+ * @param fn - The function to run under observation
+ * @returns The return value of fn
+ *
+ * @internal
+ */
+export function withReadObserver<T>(
+  onRead: (
+    proxy: ReactiveState<any>,
+    key: string,
+    registerEffect: (key: string, executeFn: () => void) => () => void
+  ) => void,
+  fn: () => T
+): T;
+
 
 // ============================================================================
 // Utility Types
