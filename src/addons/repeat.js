@@ -1,6 +1,5 @@
 /**
  * Lume-JS List Rendering (Addon)
- * @experimental
  *
  * Renders lists with automatic subscription and element reuse by key.
  * 

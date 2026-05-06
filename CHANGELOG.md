@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.0.0-beta.3] - 2026-05-05
+
+### Added
+- **`createCleanupGroup()` addon** — collects cleanup/unsubscribe functions and disposes them all at once. Useful for teardown on route changes or component unmount.
+- **`hydrateState()` addon** — reads initial state from a `<script type="application/json">` element in server-rendered HTML. Zero-config SSR hydration helper.
+- **Minified CDN bundles** — `dist/index.min.mjs`, `dist/addons.min.mjs`, `dist/handlers.min.mjs` generated via Terser for direct CDN usage.
+- **New guides:** `docs/guides/cleanup-and-dispose.md` and `docs/guides/ssr-hydration.md`
+
+### Fixed
+- **`repeat()` @experimental marker removed** — API is now considered stable
+- **Docs sync:** README badges, size claims, and test counts updated to actual measured values
+
+### Tests
+- **319 tests passing** (from 303) | 100% stmts/branches/funcs/lines across all 16 source files
+
+---
+
 ## [2.0.0-beta.2] - 2026-05-03
 
 ### Architecture
