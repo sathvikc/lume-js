@@ -8,6 +8,8 @@ export const DOCS_SITEMAP = [
   { slug: 'two-way-binding',      title: 'Two-way binding',      category: 'Guides',          file: 'docs/guides/two-way-binding.md' },
   { slug: 'lists',                title: 'Lists & repeat',       category: 'Guides',          file: 'docs/guides/lists.md' },
   { slug: 'performance',          title: 'Performance',          category: 'Guides',          file: 'docs/guides/performance.md' },
+  { slug: 'cleanup-and-dispose',  title: 'Cleanup & Dispose',    category: 'Guides',          file: 'docs/guides/cleanup-and-dispose.md' },
+  { slug: 'ssr-hydration',       title: 'SSR & Hydration',      category: 'Guides',          file: 'docs/guides/ssr-hydration.md' },
   { slug: 'api-state',            title: 'state()',              category: 'API — Core',      file: 'docs/api/core/state.md' },
   { slug: 'api-bindDom',          title: 'bindDom()',            category: 'API — Core',      file: 'docs/api/core/bindDom.md' },
   { slug: 'api-effect',           title: 'effect()',             category: 'API — Core',      file: 'docs/api/core/effect.md' },
