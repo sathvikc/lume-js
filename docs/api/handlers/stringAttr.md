@@ -78,4 +78,4 @@ bindDom(root, store, {
 
 ---
 
-**← Previous: [classToggle](classToggle.md)** | **Next: [Build a Todo app](../../tutorials/build-todo-app.md) →**
+**← Previous: [classToggle](classToggle.md)** | **Next: [createDebugPlugin](../addons/debug.md) →**

@@ -474,3 +474,7 @@ const store = withPlugins(state({ count: 0 }), [myPlugin]);
 - [Design Decisions](../../design/design-decisions.md) — Why plugins work this way
 - [State API](./state.md) — Core state documentation
 - [addons/debug](../addons/debug.md) — Built-in debug plugin using withPlugins
+
+---
+
+**← Previous: [Handlers API](handlers.md)** | **Next: [watch()](../addons/watch.md) →**

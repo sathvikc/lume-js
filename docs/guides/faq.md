@@ -130,4 +130,4 @@ stopEffect();
 
 ---
 
-**← Previous: [Changelog](../../CHANGELOG.md)**
+**← Previous: [Migrating from 1.x](migration.md)** | **Next: [Design Decisions](../design/design-decisions.md) →**

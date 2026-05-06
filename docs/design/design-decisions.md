@@ -850,3 +850,7 @@ We're open to change, but will prioritize **simplicity and standards** over feat
 - **2025-11-20:** 
   - Initial version documenting core decisions
   - Added reactive identity (`isReactive`) decision and `$` meta method tracking exclusion
+
+---
+
+**← Previous: [FAQ](../guides/faq.md)**
