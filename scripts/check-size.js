@@ -3,7 +3,7 @@
 /**
  * Lume.js Size Check Script
  * 
- * Verifies core bundle size stays under 2KB gzipped.
+ * Verifies core bundle size stays under 3KB gzipped.
  * GitHub Actions friendly - outputs summaries for PR comments.
  * 
  * Usage:
@@ -24,7 +24,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const srcDir = resolve(__dirname, '../src');
 
 // Core folder budget
-const CORE_BUDGET = 3072; // 3KB gzipped - increased from 2KB to 3KB to accommodate new features temporarily
+const CORE_BUDGET = 3072; // 3KB gzipped - leaves room for exploration while staying lightweight
 
 // Check if running in GitHub Actions
 const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
