@@ -60,13 +60,22 @@ export function withPlugins(store, plugins = []) {
     pendingNotifications.clear();
   }
 
-  // Register once on the underlying state; hook survives for lifetime of store.
+  // Register once on the underlying state; capture unsubscribe for cleanup.
+  let flushUnsub;
   if (typeof store.$beforeFlush === 'function') {
-    store.$beforeFlush(runNotifyHooks);
+    flushUnsub = store.$beforeFlush(runNotifyHooks);
   }
 
   return new Proxy(store, {
     get(target, key) {
+      // $dispose — remove the beforeFlush hook and clear pending state
+      if (key === '$dispose') {
+        return () => {
+          if (flushUnsub) flushUnsub();
+          pendingNotifications.clear();
+        };
+      }
+
       // Pass $-prefixed meta methods through without interception
       if (typeof key === 'string' && key.startsWith('$')) {
         const method = target[key];
