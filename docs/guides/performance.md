@@ -94,4 +94,4 @@ cleanupDom();
 
 ---
 
-**← Previous: [Lists & repeat](lists.md)** | **Next: [state()](../api/core/state.md) →**
+**← Previous: [Lists & repeat](lists.md)** | **Next: [Cleanup & Dispose](cleanup-and-dispose.md) →**

@@ -88,3 +88,7 @@ function swapPage(newRoot, newStore) {
 | A few effects + subscriptions | Array pattern is fine |
 | Complex page with many teardowns | `createCleanupGroup` for ergonomics |
 | Route / page swaps | Group + re-create pattern |
+
+---
+
+**← Previous: [Performance](performance.md)** | **Next: [SSR & Hydration](ssr-hydration.md) →**

@@ -68,4 +68,4 @@ store.settings.theme = 'light'; // notifies subscribers of 'theme'
 
 ---
 
-**← Previous: [Performance](../../guides/performance.md)** | **Next: [bindDom()](bindDom.md) →**
+**← Previous: [SSR & Hydration](../../guides/ssr-hydration.md)** | **Next: [bindDom()](bindDom.md) →**
