@@ -320,11 +320,11 @@ export interface DebugPlugin {
  * @example
  * ```typescript
  * import { state } from 'lume-js';
- * import { createDebugPlugin } from 'lume-js/addons';
- * 
- * const store = state({ count: 0 }, { 
- *   plugins: [createDebugPlugin({ label: 'counter' })] 
- * });
+ * import { createDebugPlugin, withPlugins } from 'lume-js/addons';
+ *
+ * const store = withPlugins(state({ count: 0 }), [
+ *   createDebugPlugin({ label: 'counter' })
+ * ]);
  * ```
  */
 export function createDebugPlugin(options?: DebugPluginOptions): DebugPlugin;
