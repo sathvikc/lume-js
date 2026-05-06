@@ -120,8 +120,7 @@ export function effect(fn, deps) {
       // Save previous subscriptions instead of cleaning immediately.
       // If fn() doesn't read any state (early return / error), we restore
       // them so the effect stays reactive.
-      const oldCleanups = [...cleanups];
-      cleanups.length = 0;
+      const oldCleanups = cleanups.splice(0);
 
       // Create effect context for tracking
       const myContext = {
