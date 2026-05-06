@@ -69,3 +69,7 @@ Because content is in the HTML from the start, the page is readable before JavaS
 ## SEO
 
 Crawlers see the server-rendered HTML. No special rendering mode needed.
+
+---
+
+**← Previous: [Cleanup & Dispose](cleanup-and-dispose.md)** | **Next: [state()](../api/core/state.md) →**
