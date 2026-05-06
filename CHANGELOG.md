@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.0.0] - 2026-05-05
+
+### Overview
+
+**Stable release of Lume.js v2.** The reactive core API is now frozen forever.
+
+This release incorporates all beta hardening work: scope-based read tracking via `withReadObserver`, the extracted plugin system via `withPlugins()`, comprehensive TypeScript declarations, minified CDN bundles, and 319 tests at 100% coverage. No breaking changes from v2.0.0-beta.3.
+
+### Highlights
+- **Core API frozen:** `state()`, `effect()`, `bindDom()` — signatures are permanent
+- **319 tests** | 100% stmts/branches/funcs/lines across all 16 source files
+- **Core bundle:** 2.45KB gzipped / 3KB budget (81.5%)
+- **Zero breaking changes** from v2.0.0-beta.3
+
+---
+
 ## [2.0.0-beta.3] - 2026-05-05
 
 ### Added

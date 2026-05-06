@@ -4,12 +4,12 @@
 
 Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required, no framework lock-in.
 
-> **Current Release:** v2.0.0-beta.3 | **Stability Contract:** Core API is frozen forever  
-> Install: `npm install lume-js@next`  
+> **Current Release:** v2.0.0 | **Stability Contract:** Core API is frozen forever  
+> Install: `npm install lume-js`  
 > Bundle size: ~2.45KB gzipped | 319 tests passing
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.0.0--beta.3-orange.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-2.0.0-orange.svg)](package.json)
 [![Tests](https://img.shields.io/badge/tests-319%20passing-brightgreen.svg)](tests/)
 [![Size](https://img.shields.io/badge/core-2.45KB-blue.svg)](scripts/check-size.js)
 
