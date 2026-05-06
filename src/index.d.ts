@@ -15,6 +15,12 @@ export type Unsubscribe = () => void;
 export type Subscriber<T> = (value: T) => void;
 
 /**
+ * Internal unique symbol for reactive state branding
+ * @internal
+ */
+declare const lumeReactiveSymbol: unique symbol;
+
+/**
  * Plugin interface for extending state behavior
  * 
  * All hooks are optional. Hooks execute in the order plugins are registered.
@@ -147,7 +153,7 @@ export type ReactiveState<T extends object> = T & {
    * Brand to identify reactive state objects at the type level
    * @internal
    */
-  readonly [Symbol('lume.reactive')]?: true;
+  readonly [lumeReactiveSymbol]?: true;
 };
 
 /**
