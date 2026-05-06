@@ -44,4 +44,4 @@ Everything else continues to work without modification.
 
 ---
 
-**← Previous: [Build Tic-Tac-Toe](../tutorials/build-tic-tac-toe.md)** | **Next: [Changelog](../../CHANGELOG.md) →**
+**← Previous: [Build Tic-Tac-Toe](../tutorials/build-tic-tac-toe.md)** | **Next: [FAQ](faq.md) →**

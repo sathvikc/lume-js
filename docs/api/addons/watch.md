@@ -83,4 +83,4 @@ watch(store, 'userId', (id) => {
 
 ---
 
-**← Previous: [effect()](../core/effect.md)** | **Next: [computed()](computed.md) →**
+**← Previous: [withPlugins()](../core/plugins.md)** | **Next: [computed()](computed.md) →**

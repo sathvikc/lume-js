@@ -94,4 +94,4 @@ cleanupDom();
 
 ---
 
-**← Previous: [Lists & repeat](lists.md)** | **Next: [Cleanup & Dispose](cleanup-and-dispose.md) →**
+**← Previous: [Testing](testing.md)** | **Next: [Cleanup & Dispose](cleanup-and-dispose.md) →**

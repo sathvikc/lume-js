@@ -83,4 +83,4 @@ When the new array is set, `repeat` diffs by key and performs minimal DOM operat
 
 ---
 
-**← Previous: [Two-way binding](two-way-binding.md)** | **Next: [Performance](performance.md) →**
+**← Previous: [Two-way binding](two-way-binding.md)** | **Next: [Forms](forms.md) →**

@@ -99,4 +99,4 @@ bindDom(root, store, { handlers: formHandlers });
 
 ---
 
-**← Previous: [Lists & repeat](lists.md)** | **Next: [Animations](animations.md) →**
+**← Previous: [Lists & repeat](lists.md)** | **Next: [Routing](routing.md) →**

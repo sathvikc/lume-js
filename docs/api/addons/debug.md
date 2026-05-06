@@ -128,5 +128,5 @@ Debug logs use colored output:
 
 ---
 
-**← Previous: [watch()](watch.md)** | **Next: [Guides](../../guides/README.md) →**
+**← Previous: [stringAttr](../handlers/stringAttr.md)** | **Next: [Build a Todo app](../../tutorials/build-todo-app.md) →**
 

@@ -342,4 +342,4 @@ Now refresh the page. Your todos are still there!
 
 ---
 
-**← Previous: [stringAttr](../api/handlers/stringAttr.md)** | **Next: [Build Tic-Tac-Toe](build-tic-tac-toe.md) →**
+**← Previous: [createDebugPlugin](../api/addons/debug.md)** | **Next: [Build Tic-Tac-Toe](build-tic-tac-toe.md) →**
