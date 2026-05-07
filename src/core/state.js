@@ -169,6 +169,27 @@ export function state(obj) {
   const REACTIVE_BRAND = Symbol('lume.reactive');
   obj[REACTIVE_BRAND] = true;
 
+  // Defined once per state instance — not per property read — to avoid per-read closure allocation.
+  const registerEffect = (key, executeFn) => {
+    if (!listeners[key]) listeners[key] = [];
+
+    const callback = () => {
+      pendingEffects.add(executeFn);
+    };
+
+    listeners[key].push(callback);
+
+    return () => {
+      if (listeners[key]) {
+        const idx = listeners[key].indexOf(callback);
+        if (idx !== -1) {
+          listeners[key].splice(idx, 1);
+          if (listeners[key].length === 0) delete listeners[key];
+        }
+      }
+    };
+  };
+
   const proxy = new Proxy(obj, {
     get(target, key) {
       // Skip effect tracking for internal meta methods (e.g. $subscribe)
@@ -180,29 +201,6 @@ export function state(obj) {
 
       // Notify active read observers (effects, devtools, etc.)
       if (readers.size > 0) {
-        const registerEffect = (key, executeFn) => {
-          if (!listeners[key]) listeners[key] = [];
-
-          const callback = () => {
-            // Queue effect in this state's pending set
-            // Set deduplicates - effect runs once even if multiple keys change
-            pendingEffects.add(executeFn);
-          };
-
-          listeners[key].push(callback);
-
-          // Return unsubscribe function (no initial call for effects)
-          return () => {
-            if (listeners[key]) {
-              const idx = listeners[key].indexOf(callback);
-              if (idx !== -1) {
-                listeners[key].splice(idx, 1);
-                if (listeners[key].length === 0) delete listeners[key];
-              }
-            }
-          };
-        };
-
         for (const reader of readers) {
           reader(proxy, key, registerEffect);
         }
