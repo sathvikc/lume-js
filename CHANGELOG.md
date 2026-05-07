@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.0.1] - 2026-05-06
+
+### Fixed
+- **`a11y` — TOC heading order:** Replaced `<h6>` in the "On this page" sidebar label with a `<div>`, eliminating a WCAG heading-order violation (h6 with no preceding h2–h5 in the docs page).
+- **`a11y` — Footer label contrast:** Changed three footer section labels from `text-fg-subtle` to `text-fg-muted` on the gh-pages site. `--fg-subtle` (#6a685f on dark background) measured 3.86:1 — below the WCAG AA threshold of 4.5:1 for small text. `--fg-muted` (#a3a098) measures ~7.9:1.
+
+### Performance
+- **`state` — `registerEffect` closure hoisting:** The `registerEffect` function is now defined once per `state()` call (before the `Proxy` constructor) instead of once per property read inside the `get` trap. Eliminates one closure allocation per reactive property access when effects are active, reducing GC pressure in effect-heavy scenarios.
+- **`repeat` — eliminated per-update `Set` allocations:** `updateList()` previously allocated two `Set` objects plus a spread on every render when scroll preservation was enabled (to detect reorder). Replaced with a direct `elementsByKey.has()` loop using the pre-existing `elementsByKey` Map. Also merged the now-redundant `nextKeys` Set into the already-present `seenKeys` Set, removing a second allocation per update.
+
+### Tests
+- **321 tests passing** (from 319) | `state.js` now at 100% statement and branch coverage
+- Added two targeted tests covering previously uncovered paths in `state.js`: effect error isolation (lines 151–152) and the MAX_ITERATIONS flush guard (lines 160–164)
+
+---
+
 ## [2.0.0] - 2026-05-05
 
 ### Overview
