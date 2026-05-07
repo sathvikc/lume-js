@@ -258,17 +258,17 @@ export function repeat(container, store, arrayKey, options) {
       return;
     }
 
-    // Only compute isReorder if scroll preservation needs it
+    // Only compute isReorder if scroll preservation needs it.
+    // Uses elementsByKey (previous state) and items directly — no Set allocations.
     let isReorder = false;
-    if (preserveScroll) {
-      const previousKeys = new Set(elementsByKey.keys());
-      const currentKeys = new Set(items.map(item => key(item)));
-      isReorder = previousKeys.size === currentKeys.size &&
-        [...previousKeys].every(k => currentKeys.has(k));
+    if (preserveScroll && elementsByKey.size === items.length) {
+      isReorder = true;
+      for (let i = 0; i < items.length; i++) {
+        if (!elementsByKey.has(key(items[i]))) { isReorder = false; break; }
+      }
     }
 
     seenKeys.clear();
-    const nextKeys = new Set();
     const nextEls = [];
 
     // Build ordered list of DOM nodes (created or reused)
@@ -281,7 +281,6 @@ export function repeat(container, store, arrayKey, options) {
         continue;
       }
       seenKeys.add(k);
-      nextKeys.add(k);
 
       let el = elementsByKey.get(k);
       const isFirstRender = !el;
@@ -324,10 +323,10 @@ export function repeat(container, store, arrayKey, options) {
     applyPreservation(containerEl, () => {
       reconcileDOM(containerEl, nextEls);
 
-      // Clean maps: remove keys not in nextKeys
-      if (elementsByKey.size !== nextKeys.size) {
+      // Clean maps: remove keys not in seenKeys (new state)
+      if (elementsByKey.size !== seenKeys.size) {
         for (const k of elementsByKey.keys()) {
-          if (!nextKeys.has(k)) {
+          if (!seenKeys.has(k)) {
             elementsByKey.delete(k);
             prevItemsByKey.delete(k);
             prevIndexByKey.delete(k);
