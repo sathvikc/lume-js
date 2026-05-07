@@ -4,14 +4,14 @@
 
 Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required, no framework lock-in.
 
-> **Current Release:** v2.0.0 | **Stability Contract:** Core API is frozen forever  
+> **Current Release:** v2.0.1 | **Stability Contract:** Core API is frozen forever  
 > Install: `npm install lume-js`  
-> Bundle size: ~2.45KB gzipped | 319 tests passing
+> Bundle size: ~2.44KB gzipped | 321 tests passing
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.0.0-orange.svg)](package.json)
-[![Tests](https://img.shields.io/badge/tests-319%20passing-brightgreen.svg)](tests/)
-[![Size](https://img.shields.io/badge/core-2.45KB-blue.svg)](scripts/check-size.js)
+[![Version](https://img.shields.io/badge/version-2.0.1-orange.svg)](package.json)
+[![Tests](https://img.shields.io/badge/tests-321%20passing-brightgreen.svg)](tests/)
+[![Size](https://img.shields.io/badge/core-2.44KB-blue.svg)](scripts/check-size.js)
 
 ## Why Lume.js?
 
@@ -19,7 +19,7 @@ Minimal reactive state management using only standard JavaScript and HTML. No cu
 |---------|---------|-----------|-----|-------|
 | Custom Syntax | ❌ No | ✅ `x-data` | ✅ `v-bind` | ✅ JSX |
 | Build Step | ❌ Optional | ❌ Optional | ⚠️ Recommended | ✅ Required |
-| Bundle Size | ~2.45KB | ~15KB | ~35KB | ~45KB |
+| Bundle Size | ~2.44KB | ~15KB | ~35KB | ~45KB |
 | HTML Validation | ✅ Pass | ⚠️ Warnings | ⚠️ Warnings | ❌ JSX |
 | Extensible Handlers | ✅ | ❌ Built-in only | ❌ Built-in only | N/A |
 
