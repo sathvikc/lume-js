@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { state } from 'src/core/state.js';
+import { effect } from 'src/core/effect.js';
 import { isReactive } from 'src/addons/index.js';
 import * as log from 'src/utils/log.js';
 
@@ -393,6 +394,51 @@ describe('state edge cases', () => {
     store.count = 1;
     await Promise.resolve();
     expect(spy).toHaveBeenCalledWith(1);
+    logErrorSpy.mockRestore();
+  });
+
+  it('logs error via state flush when an effect throws (covers state.js lines 151-152)', async () => {
+    const logErrorSpy = vi.spyOn(log, 'logError').mockImplementation(() => {});
+    const store = state({ count: 0 });
+
+    let runs = 0;
+    const cleanup = effect(() => {
+      void store.count;
+      runs++;
+      if (runs > 1) throw new Error('effect exploded');
+    });
+
+    store.count = 1;
+    await Promise.resolve();
+
+    const stateErrCalls = logErrorSpy.mock.calls.filter(
+      ([msg]) => typeof msg === 'string' && msg.includes('[Lume.js state] Error in effect:')
+    );
+    expect(stateErrCalls.length).toBeGreaterThan(0);
+
+    cleanup();
+    logErrorSpy.mockRestore();
+  });
+
+  it('stops flush at MAX_ITERATIONS and logs error (covers state.js lines 160-164)', async () => {
+    const logErrorSpy = vi.spyOn(log, 'logError').mockImplementation(() => {});
+    const store = state({ n: 0 });
+
+    // Auto-tracking effect that writes to the state it reads → re-queued via
+    // pendingEffects on every iteration, never stopping until MAX_ITERATIONS
+    const cleanup = effect(() => {
+      const val = store.n;
+      if (val < 200) store.n = val + 1;
+    });
+
+    await Promise.resolve();
+
+    const maxIterCalls = logErrorSpy.mock.calls.filter(
+      ([msg]) => typeof msg === 'string' && msg.includes('Maximum flush iterations reached')
+    );
+    expect(maxIterCalls.length).toBe(1);
+
+    cleanup();
     logErrorSpy.mockRestore();
   });
 });
