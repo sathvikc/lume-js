@@ -209,7 +209,7 @@ export function wireTOC() {
   });
 
   toc.innerHTML = `
-    <h6 class="font-mono text-[10.5px] font-semibold text-fg-subtle uppercase tracking-widest mb-3">On this page</h6>
+    <div class="font-mono text-[10.5px] font-semibold text-fg-muted uppercase tracking-widest mb-3">On this page</div>
     <ul class="list-none p-0 m-0">${items.map(it => `<li class="${it.level}"><a href="#${it.id}"
       class="block py-1 px-2 text-fg-muted border-l-2 border-border mb-0.5 transition-colors hover:text-fg hover:border-border-strong${it.level === 'h3' ? ' pl-4 text-xs' : ''}">${it.text}</a></li>`).join('')}</ul>
   `;
