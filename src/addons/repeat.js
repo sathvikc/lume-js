@@ -344,7 +344,11 @@ export function repeat(container, store, arrayKey, options) {
             // Call create-returned cleanup first, then remove callback
             const cleanup = cleanupByKey.get(k);
             if (typeof cleanup === 'function') {
-              cleanup();
+              try {
+                cleanup();
+              } catch (err) {
+                logError(`[Lume.js] repeat(): cleanup error for key "${k}":`, err);
+              }
             }
             if (typeof remove === 'function' && el) {
               remove(prevItem, el);
@@ -381,7 +385,11 @@ export function repeat(container, store, arrayKey, options) {
         const prevItem = prevItemsByKey.get(k);
         const cleanup = cleanupByKey.get(k);
         if (typeof cleanup === 'function') {
-          cleanup();
+          try {
+            cleanup();
+          } catch (err) {
+            logError(`[Lume.js] repeat(): cleanup error for key "${k}":`, err);
+          }
         }
         if (typeof remove === 'function') {
           remove(prevItem, el);
@@ -405,7 +413,11 @@ export function repeat(container, store, arrayKey, options) {
       const prevItem = prevItemsByKey.get(k);
       const cleanup = cleanupByKey.get(k);
       if (typeof cleanup === 'function') {
-        cleanup();
+        try {
+          cleanup();
+        } catch (err) {
+          logError(`[Lume.js] repeat(): cleanup error for key "${k}":`, err);
+        }
       }
       if (typeof remove === 'function') {
         remove(prevItem, el);
