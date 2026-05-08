@@ -49,7 +49,7 @@
   --bg-code: #faf8f3;
   --fg: #18181b;
   --fg-muted: #52525b;
-  --fg-subtle: #717178;
+  --fg-subtle: #636270;
   --border: #e7e5de;
   --border-strong: #d6d3ca;
   --accent: #b8541f;
@@ -70,7 +70,7 @@
   --bg-code: #0f0f11;
   --fg: #f3f1ea;
   --fg-muted: #a3a098;
-  --fg-subtle: #6a685f;
+  --fg-subtle: #8c8880;
   --border: #232327;
   --border-strong: #33333a;
   --accent: #f5c54a;
@@ -112,7 +112,7 @@
   --bg-code: #f4ecd6;
   --fg: #3a2f1b;
   --fg-muted: #6b5d42;
-  --fg-subtle: #7a6e53;
+  --fg-subtle: #6b5f44;
   --border: #e5d9b6;
   --border-strong: #cab88a;
   --accent: #b8541f;
@@ -361,6 +361,18 @@ pre {
 [data-theme="dark"] #hljs-light,
 [data-theme="dim"] #hljs-light {
   display: none;
+}
+
+/* ─── hljs comment contrast fix — external atom-one themes use colors that fail
+   WCAG AA 4.5:1 on our bg-code values; these overrides win by specificity ─── */
+[data-theme="light"] .hljs-comment,
+[data-theme="solar"] .hljs-comment {
+  color: #5f5e5a;
+}
+
+[data-theme="dark"] .hljs-comment,
+[data-theme="dim"] .hljs-comment {
+  color: #848c98;
 }
 
 /* ─── Compare table lume column highlight ─── */

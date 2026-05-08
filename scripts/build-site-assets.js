@@ -106,6 +106,17 @@ fs.copyFileSync(
 );
 console.log('Copied 404.html to public/');
 
+// Copy tracked static files (favicon, robots.txt, llms.txt) into publicDir.
+const staticDir = path.resolve(rootDir, 'gh-pages/static');
+if (fs.existsSync(staticDir)) {
+  for (const entry of fs.readdirSync(staticDir, { withFileTypes: true })) {
+    if (entry.isFile()) {
+      fs.copyFileSync(path.join(staticDir, entry.name), path.join(publicDir, entry.name));
+      console.log(`Copied static/${entry.name} to public/`);
+    }
+  }
+}
+
 // Replace placeholders in copied docs and examples
 function replacePlaceholdersRecursive(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

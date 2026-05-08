@@ -20,8 +20,8 @@ export function renderExamples() {
           ${EXAMPLES.map(e => `
             <a class="bg-bg-raised border border-border rounded-[10px] p-6 flex flex-col gap-3 transition-all cursor-pointer hover:border-accent/40 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-12px_color-mix(in_oklab,var(--accent)_30%,transparent)]"
                href="examples/${e.id}/index.html" target="_blank" rel="noopener">
-              <span class="font-mono text-[10.5px] text-fg-subtle uppercase tracking-widest">${e.tag}</span>
-              <h4 class="font-serif font-medium text-xl tracking-[-0.01em] m-0 text-fg">${e.title}</h4>
+              <span class="font-mono text-[10.5px] text-fg-muted uppercase tracking-widest">${e.tag}</span>
+              <h3 class="font-serif font-medium text-xl tracking-[-0.01em] m-0 text-fg">${e.title}</h3>
               <p class="m-0 text-fg-muted text-sm">${e.desc}</p>
               <div class="mt-auto pt-4 flex justify-between items-center font-mono text-xs text-accent-fg">
                 <span>Open example</span>

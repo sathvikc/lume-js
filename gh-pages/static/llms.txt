@@ -1,0 +1,26 @@
+# Lume.js
+
+Lume.js is a minimal (~2.4 KB gzip) reactive DOM library for vanilla HTML. It wires JavaScript state to the DOM using standard `data-*` attributes — no custom syntax, no virtual DOM, no build step required.
+
+## Documentation
+
+- [Getting started](https://lume-js.com/docs/getting-started)
+- [Core API — state, bindDom, effects](https://lume-js.com/docs/api)
+- [Handlers](https://lume-js.com/docs/handlers)
+- [Addons — repeat, form, router](https://lume-js.com/docs/addons)
+- [TypeScript usage](https://lume-js.com/docs/typescript)
+
+## Examples
+
+- [Comprehensive demo](https://lume-js.com/examples/comprehensive/index.html)
+- [Todo app](https://lume-js.com/examples/todo/index.html)
+- [Tic-Tac-Toe](https://lume-js.com/examples/tic-tac-toe/index.html)
+- [Form handling](https://lume-js.com/examples/form-heavy/index.html)
+- [List rendering](https://lume-js.com/examples/repeat-test/index.html)
+- [Handler system](https://lume-js.com/examples/handler-demo/index.html)
+
+## Links
+
+- [GitHub repository](https://github.com/sthwkchinnua/lume-js)
+- [npm package](https://www.npmjs.com/package/lume-js)
+- [Changelog](https://github.com/sthwkchinnua/lume-js/blob/main/CHANGELOG.md)

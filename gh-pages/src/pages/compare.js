@@ -11,11 +11,11 @@ export function renderCompare() {
           <table class="w-full border-collapse text-sm">
             <thead>
               <tr>
-                <th class="px-5 py-4 text-left border-b border-border font-mono text-[11px] font-semibold text-fg-subtle uppercase tracking-widest bg-bg-sunken">Feature</th>
-                <th class="px-5 py-4 text-left border-b border-border font-mono text-[11px] font-semibold text-fg-subtle uppercase tracking-widest bg-bg-sunken lume-col">Lume.js</th>
-                <th class="px-5 py-4 text-left border-b border-border font-mono text-[11px] font-semibold text-fg-subtle uppercase tracking-widest bg-bg-sunken">Alpine.js</th>
-                <th class="px-5 py-4 text-left border-b border-border font-mono text-[11px] font-semibold text-fg-subtle uppercase tracking-widest bg-bg-sunken">Vue</th>
-                <th class="px-5 py-4 text-left border-b border-border font-mono text-[11px] font-semibold text-fg-subtle uppercase tracking-widest bg-bg-sunken">React</th>
+                <th class="px-5 py-4 text-left border-b border-border font-mono text-[11px] font-semibold text-fg-muted uppercase tracking-widest bg-bg-sunken">Feature</th>
+                <th class="px-5 py-4 text-left border-b border-border font-mono text-[11px] font-semibold text-fg-muted uppercase tracking-widest bg-bg-sunken lume-col">Lume.js</th>
+                <th class="px-5 py-4 text-left border-b border-border font-mono text-[11px] font-semibold text-fg-muted uppercase tracking-widest bg-bg-sunken">Alpine.js</th>
+                <th class="px-5 py-4 text-left border-b border-border font-mono text-[11px] font-semibold text-fg-muted uppercase tracking-widest bg-bg-sunken">Vue</th>
+                <th class="px-5 py-4 text-left border-b border-border font-mono text-[11px] font-semibold text-fg-muted uppercase tracking-widest bg-bg-sunken">React</th>
               </tr>
             </thead>
             <tbody>
