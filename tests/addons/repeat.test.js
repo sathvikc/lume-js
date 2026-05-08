@@ -835,6 +835,325 @@ describe('repeat', () => {
       // Bob was removed: cleanup should be called BEFORE remove
       expect(callOrder).toEqual(['cleanup', 'remove']);
     });
+
+    it('supports multiple independent repeat instances', async () => {
+      const container2 = document.createElement('div');
+      container2.id = 'test-container-2';
+      document.body.appendChild(container2);
+
+      const store1 = state({ items: [{ id: 1, name: 'A' }] });
+      const store2 = state({ items: [{ id: 10, name: 'X' }] });
+
+      const cleanup1 = repeat(container, store1, 'items', {
+        key: item => item.id,
+        create: (item, el) => { el.dataset.source = '1'; },
+        update: (item, el) => { el.textContent = item.name; }
+      });
+
+      const cleanup2 = repeat(container2, store2, 'items', {
+        key: item => item.id,
+        create: (item, el) => { el.dataset.source = '2'; },
+        update: (item, el) => { el.textContent = item.name; }
+      });
+
+      expect(container.children.length).toBe(1);
+      expect(container2.children.length).toBe(1);
+      expect(container.children[0].dataset.source).toBe('1');
+      expect(container2.children[0].dataset.source).toBe('2');
+
+      store1.items = [{ id: 2, name: 'B' }];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Only container1 should update
+      expect(container.children[0].textContent).toBe('B');
+      expect(container2.children[0].textContent).toBe('X');
+
+      cleanup1();
+      cleanup2();
+      document.body.removeChild(container2);
+    });
+
+    it('supports nested repeat via cleanup composition', async () => {
+      const store = state({
+        groups: [
+          {
+            id: 'g1',
+            items: [{ id: 'a', text: 'Alpha' }, { id: 'b', text: 'Beta' }]
+          }
+        ]
+      });
+
+      repeat(container, store, 'groups', {
+        key: g => g.id,
+        create: (group, el) => {
+          el.className = 'group';
+          const innerContainer = document.createElement('div');
+          innerContainer.className = 'inner';
+          el.appendChild(innerContainer);
+
+          // Nested repeat inside parent element
+          const innerCleanup = repeat(innerContainer, { items: group.items }, 'items', {
+            key: item => item.id,
+            create: (item, childEl) => {
+              childEl.className = 'child';
+            },
+            update: (item, childEl) => {
+              childEl.textContent = item.text;
+            }
+          });
+
+          // Return cleanup that tears down nested repeat
+          return () => {
+            innerCleanup();
+          };
+        },
+        update: (group, el) => {
+          // Update group data if needed
+        }
+      });
+
+      expect(container.children.length).toBe(1);
+      expect(container.querySelectorAll('.child').length).toBe(2);
+
+      // Remove the group — nested cleanup should run
+      store.groups = [];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(container.children.length).toBe(0);
+    });
+
+    it('does not double-call cleanup when element is removed then fully cleaned up', async () => {
+      const store = state({
+        items: [{ id: 1, name: 'Alice' }]
+      });
+      const cleanupSpy = vi.fn();
+
+      const cleanup = repeat(container, store, 'items', {
+        key: item => item.id,
+        create: (item, el) => {
+          return cleanupSpy;
+        },
+        update: (item, el) => {
+          el.textContent = item.name;
+        }
+      });
+
+      // Remove via store update
+      store.items = [];
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(cleanupSpy).toHaveBeenCalledTimes(1);
+
+      // Full cleanup should NOT call again — element already gone
+      cleanup();
+      expect(cleanupSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('re-registers cleanup when same key is removed then re-added', async () => {
+      const store = state({
+        items: [{ id: 1, name: 'Alice' }]
+      });
+      const cleanups = [];
+
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        create: (item, el) => {
+          const spy = vi.fn(() => cleanups.push(`cleanup-${item.name}`));
+          cleanups.push({ id: item.id, spy, name: item.name });
+          return spy;
+        },
+        update: (item, el) => {
+          el.textContent = item.name;
+        }
+      });
+
+      // Remove
+      store.items = [];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      const firstCleanup = cleanups.find(c => c.id === 1);
+      expect(firstCleanup.spy).toHaveBeenCalledTimes(1);
+      expect(container.children.length).toBe(0);
+
+      // Re-add same key with new data
+      store.items = [{ id: 1, name: 'Alice-2' }];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(container.children.length).toBe(1);
+      expect(container.children[0].textContent).toBe('Alice-2');
+
+      // A new cleanup should have been registered (create called again)
+      const secondCleanup = cleanups[cleanups.length - 1];
+      expect(secondCleanup.name).toBe('Alice-2');
+      expect(secondCleanup.spy).not.toHaveBeenCalled();
+
+      // Remove again — new cleanup should be called
+      store.items = [];
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(secondCleanup.spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores non-function return values from create', async () => {
+      const store = state({
+        items: [{ id: 1, name: 'Alice' }]
+      });
+
+      const cleanup = repeat(container, store, 'items', {
+        key: item => item.id,
+        create: (item, el) => {
+          el.textContent = item.name;
+          // Return various non-function values
+          if (item.id === 1) return null;
+        },
+        update: (item, el) => {
+          el.textContent = item.name;
+        }
+      });
+
+      expect(container.children.length).toBe(1);
+      expect(() => cleanup()).not.toThrow();
+      expect(container.children.length).toBe(0);
+    });
+
+    it('cleanup can access element that is already detached from DOM', async () => {
+      const store = state({
+        items: [{ id: 1, name: 'Alice' }]
+      });
+
+      let elementRef = null;
+      let parentRef = null;
+
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        create: (item, el) => {
+          el.textContent = item.name;
+          return () => {
+            // Element may already be detached when cleanup runs
+            elementRef = el;
+            parentRef = el.parentNode;
+          };
+        },
+        update: (item, el) => {
+          el.textContent = item.name;
+        }
+      });
+
+      store.items = [];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Element is detached but JS reference still exists
+      expect(elementRef).not.toBeNull();
+      expect(elementRef.textContent).toBe('Alice');
+      expect(parentRef).toBeNull(); // Already removed by reconcileDOM
+    });
+
+    it('logs cleanup errors without aborting other cleanups on element removal', async () => {
+      const store = state({
+        items: [
+          { id: 1, name: 'Alice' },
+          { id: 2, name: 'Bob' }
+        ]
+      });
+      const cleanupSpy1 = vi.fn(() => { throw new Error('cleanup1 boom'); });
+      const cleanupSpy2 = vi.fn();
+      const logErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        create: (item, el) => {
+          el.textContent = item.name;
+          return item.id === 1 ? cleanupSpy1 : cleanupSpy2;
+        },
+        update: (item, el) => {
+          el.textContent = item.name;
+        }
+      });
+
+      store.items = [{ id: 2, name: 'Bob' }];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(container.children.length).toBe(1);
+      expect(container.children[0].textContent).toBe('Bob');
+
+      // Alice (id=1) was removed — cleanup1 called and threw
+      expect(cleanupSpy1).toHaveBeenCalledTimes(1);
+      // Bob (id=2) stayed in list — cleanup2 never called (element not removed)
+      expect(cleanupSpy2).not.toHaveBeenCalled();
+
+      // Error should have been logged for Alice's cleanup
+      const errorCalls = logErrorSpy.mock.calls.filter(
+        ([msg]) => typeof msg === 'string' && msg.includes('cleanup error')
+      );
+      expect(errorCalls.length).toBe(1);
+
+      logErrorSpy.mockRestore();
+    });
+
+    it('logs cleanup errors without aborting other cleanups on full cleanup', async () => {
+      const store = state({
+        items: [
+          { id: 1, name: 'Alice' },
+          { id: 2, name: 'Bob' }
+        ]
+      });
+      const cleanupSpy1 = vi.fn(() => { throw new Error('cleanup1 boom'); });
+      const cleanupSpy2 = vi.fn();
+      const logErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const cleanup = repeat(container, store, 'items', {
+        key: item => item.id,
+        create: (item, el) => {
+          el.textContent = item.name;
+          return item.id === 1 ? cleanupSpy1 : cleanupSpy2;
+        },
+        update: (item, el) => {
+          el.textContent = item.name;
+        }
+      });
+
+      cleanup();
+
+      // cleanup1 threw but cleanup2 should still run, then DOM cleared
+      expect(cleanupSpy1).toHaveBeenCalledTimes(1);
+      expect(cleanupSpy2).toHaveBeenCalledTimes(1);
+      expect(container.children.length).toBe(0);
+
+      // Error should have been logged
+      const errorCalls = logErrorSpy.mock.calls.filter(
+        ([msg]) => typeof msg === 'string' && msg.includes('cleanup error')
+      );
+      expect(errorCalls.length).toBe(1);
+
+      logErrorSpy.mockRestore();
+    });
+
+    it('logs cleanup errors on non-reactive store full cleanup', () => {
+      const plainStore = { items: [{ id: 1, name: 'Alice' }] };
+      const cleanupSpy = vi.fn(() => { throw new Error('cleanup boom'); });
+      const logErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const cleanup = repeat(container, plainStore, 'items', {
+        key: item => item.id,
+        create: (item, el) => {
+          el.textContent = item.name;
+          return cleanupSpy;
+        },
+        update: (item, el) => {
+          el.textContent = item.name;
+        }
+      });
+
+      cleanup();
+
+      expect(cleanupSpy).toHaveBeenCalledTimes(1);
+      expect(container.children.length).toBe(0);
+
+      const errorCalls = logErrorSpy.mock.calls.filter(
+        ([msg]) => typeof msg === 'string' && msg.includes('cleanup error')
+      );
+      expect(errorCalls.length).toBe(1);
+
+      logErrorSpy.mockRestore();
+    });
   });
 
   describe('Error Handling', () => {
