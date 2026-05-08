@@ -35,7 +35,7 @@
  * ═══════════════════════════════════════════════════════════════════════
  * PATTERN 2: Clean separation (create + update) - recommended
  * ═══════════════════════════════════════════════════════════════════════
- * 
+ *
  *   repeat('#list', store, 'todos', {
  *     key: todo => todo.id,
  *     create: (todo, el) => {
@@ -47,6 +47,11 @@
  *       btn.textContent = 'Delete';
  *       btn.onclick = () => deleteTodo(todo.id);
  *       el.appendChild(btn);
+ *
+ *       // Return a cleanup function — called automatically when element is removed
+ *       return () => {
+ *         // Unsubscribe from external listeners, remove timers, etc.
+ *       };
  *     },
  *     update: (todo, el, index, { isFirstRender }) => {
  *       // Called on every update - bind data
@@ -165,8 +170,9 @@ export function defaultScrollPreservation(container, context = {}) {
  * @param {Object} options - Configuration
  * @param {Function} options.key - Function to extract unique key: (item) => key
  * @param {Function} [options.render] - Function to render item (called for all items): (item, element, index) => void
- * @param {Function} [options.create] - Function for new elements only: (item, element, index) => void
+ * @param {Function} [options.create] - Function for new elements only: (item, element, index) => void | Function. If a function is returned, it is registered as the element's cleanup and called automatically when the element is removed (by list update or full cleanup).
  * @param {Function} [options.update] - Function for data binding: (item, element, index, { isFirstRender }) => void. Skipped if same item reference AND same index.
+ * @param {Function} [options.remove] - Additional cleanup when element is removed: (item, element) => void. Called after any cleanup function returned by create(). Optional — prefer returning a cleanup from create() for automatic lifecycle management.
  * @param {string|Function} [options.element='div'] - Element tag name or factory function
  * @param {Function|null} [options.preserveFocus=defaultFocusPreservation] - Focus preservation strategy (null to disable)
  * @param {Function|null} [options.preserveScroll=defaultScrollPreservation] - Scroll preservation strategy (null to disable)
@@ -179,6 +185,7 @@ export function repeat(container, store, arrayKey, options) {
     render,
     create,
     update,
+    remove,
     element = 'div',
     preserveFocus = defaultFocusPreservation,
     preserveScroll = defaultScrollPreservation
@@ -209,6 +216,8 @@ export function repeat(container, store, arrayKey, options) {
   const prevItemsByKey = new Map();
   // key -> previous index (for reorder detection)
   const prevIndexByKey = new Map();
+  // key -> cleanup function returned by create()
+  const cleanupByKey = new Map();
   const seenKeys = new Set();
 
   function createElement() {
@@ -293,7 +302,10 @@ export function repeat(container, store, arrayKey, options) {
       try {
         // Call create for new elements (DOM structure)
         if (isFirstRender && create) {
-          create(item, el, i);
+          const cleanup = create(item, el, i);
+          if (typeof cleanup === 'function') {
+            cleanupByKey.set(k, cleanup);
+          }
         }
 
         // Call update for data binding (new and existing elements)
@@ -327,9 +339,20 @@ export function repeat(container, store, arrayKey, options) {
       if (elementsByKey.size !== seenKeys.size) {
         for (const k of elementsByKey.keys()) {
           if (!seenKeys.has(k)) {
+            const el = elementsByKey.get(k);
+            const prevItem = prevItemsByKey.get(k);
+            // Call create-returned cleanup first, then remove callback
+            const cleanup = cleanupByKey.get(k);
+            if (typeof cleanup === 'function') {
+              cleanup();
+            }
+            if (typeof remove === 'function' && el) {
+              remove(prevItem, el);
+            }
             elementsByKey.delete(k);
             prevItemsByKey.delete(k);
             prevIndexByKey.delete(k);
+            cleanupByKey.delete(k);
           }
         }
       }
@@ -354,10 +377,21 @@ export function repeat(container, store, arrayKey, options) {
     updateList();
     logWarn('[Lume.js] repeat(): store is not reactive (no $subscribe or subscribe method)');
     return () => {
+      for (const [k, el] of elementsByKey) {
+        const prevItem = prevItemsByKey.get(k);
+        const cleanup = cleanupByKey.get(k);
+        if (typeof cleanup === 'function') {
+          cleanup();
+        }
+        if (typeof remove === 'function') {
+          remove(prevItem, el);
+        }
+      }
       containerEl.replaceChildren();
       elementsByKey.clear();
       prevItemsByKey.clear();
       prevIndexByKey.clear();
+      cleanupByKey.clear();
       seenKeys.clear();
     };
   }
@@ -366,11 +400,23 @@ export function repeat(container, store, arrayKey, options) {
     if (typeof unsubscribe === 'function') {
       unsubscribe();
     }
+    // Invoke cleanup and remove callback for all remaining elements before clearing
+    for (const [k, el] of elementsByKey) {
+      const prevItem = prevItemsByKey.get(k);
+      const cleanup = cleanupByKey.get(k);
+      if (typeof cleanup === 'function') {
+        cleanup();
+      }
+      if (typeof remove === 'function') {
+        remove(prevItem, el);
+      }
+    }
     // Clear DOM elements (replaceChildren is faster than loop)
     containerEl.replaceChildren();
     elementsByKey.clear();
     prevItemsByKey.clear();
     prevIndexByKey.clear();
+    cleanupByKey.clear();
     seenKeys.clear();
   };
 }
