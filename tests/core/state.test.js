@@ -397,7 +397,7 @@ describe('state edge cases', () => {
     logErrorSpy.mockRestore();
   });
 
-  it('logs error via state flush when an effect throws (covers state.js lines 151-152)', async () => {
+  it('logs error via state flush when an effect throws', async () => {
     const logErrorSpy = vi.spyOn(log, 'logError').mockImplementation(() => {});
     const store = state({ count: 0 });
 
@@ -420,7 +420,7 @@ describe('state edge cases', () => {
     logErrorSpy.mockRestore();
   });
 
-  it('stops flush at MAX_ITERATIONS and logs error (covers state.js lines 160-164)', async () => {
+  it('stops flush at MAX_ITERATIONS and logs error', async () => {
     const logErrorSpy = vi.spyOn(log, 'logError').mockImplementation(() => {});
     const store = state({ n: 0 });
 
