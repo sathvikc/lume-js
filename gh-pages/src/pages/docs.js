@@ -77,7 +77,7 @@ export async function fetchDoc(slug) {
 
   if (typeof marked === 'undefined') return `<pre>${content}</pre>`;
 
-  const html = marked.parse(content);
+  const html = marked.parse(content).replace(/<th>/g, '<th scope="col">');
 
   // Rewrite .md links to SPA routes
   return html.replace(/href="([^"]+\.md)([^"]*)"/g, (match, href, hash) => {
@@ -110,7 +110,7 @@ function _renderSidebarNav(activeSlug) {
     (groups[d.category] ||= []).push({ slug: d.slug, title: d.title });
   }
   return Object.entries(groups).map(([cat, items]) => `
-    <h5 class="font-mono text-[10.5px] font-semibold text-fg-subtle uppercase tracking-widest mt-5 mb-2 px-2 first:mt-0">${cat}</h5>
+    <div class="font-mono text-[10.5px] font-semibold text-fg-muted uppercase tracking-widest mt-5 mb-2 px-2 first:mt-0" role="heading" aria-level="2">${cat}</div>
     <ul class="list-none p-0 m-0">${items.map(it => `
       <li><a href="/docs/${it.slug}" data-link
              class="block px-3 py-1.5 rounded-md text-fg-muted transition-all hover:text-fg hover:bg-bg-sunken${it.slug === activeSlug ? ' active' : ''}">${it.title}</a></li>

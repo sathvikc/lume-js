@@ -33,7 +33,7 @@
     script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.googletagmanager.com;
     style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com;
-    img-src 'self' data:;
+    img-src 'self' data: https://www.googletagmanager.com;
     connect-src 'self' https://cdn.jsdelivr.net https://www.google-analytics.com https://www.googletagmanager.com;
     object-src 'none';
     base-uri 'self';
@@ -58,6 +58,7 @@
   <meta property="twitter:description"
     content="Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required." />
 
+  <link rel="icon" href="%BASE_URL%favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -164,12 +165,12 @@
           <span class="text-fg">Lume<span class="text-logo-primary">.js</span></span>
         </a>
         <nav class="hidden md:flex items-center gap-6 text-sm" aria-label="Primary" id="primary-nav">
-          <a class="text-fg-muted hover:text-fg transition-colors py-1.5" href="/" data-link data-route="home">Home</a>
-          <a class="text-fg-muted hover:text-fg transition-colors py-1.5" href="/docs" data-link
+          <a class="text-fg-muted hover:text-fg transition-colors py-2.5" href="/" data-link data-route="home">Home</a>
+          <a class="text-fg-muted hover:text-fg transition-colors py-2.5" href="/docs" data-link
             data-route="docs">Docs</a>
-          <a class="text-fg-muted hover:text-fg transition-colors py-1.5" href="/examples" data-link
+          <a class="text-fg-muted hover:text-fg transition-colors py-2.5" href="/examples" data-link
             data-route="examples">Examples</a>
-          <a class="text-fg-muted hover:text-fg transition-colors py-1.5" href="/compare" data-link
+          <a class="text-fg-muted hover:text-fg transition-colors py-2.5" href="/compare" data-link
             data-route="compare">Compare</a>
         </nav>
       </div>
@@ -177,7 +178,7 @@
       <div class="flex items-center gap-3">
         <div class="hidden md:block" style="position:relative">
           <button
-            class="font-mono text-[10.5px] font-medium text-accent-fg bg-accent-soft px-2 py-1 rounded-md ml-1 border border-accent/30 cursor-pointer inline-flex items-center gap-1 whitespace-nowrap transition-all hover:border-accent"
+            class="font-mono text-[10.5px] font-medium text-accent-fg bg-accent-soft px-2 py-1.5 rounded-md ml-1 border border-accent/30 cursor-pointer inline-flex items-center gap-1 whitespace-nowrap transition-all hover:border-accent"
             id="ver-btn" title="Version — click to switch" onclick="store.verMenuOpen = !store.verMenuOpen">
             v__LUME_VERSION__
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
@@ -250,6 +251,7 @@
 
         <div class="router-mode-wrap hidden md:block" style="position:relative">
           <button onclick="window.switchRouterMode(store.routerMode === 'hash' ? 'history' : 'hash')"
+            aria-label="Switch router mode"
             class="inline-flex items-center gap-1.5 h-10 px-3.5 border border-border bg-bg-raised text-fg-muted rounded-xl text-[11.5px] font-mono font-medium cursor-pointer transition-all hover:text-fg hover:border-border-strong whitespace-nowrap w-full">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -257,7 +259,7 @@
             </svg>
             <span data-bind="routerMode"></span>
           </button>
-          <div class="router-tooltip" role="tooltip">
+          <div class="router-tooltip" role="tooltip" aria-label="Router mode information">
             <div class="router-tooltip-mode" data-bind="routerTooltipTitle"></div>
             <div class="router-tooltip-body" data-bind="routerTooltipBody"></div>
           </div>
@@ -379,13 +381,14 @@
         </a>
         <div class="mt-auto pt-8 border-t border-border space-y-3">
           <button onclick="window.switchRouterMode(store.routerMode === 'hash' ? 'history' : 'hash')"
+            aria-label="Switch router mode"
             class="flex items-center justify-between w-full px-4 py-3.5 rounded-2xl bg-bg border border-border/50 hover:border-accent/30 hover:bg-bg-sunken transition-all group cursor-pointer">
-            <span class="text-[10px] font-mono font-bold text-fg-subtle uppercase tracking-[0.15em]">Router</span>
+            <span class="text-[10px] font-mono font-bold text-fg-muted uppercase tracking-[0.15em]">Router</span>
             <span class="flex items-center gap-2.5 text-[13px] font-semibold text-fg">
               <span data-bind="routerMode"></span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                 stroke-linecap="round" stroke-linejoin="round"
-                class="text-fg-subtle group-hover:text-accent transition-colors">
+                class="text-fg-muted group-hover:text-accent transition-colors">
                 <path d="M21 16H3m0 0l4-4m-4 4 4 4M3 8h18m0 0-4-4m4 4-4 4" />
               </svg>
             </span>
@@ -409,7 +412,7 @@
   <main id="outlet" class="min-h-[calc(100vh-64px)]"></main>
 
   <!-- ========================== DOCS SHELL (persistent — sidebar never re-renders) ========================== -->
-  <div id="docs-shell" hidden>
+  <main id="docs-shell" hidden>
 
     <!-- Mobile nav bar -->
     <div
@@ -436,7 +439,7 @@
       class="docs-drawer fixed top-0 left-0 z-50 h-full w-72 max-w-[85vw] bg-bg border-r border-border overflow-y-auto text-[13.5px] p-5 lg:hidden">
       <div class="flex items-center justify-between mb-4">
         <span class="font-mono text-[11px] font-semibold text-fg-subtle uppercase tracking-widest">Contents</span>
-        <button id="docs-drawer-close"
+        <button id="docs-drawer-close" aria-label="Close navigation"
           class="w-8 h-8 inline-flex items-center justify-center rounded-md text-fg-muted hover:text-fg hover:bg-bg-sunken transition-all border-0 bg-transparent cursor-pointer">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -479,7 +482,7 @@
         id="toc"></aside>
     </div>
 
-  </div>
+  </main>
 
   <!-- ========================== FOOTER ========================== -->
   <footer class="site-footer border-t border-border pt-12 pb-10 text-fg-muted text-[13.5px]">
@@ -512,39 +515,39 @@
         <div>
           <p class="font-mono text-[11px] font-semibold text-fg-muted uppercase tracking-widest mb-4">Docs</p>
           <ul class="list-none p-0 m-0 flex flex-col gap-2">
-            <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/introduction"
+            <li><a class="text-fg-muted hover:text-fg transition-colors block py-1" href="/docs/introduction"
                 data-link>Introduction</a></li>
-            <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/installation"
+            <li><a class="text-fg-muted hover:text-fg transition-colors block py-1" href="/docs/installation"
                 data-link>Installation</a></li>
-            <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/core-concepts" data-link>Core
+            <li><a class="text-fg-muted hover:text-fg transition-colors block py-1" href="/docs/core-concepts" data-link>Core
                 concepts</a></li>
-            <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/api-state" data-link>API
+            <li><a class="text-fg-muted hover:text-fg transition-colors block py-1" href="/docs/api-state" data-link>API
                 reference</a></li>
           </ul>
         </div>
         <div>
           <p class="font-mono text-[11px] font-semibold text-fg-muted uppercase tracking-widest mb-4">Community</p>
           <ul class="list-none p-0 m-0 flex flex-col gap-2">
-            <li><a class="text-fg-muted hover:text-fg transition-colors" href="https://github.com/sathvikc/lume-js"
+            <li><a class="text-fg-muted hover:text-fg transition-colors block py-1" href="https://github.com/sathvikc/lume-js"
                 target="_blank" rel="noopener">GitHub</a></li>
-            <li><a class="text-fg-muted hover:text-fg transition-colors"
+            <li><a class="text-fg-muted hover:text-fg transition-colors block py-1"
                 href="https://github.com/sathvikc/lume-js/issues" target="_blank" rel="noopener">Issues</a></li>
-            <li><a class="text-fg-muted hover:text-fg transition-colors" href="https://www.npmjs.com/package/lume-js"
+            <li><a class="text-fg-muted hover:text-fg transition-colors block py-1" href="https://www.npmjs.com/package/lume-js"
                 target="_blank" rel="noopener">npm</a></li>
-            <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/changelog" data-link>Changelog</a>
+            <li><a class="text-fg-muted hover:text-fg transition-colors block py-1" href="/docs/changelog" data-link>Changelog</a>
             </li>
           </ul>
         </div>
         <div>
           <p class="font-mono text-[11px] font-semibold text-fg-muted uppercase tracking-widest mb-4">Project</p>
           <ul class="list-none p-0 m-0 flex flex-col gap-2">
-            <li><a class="text-fg-muted hover:text-fg transition-colors"
+            <li><a class="text-fg-muted hover:text-fg transition-colors block py-1"
                 href="https://github.com/sathvikc/lume-js/blob/main/LICENSE" target="_blank" rel="noopener">MIT
                 License</a></li>
-            <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/migration" data-link>Migrate from
+            <li><a class="text-fg-muted hover:text-fg transition-colors block py-1" href="/docs/migration" data-link>Migrate from
                 1.x</a></li>
-            <li><a class="text-fg-muted hover:text-fg transition-colors" href="/docs/faq" data-link>FAQ</a></li>
-            <li><a class="text-fg-muted hover:text-fg transition-colors" href="/compare" data-link>Compare</a></li>
+            <li><a class="text-fg-muted hover:text-fg transition-colors block py-1" href="/docs/faq" data-link>FAQ</a></li>
+            <li><a class="text-fg-muted hover:text-fg transition-colors block py-1" href="/compare" data-link>Compare</a></li>
           </ul>
         </div>
       </div>

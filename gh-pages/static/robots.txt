@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://sathvikc.github.io/lume-js/sitemap.xml
