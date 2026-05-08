@@ -56,4 +56,17 @@ describe('hydrateState', () => {
       el.remove();
     }
   });
+
+  it('returns empty object when document is not defined (SSR/Node)', () => {
+    const originalDoc = globalThis.document;
+    // @ts-ignore
+    globalThis.document = undefined;
+    try {
+      const result = hydrateState();
+      expect(result).toEqual({});
+    } finally {
+      // @ts-ignore
+      globalThis.document = originalDoc;
+    }
+  });
 });
