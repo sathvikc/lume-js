@@ -100,11 +100,36 @@ bindDom(document.body, store, {
 
 ### Cleanup
 
+`bindDom()` returns a cleanup function. You **must** call it before removing or rebinding the same DOM tree.
+
 ```js
 const cleanup = bindDom(root, store);
 
-// Later — removes all bindings
+// Later — before re-binding or navigating away
 cleanup();
+```
+
+**What cleanup removes:**
+- Per-element reactive subscriptions (all handlers, `data-bind`)
+- The global `input` event delegation listener on the root element
+
+**What cleanup does NOT remove:**
+- The DOM elements themselves
+- Any state values or stores
+
+**Memory safety:**
+- Handler subscriptions are held in closures within the cleanup array. Calling `cleanup()` releases them.
+- If you discard the cleanup function without calling it, subscriptions remain active until the root element is garbage-collected.
+- Re-binding the same root without cleaning up first creates duplicate listeners — always call `cleanup()` before re-binding.
+
+```js
+// SPA route change — bind new page content
+const cleanup = bindDom(document.getElementById('app'), store);
+
+// On route change:
+cleanup();
+// ... swap DOM ...
+cleanup = bindDom(document.getElementById('app'), store);
 ```
 
 ## Performance notes
