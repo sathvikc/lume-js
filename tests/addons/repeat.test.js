@@ -648,6 +648,193 @@ describe('repeat', () => {
       store.items = [{ id: 1, name: 'Alice' }];
       // Manual call won't work after cleanup, but we verified cleanup was called
     });
+
+    it('calls cleanup from create on non-reactive store cleanup', () => {
+      const plainStore = { items: [{ id: 1, name: 'Alice' }] };
+      const cleanupSpy = vi.fn();
+
+      const cleanup = repeat(container, plainStore, 'items', {
+        key: item => item.id,
+        create: (item, el) => {
+          el.textContent = item.name;
+          return cleanupSpy;
+        },
+        update: (item, el) => {
+          el.textContent = item.name;
+        }
+      });
+
+      expect(container.children.length).toBe(1);
+      cleanup();
+      expect(cleanupSpy).toHaveBeenCalledTimes(1);
+      expect(container.children.length).toBe(0);
+    });
+
+    it('calls remove callback on non-reactive store cleanup', () => {
+      const plainStore = { items: [{ id: 1, name: 'Alice' }] };
+      const removeSpy = vi.fn();
+
+      const cleanup = repeat(container, plainStore, 'items', {
+        key: item => item.id,
+        create: (item, el) => {
+          el.textContent = item.name;
+        },
+        update: (item, el) => {
+          el.textContent = item.name;
+        },
+        remove: removeSpy
+      });
+
+      expect(container.children.length).toBe(1);
+      cleanup();
+      expect(removeSpy).toHaveBeenCalledTimes(1);
+      expect(removeSpy).toHaveBeenCalledWith(
+        { id: 1, name: 'Alice' },
+        expect.any(HTMLElement)
+      );
+      expect(container.children.length).toBe(0);
+    });
+
+    it('calls remove callback on reactive store cleanup', () => {
+      const store = state({ items: [{ id: 1, name: 'Alice' }] });
+      const removeSpy = vi.fn();
+
+      const cleanup = repeat(container, store, 'items', {
+        key: item => item.id,
+        create: (item, el) => {
+          el.textContent = item.name;
+        },
+        update: (item, el) => {
+          el.textContent = item.name;
+        },
+        remove: removeSpy
+      });
+
+      expect(container.children.length).toBe(1);
+      cleanup();
+      expect(removeSpy).toHaveBeenCalledTimes(1);
+      expect(removeSpy).toHaveBeenCalledWith(
+        { id: 1, name: 'Alice' },
+        expect.any(HTMLElement)
+      );
+      expect(container.children.length).toBe(0);
+    });
+
+    it('calls cleanup function returned by create when element is removed', async () => {
+      const store = state({
+        items: [
+          { id: 1, name: 'Alice' },
+          { id: 2, name: 'Bob' }
+        ]
+      });
+      const cleanupSpies = [];
+
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        create: (item, el) => {
+          const spy = vi.fn();
+          cleanupSpies.push({ id: item.id, spy });
+          return spy; // cleanup function
+        },
+        update: (item, el) => {
+          el.textContent = item.name;
+        }
+      });
+
+      expect(container.children.length).toBe(2);
+
+      // Remove one item
+      store.items = [store.items[0]];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(container.children.length).toBe(1);
+      // The cleanup for Bob (id=2) should have been called
+      const bobCleanup = cleanupSpies.find(c => c.id === 2);
+      expect(bobCleanup.spy).toHaveBeenCalledTimes(1);
+      // Alice's cleanup should not be called
+      const aliceCleanup = cleanupSpies.find(c => c.id === 1);
+      expect(aliceCleanup.spy).not.toHaveBeenCalled();
+    });
+
+    it('calls cleanup functions on full cleanup', () => {
+      const store = state({
+        items: [
+          { id: 1, name: 'Alice' },
+          { id: 2, name: 'Bob' }
+        ]
+      });
+      const cleanupSpies = [];
+
+      const cleanup = repeat(container, store, 'items', {
+        key: item => item.id,
+        create: (item, el) => {
+          const spy = vi.fn();
+          cleanupSpies.push({ id: item.id, spy });
+          return spy;
+        },
+        update: (item, el) => {
+          el.textContent = item.name;
+        }
+      });
+
+      cleanup();
+
+      expect(cleanupSpies.length).toBe(2);
+      cleanupSpies.forEach(({ spy }) => {
+        expect(spy).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('does not break if create does not return a function', () => {
+      const store = state({ items: [{ id: 1, name: 'Alice' }] });
+
+      const cleanup = repeat(container, store, 'items', {
+        key: item => item.id,
+        create: (item, el) => {
+          el.textContent = item.name;
+          // No return value — no cleanup registered
+        },
+        update: (item, el) => {
+          el.textContent = item.name;
+        }
+      });
+
+      expect(container.children.length).toBe(1);
+      expect(container.children[0].textContent).toBe('Alice');
+
+      // Full cleanup should not throw
+      expect(() => cleanup()).not.toThrow();
+      expect(container.children.length).toBe(0);
+    });
+
+    it('calls remove callback after create-returned cleanup', async () => {
+      const store = state({
+        items: [
+          { id: 1, name: 'Alice' },
+          { id: 2, name: 'Bob' }
+        ]
+      });
+      const callOrder = [];
+
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        create: (item, el) => {
+          return () => callOrder.push('cleanup');
+        },
+        update: (item, el) => {
+          el.textContent = item.name;
+        },
+        remove: (item, el) => {
+          callOrder.push('remove');
+        }
+      });
+
+      store.items = [store.items[0]];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Bob was removed: cleanup should be called BEFORE remove
+      expect(callOrder).toEqual(['cleanup', 'remove']);
+    });
   });
 
   describe('Error Handling', () => {
@@ -903,6 +1090,39 @@ describe('repeat', () => {
 
       // Scroll should be adjusted (not exactly the same due to anchor-based preservation)
       expect(container.scrollTop).toBeGreaterThan(0);
+    });
+
+    it('detects non-reorder when same count but different keys', async () => {
+      const store = state({
+        items: [
+          { id: 1, text: 'A' },
+          { id: 2, text: 'B' }
+        ]
+      });
+
+      container.style.height = '100px';
+      container.style.overflow = 'auto';
+
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        render: (item, el) => {
+          el.textContent = item.text;
+          el.style.height = '50px';
+        }
+      });
+
+      container.scrollTop = 25;
+
+      // Same count, entirely different keys — should hit isReorder = false branch
+      store.items = [
+        { id: 3, text: 'C' },
+        { id: 4, text: 'D' }
+      ];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(container.children.length).toBe(2);
+      expect(container.children[0].textContent).toBe('C');
+      expect(container.children[1].textContent).toBe('D');
     });
 
     it('can disable scroll preservation', async () => {
