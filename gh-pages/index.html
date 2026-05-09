@@ -30,7 +30,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.googletagmanager.com;
+    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.googletagmanager.com;
     style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com;
     img-src 'self' data: https://www.googletagmanager.com;
@@ -80,10 +80,11 @@
   <link id="hljs-dark" rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" media="print"
     onload="this.media='all'">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
-
   <!-- marked v4 — setOptions with highlight callback -->
   <script src="https://cdn.jsdelivr.net/npm/marked@4/marked.min.js" defer></script>
+
+  <!-- Lume.js global build — sets window.Lume; loaded in parallel with the site bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/lume-js@__LUME_VERSION__/dist/lume.global.js" defer></script>
 
   <!-- FOUC prevention: apply saved theme before first paint -->
   <script>
