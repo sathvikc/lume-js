@@ -30,6 +30,17 @@ export const show = {
   apply(el, val) { el.hidden = !Boolean(val); }
 };
 
+/**
+ * data-classname="key" → el.className = val || ''
+ * Replaces the full class string reactively. Useful when the entire class list
+ * is computed state (e.g. dynamic color/severity classes).
+ * For toggling individual classes use classToggle().
+ */
+export const className = {
+  attr: 'data-classname',
+  apply(el, val) { el.className = val || ''; }
+};
+
 // --- Factory Functions ---
 
 /**
