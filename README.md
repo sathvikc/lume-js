@@ -107,6 +107,8 @@ That's it — two-way binding, no build step, valid HTML.
 
 ## Extensible Handler System
 
+**Handlers** are plain objects that teach `bindDom()` how to interpret new `data-*` attributes. They live in `lume-js/handlers` and are entirely optional — import only the ones you use. You can also write your own with just an `attr` string and an `apply` function.
+
 Need more reactive attributes? Import handlers or create your own — no core modification needed.
 
 ```javascript
@@ -167,15 +169,52 @@ bindDom(root, store, { handlers: [tooltip] });
 
 ## Addons
 
-Import only what you need from `lume-js/addons`:
+**Addons** are optional reactive pattern helpers that build on the core primitives. They handle common use cases that would otherwise require boilerplate — derived values, key observation, list rendering. Import only what you need from `lume-js/addons`; none are loaded by default.
 
 ```javascript
 import { computed, watch, repeat } from 'lume-js/addons';
 ```
 
-- **`computed(fn)`** — Cached derived values with auto-tracking
-- **`watch(store, key, fn)`** — Subscribe to state changes
-- **`repeat(container, store, key, options)`** — Keyed list rendering with element reuse
+| Addon | When to use |
+|-------|-------------|
+| `effect(fn)` *(core)* | Write derived values back into the store, or trigger side effects on state change |
+| `computed(fn)` | Derive a read-only value from state to consume *outside* the store (templates, display logic) |
+| `watch(store, key, fn)` | React to a *specific* key changing — DOM updates, analytics, syncing external state |
+| `repeat(container, store, key, opts)` | Render a keyed list with element reuse (no full re-render on change) |
+
+**Quick rule:** `effect` for writing back into state → `computed` for reading outside state → `watch` for observing a single key → `repeat` for arrays in the DOM.
+
+### `effect()` vs `computed()` vs `watch()`
+
+```javascript
+import { state, effect } from 'lume-js';
+import { computed, watch } from 'lume-js/addons';
+
+const store = state({ firstName: 'Ada', lastName: 'Lovelace', count: 0 });
+
+// effect() — derives a value and writes it back into the store
+// Use when the result lives in state and drives the DOM via data-bind
+effect(() => {
+  store.fullName = `${store.firstName} ${store.lastName}`;
+});
+
+// computed() — derives a value to read externally (e.g. display, logging)
+// Use when the result is consumed outside the store
+const doubled = computed(() => store.count * 2);
+console.log(doubled.value); // 10
+doubled.subscribe(val => document.title = `Count × 2: ${val}`);
+
+// watch() — reacts to a single key changing
+// Use for side effects tied to one property: analytics, localStorage, DOM sync
+watch(store, 'count', (val) => {
+  localStorage.setItem('count', val);
+});
+
+// watch() with { immediate: false } — skip the initial call
+watch(store, 'count', (val) => {
+  sendAnalytics('count_changed', val); // only on actual changes
+}, { immediate: false });
+```
 
 ---
 
