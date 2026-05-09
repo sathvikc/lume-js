@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { state } from 'src/core/state.js';
 import { bindDom } from 'src/core/bindDom.js';
-import { show, boolAttr, ariaAttr, classToggle, stringAttr, formHandlers, a11yHandlers, htmlAttrs } from 'src/handlers/index.js';
+import { show, className, boolAttr, ariaAttr, classToggle, stringAttr, formHandlers, a11yHandlers, htmlAttrs } from 'src/handlers/index.js';
 
 function setupDOM(html) {
   document.body.innerHTML = html;
@@ -59,6 +59,74 @@ describe('handlers module', () => {
       await Promise.resolve();
       expect(span.hidden).toBe(true);
       expect(span.textContent).toBe('Alice'); // text still bound
+
+      cleanup();
+    });
+  });
+
+  describe('className handler', () => {
+    it('sets full className string from state', async () => {
+      const root = setupDOM(`<div><span data-classname="cardClass">Card</span></div>`);
+      const store = state({ cardClass: 'card card--primary' });
+
+      const cleanup = bindDom(root, store, { handlers: [className] });
+      const span = root.querySelector('span');
+
+      expect(span.className).toBe('card card--primary');
+
+      store.cardClass = 'card card--error';
+      await Promise.resolve();
+      expect(span.className).toBe('card card--error');
+
+      cleanup();
+    });
+
+    it('clears className when value is empty string', async () => {
+      const root = setupDOM(`<div><span data-classname="cls">Content</span></div>`);
+      const store = state({ cls: 'active' });
+
+      const cleanup = bindDom(root, store, { handlers: [className] });
+      const span = root.querySelector('span');
+
+      expect(span.className).toBe('active');
+
+      store.cls = '';
+      await Promise.resolve();
+      expect(span.className).toBe('');
+
+      cleanup();
+    });
+
+    it('clears className when value is null or undefined', async () => {
+      const root = setupDOM(`<div><span data-classname="cls">Content</span></div>`);
+      const store = state({ cls: 'visible' });
+
+      const cleanup = bindDom(root, store, { handlers: [className] });
+      const span = root.querySelector('span');
+
+      store.cls = null;
+      await Promise.resolve();
+      expect(span.className).toBe('');
+
+      store.cls = undefined;
+      await Promise.resolve();
+      expect(span.className).toBe('');
+
+      cleanup();
+    });
+
+    it('replaces the full class list (not toggling individual classes)', async () => {
+      const root = setupDOM(`<div><div data-classname="cls" class="base">Item</div></div>`);
+      const store = state({ cls: 'new-class' });
+
+      const cleanup = bindDom(root, store, { handlers: [className] });
+      const div = root.querySelector('div div');
+
+      expect(div.className).toBe('new-class');
+
+      store.cls = 'other-class';
+      await Promise.resolve();
+      expect(div.className).toBe('other-class');
 
       cleanup();
     });
