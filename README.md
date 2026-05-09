@@ -4,7 +4,7 @@
 
 Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required, no framework lock-in.
 
-> **Current Release:** v2.0.1 | **Stability Contract:** Core API is frozen forever  
+> **Current Release:** v2.0.1
 > Install: `npm install lume-js`  
 > Bundle size: ~2.44KB gzipped | 330 tests passing
 
