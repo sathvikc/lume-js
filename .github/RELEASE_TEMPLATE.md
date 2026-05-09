@@ -99,6 +99,8 @@ npm install lume-js@X.Y.Z
 
 [CHANGELOG.md · vX.Y.Z](https://github.com/sathvikc/lume-js/blob/main/CHANGELOG.md#xyz---yyyy-mm-dd)
 
+**Compare:** https://github.com/sathvikc/lume-js/compare/vPREV...vX.Y.Z
+
 ---
 
 <!-- Delete unused sections before publishing. -->
