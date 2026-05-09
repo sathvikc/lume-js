@@ -50,6 +50,7 @@ function lumeGlobalShimPlugin(command) {
 } = window.Lume;`;
   return {
     name: 'lume-global-shim',
+    enforce: 'pre',
     resolveId(id) { if (LUME_IDS.has(id)) return '\0lume-shim'; },
     load(id)      { if (id === '\0lume-shim') return shim; },
   };
