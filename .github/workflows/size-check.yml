@@ -61,10 +61,11 @@ jobs:
           script: |
             const fs = require('fs');
 
-            const pr   = JSON.parse(fs.readFileSync('pr-size.json', 'utf8'));
-            const base = fs.existsSync('base-size.json')
-              ? JSON.parse(fs.readFileSync('base-size.json', 'utf8'))
-              : null;
+            const pr = JSON.parse(fs.readFileSync('pr-size.json', 'utf8'));
+            let base = null;
+            if (fs.existsSync('base-size.json')) {
+              try { base = JSON.parse(fs.readFileSync('base-size.json', 'utf8')); } catch (e) { /* old script format, no baseline */ }
+            }
 
             const baseMap = {};
             if (base) base.files.forEach(f => { baseMap[f.file] = f; });

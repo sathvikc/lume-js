@@ -31,7 +31,7 @@ jobs:
       - name: Run tests with coverage
         id: coverage
         run: |
-          npm run coverage -- --reporter=json --reporter=json-summary 2>&1 | tee coverage-output.txt
+          npm run coverage 2>&1 | tee coverage-output.txt
           echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
 
       - name: Parse coverage summary
