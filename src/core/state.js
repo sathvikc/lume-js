@@ -100,6 +100,7 @@ export function state(obj) {
     if (flushScheduled) return;
 
     flushScheduled = true;
+    // eslint-disable-next-line sonarjs/cognitive-complexity -- single-pass flush loop: hooks → subscribers → effects → cycle detection; must stay atomic
     queueMicrotask(() => {
       let iterations = 0;
       const MAX_ITERATIONS = 100;

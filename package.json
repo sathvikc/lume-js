@@ -34,11 +34,12 @@
     "size:ci": "node scripts/check-size.js",
     "bench": "npm run build && node scripts/bench-core.js",
     "complexity": "node scripts/complexity.js",
+    "lint": "eslint src/",
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
-    "validate": "npm run build && node scripts/check-size.js && node scripts/complexity.js && npm run typecheck && npm run coverage",
+    "validate": "npm run build && node scripts/check-size.js && node scripts/complexity.js && npm run lint && npm run typecheck && npm run coverage",
     "prepublishOnly": "npm run validate"
   },
   "files": [
@@ -81,6 +82,8 @@
     "@tailwindcss/typography": "^0.5.19",
     "@vitest/coverage-v8": "^2.1.4",
     "autoprefixer": "^10.4.22",
+    "eslint": "^10.3.0",
+    "eslint-plugin-sonarjs": "^4.0.3",
     "highlight.js": "^11.11.1",
     "jsdom": "^25.0.1",
     "marked": "^17.0.1",
