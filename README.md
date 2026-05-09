@@ -135,9 +135,10 @@ bindDom(document.body, store, {
 | Handler | HTML Example | Effect |
 |---------|-------------|--------|
 | `show` | `data-show="key"` | Shows element when truthy (`el.hidden = !val`) |
+| `className` | `data-classname="key"` | Replaces full class string (`el.className = val`) |
 | `boolAttr(name)` | `data-readonly="key"` | Toggles any boolean attribute |
 | `ariaAttr(name)` | `data-aria-pressed="key"` | Sets ARIA attribute to "true"/"false" |
-| `classToggle(...names)` | `data-class-active="key"` | Toggles CSS classes |
+| `classToggle(...names)` | `data-class-active="key"` | Toggles individual CSS classes |
 | `stringAttr(name)` | `data-href="key"` | Sets string attributes (removes on null) |
 
 ### Presets

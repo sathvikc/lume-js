@@ -15,6 +15,19 @@ import type { Handler } from '../index.js';
 export const show: Handler;
 
 /**
+ * data-classname="key" → el.className = val (replaces full class string)
+ * Use classToggle() for toggling individual classes.
+ *
+ * @example
+ * ```typescript
+ * bindDom(root, store, { handlers: [className] });
+ * // <div data-classname="cardClass">...</div>
+ * // store.cardClass = 'card card--error card--large';
+ * ```
+ */
+export const className: Handler;
+
+/**
  * Create a handler for any HTML boolean property.
  * Use for properties beyond the built-in hidden/disabled/checked/required.
  *
