@@ -44,27 +44,34 @@ function replacePlaceholders(filePath) {
 }
 
 async function computeMetrics() {
-  // Core gzipped size
-  const srcDir = path.join(rootDir, 'src');
-  const coreDir = path.join(srcDir, 'core');
-  const coreFiles = [];
-  async function scan(dir) {
-    for (const entry of await readdir(dir, { withFileTypes: true })) {
-      const fullPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) await scan(fullPath);
-      else if (entry.isFile() && path.extname(entry.name) === '.js') coreFiles.push(fullPath);
+  // Core gzipped size — read from the self-contained CDN build (dist/index.min.mjs).
+  // This matches the badge in README and the budget enforced by check-size.js.
+  // Requires `npm run build` to have run first; falls back to src/core/ scan if dist is missing.
+  let sizeKb;
+  const indexMinPath = path.join(rootDir, 'dist', 'index.min.mjs');
+  if (fs.existsSync(indexMinPath)) {
+    const content = await readFile(indexMinPath);
+    const gz = await gzipAsync(content);
+    sizeKb = (gz.length / 1024).toFixed(2);
+  } else {
+    const coreDir = path.join(rootDir, 'src', 'core');
+    const coreFiles = [];
+    async function scan(dir) {
+      for (const entry of await readdir(dir, { withFileTypes: true })) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) await scan(fullPath);
+        else if (entry.isFile() && path.extname(entry.name) === '.js') coreFiles.push(fullPath);
+      }
     }
+    await scan(coreDir);
+    let totalGzipped = 0;
+    for (const file of coreFiles) {
+      const code = await readFile(file, 'utf-8');
+      const minified = await minify(code, { compress: { passes: 2, unsafe: true, unsafe_comps: true, unsafe_methods: true }, mangle: { toplevel: true }, format: { comments: false } });
+      totalGzipped += (await gzipAsync(Buffer.from(minified.code))).length;
+    }
+    sizeKb = (totalGzipped / 1024).toFixed(2);
   }
-  await scan(coreDir);
-
-  let totalGzipped = 0;
-  for (const file of coreFiles) {
-    const code = await readFile(file, 'utf-8');
-    const minified = await minify(code, { compress: { passes: 2, unsafe: true, unsafe_comps: true, unsafe_methods: true }, mangle: { toplevel: true }, format: { comments: false } });
-    const gzipped = await gzipAsync(Buffer.from(minified.code));
-    totalGzipped += gzipped.length;
-  }
-  const sizeKb = (totalGzipped / 1024).toFixed(2);
 
   // Test count
   let testCount = 0;
