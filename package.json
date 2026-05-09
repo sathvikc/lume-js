@@ -30,13 +30,15 @@
     "build:site": "node scripts/build-site-assets.js && vite build -c vite.site.config.js",
     "preview:site": "node scripts/build-site-assets.js && vite build -c vite.site.config.js --base / && vite preview -c vite.site.config.js",
     "build": "node scripts/build.js",
-    "size": "node scripts/check-size.js",
+    "size": "npm run build && node scripts/check-size.js",
+    "size:ci": "node scripts/check-size.js",
+    "bench": "npm run build && node scripts/bench-core.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
-    "validate": "npm run size && npm run typecheck && npm test",
-    "prepublishOnly": "npm run build && npm run validate"
+    "validate": "npm run build && node scripts/check-size.js && npm run typecheck && npm run coverage",
+    "prepublishOnly": "npm run validate"
   },
   "files": [
     "dist",
