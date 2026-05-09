@@ -10,10 +10,16 @@ export default defineConfig({
     exclude: ['node_modules', 'examples', 'dist'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html', 'json'],
+      reporter: ['text', 'html', 'json', 'json-summary'],
       reportsDirectory: './coverage',
       include: ['src/**/*.js'],
-      exclude: ['examples/**', 'scripts/**', 'vite.config.js']
+      exclude: ['examples/**', 'scripts/**', 'vite.config.js'],
+      thresholds: {
+        statements: 100,
+        branches: 100,
+        functions: 100,
+        lines: 100,
+      },
     }
   },
   resolve: {
