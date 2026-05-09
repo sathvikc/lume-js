@@ -81,27 +81,35 @@ jobs:
             const status = pr.passed ? '✅ Passed' : '❌ Failed';
             let body = `## 📦 Bundle Size — ${status}\n\n`;
 
+            const npmFiles = pr.files.filter(f => f.budget != null);
+            const cdnFiles = pr.files.filter(f => f.budget == null);
+
+            body += `**npm entry points** (imported via \`lume-js\`, \`lume-js/addons\`, \`lume-js/handlers\`)\n\n`;
             body += `| File | Gzipped | Budget | Change | Status |\n`;
             body += `|------|---------|--------|--------|--------|\n`;
-
-            for (const f of pr.files) {
-              const budgetStr = f.budget != null ? fmt(f.budget) : '—';
-              const statusStr = f.budget == null ? '—'
-                : f.overBudget
-                  ? `❌ over by ${fmt(f.gzipped - f.budget)}`
-                  : `✅ ${((f.gzipped / f.budget) * 100).toFixed(0)}%`;
-
+            for (const f of npmFiles) {
+              const statusStr = f.overBudget
+                ? `❌ over by ${fmt(f.gzipped - f.budget)}`
+                : `✅ ${((f.gzipped / f.budget) * 100).toFixed(0)}%`;
               const baseF = baseMap[f.file];
-              const changeStr = baseF
-                ? `${arrow(f.gzipped, baseF.gzipped)} ${diff(f.gzipped, baseF.gzipped)}`
-                : '—';
+              const changeStr = baseF ? `${arrow(f.gzipped, baseF.gzipped)} ${diff(f.gzipped, baseF.gzipped)}` : '—';
+              body += `| \`${f.file}\` | **${fmt(f.gzipped)}** | ${fmt(f.budget)} | ${changeStr} | ${statusStr} |\n`;
+            }
 
-              body += `| \`${f.file}\` | **${fmt(f.gzipped)}** | ${budgetStr} | ${changeStr} | ${statusStr} |\n`;
+            if (cdnFiles.length > 0) {
+              body += `\n**CDN standalone builds** (self-contained, no shared chunks)\n\n`;
+              body += `| File | Gzipped | Change |\n`;
+              body += `|------|---------|--------|\n`;
+              for (const f of cdnFiles) {
+                const baseF = baseMap[f.file];
+                const changeStr = baseF ? `${arrow(f.gzipped, baseF.gzipped)} ${diff(f.gzipped, baseF.gzipped)}` : '—';
+                body += `| \`${f.file}\` | **${fmt(f.gzipped)}** | ${changeStr} |\n`;
+              }
             }
 
             body += '\n';
             if (pr.passed) {
-              body += '✅ All entry points within budget.';
+              body += '✅ All npm entry points within budget.';
             } else {
               body += '❌ **One or more bundles exceed their size budget.** Review recent changes to core/addons/handlers.';
             }
