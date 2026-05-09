@@ -2,6 +2,27 @@ import { state, bindDom, effect } from 'lume-js';
 import { watch, createCleanupGroup } from 'lume-js/addons';
 import { classToggle, show, stringAttr } from 'lume-js/handlers';
 
+import hljs from 'highlight.js/lib/core';
+import javascript from 'highlight.js/lib/languages/javascript';
+import xml from 'highlight.js/lib/languages/xml';
+import css from 'highlight.js/lib/languages/css';
+import bash from 'highlight.js/lib/languages/bash';
+import json from 'highlight.js/lib/languages/json';
+import typescript from 'highlight.js/lib/languages/typescript';
+import diff from 'highlight.js/lib/languages/diff';
+
+hljs.registerLanguage('javascript', javascript);
+hljs.registerLanguage('js', javascript);
+hljs.registerLanguage('html', xml);
+hljs.registerLanguage('xml', xml);
+hljs.registerLanguage('css', css);
+hljs.registerLanguage('bash', bash);
+hljs.registerLanguage('shell', bash);
+hljs.registerLanguage('json', json);
+hljs.registerLanguage('typescript', typescript);
+hljs.registerLanguage('ts', typescript);
+hljs.registerLanguage('diff', diff);
+
 // --- Toast helper ---
 function showToast(msg) {
   const toast = document.createElement('div');
@@ -42,13 +63,10 @@ if (typeof marked !== 'undefined') {
     gfm: true,
     breaks: false,
     highlight(code, lang) {
-      if (window.hljs) {
-        if (lang && hljs.getLanguage(lang)) {
-          return hljs.highlight(code, { language: lang }).value;
-        }
-        return hljs.highlightAuto(code).value;
+      if (lang && hljs.getLanguage(lang)) {
+        return hljs.highlight(code, { language: lang }).value;
       }
-      return code;
+      return hljs.highlightAuto(code).value;
     }
   });
 }
@@ -179,7 +197,7 @@ watch(store, 'route', async (r) => {
     syncNav(r);
     window.scrollTo({ top: 0, behavior: 'instant' });
 
-    if (window.hljs) articleOutlet.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+    articleOutlet.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
 
     _tocCleanup = wireTOC();
     wireHeadingAnchors(router.mode, _makeHashHeadingNav(slug));
@@ -217,7 +235,7 @@ watch(store, 'route', async (r) => {
     syncNav(r);
     window.scrollTo({ top: 0, behavior: 'instant' });
 
-    if (window.hljs) outlet.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+    outlet.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
   }
 }, { immediate: true });
 
