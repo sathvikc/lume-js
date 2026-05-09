@@ -12,11 +12,15 @@
  *   means users only pay for what they actually import. Advertising the core
  *   size is honest: it's the minimum cost to use Lume.js at all.
  *
- * Budgets:
- *   dist/index.mjs (core)   ≤ 3 KB gzipped
- *   dist/addons.mjs         ≤ 6 KB gzipped
- *   dist/handlers.mjs       ≤ 2 KB gzipped
- *   dist/lume.global.js     ≤ 8 KB gzipped  (all-in-one CDN build)
+ * Budgets (enforced on self-contained builds only):
+ *   dist/index.min.mjs      ≤ 3 KB gzipped  (CDN core, self-contained)
+ *   dist/addons.min.mjs     ≤ 6 KB gzipped  (CDN addons, self-contained)
+ *   dist/handlers.min.mjs   ≤ 2 KB gzipped  (CDN handlers, self-contained)
+ *   dist/lume.global.js     ≤ 8 KB gzipped  (CDN all-in-one)
+ *
+ * The npm split builds (index.mjs, addons.mjs, handlers.mjs) are NOT budgeted
+ * because they import a shared chunk — they are incomplete on their own and
+ * their individual sizes do not reflect the true cost to users.
  *
  * Usage:
  *   npm run size              # local terminal output
@@ -38,10 +42,10 @@ const isJson = process.argv.includes('--json');
 // ── Budgets (gzipped bytes) ──────────────────────────────────────────────────
 
 const BUDGETS = {
-  'index.mjs':      3 * 1024,  // 3 KB  — core must stay tight
-  'addons.mjs':     6 * 1024,  // 6 KB
-  'handlers.mjs':   2 * 1024,  // 2 KB
-  'lume.global.js': 8 * 1024,  // 8 KB  — full CDN build
+  'index.min.mjs':    3 * 1024,  // 3 KB  — CDN core, self-contained
+  'addons.min.mjs':   6 * 1024,  // 6 KB  — CDN addons, self-contained
+  'handlers.min.mjs': 2 * 1024,  // 2 KB  — CDN handlers, self-contained
+  'lume.global.js':   8 * 1024,  // 8 KB  — CDN all-in-one
 };
 
 // Files to skip in the dist report (sourcemaps, shared chunks)
