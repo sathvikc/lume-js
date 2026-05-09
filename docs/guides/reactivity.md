@@ -116,4 +116,4 @@ cleanup(); // removes ALL bindings inside root
 
 ---
 
-**← Previous: [Core concepts](core-concepts.md)** | **Next: [Handlers](handlers.md) →**
+**← Previous: [Core concepts](core-concepts.md)** | **Next: [Choosing reactive primitives](choosing-reactive-primitives.md) →**

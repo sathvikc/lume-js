@@ -4,6 +4,9 @@ Welcome to the Lume.js Guides. Here you'll find in-depth information on how to h
 
 ## Available Guides
 
+### [Choosing reactive primitives](choosing-reactive-primitives.md)
+When to use `effect()`, `computed()`, or `watch()`. Includes a decision tree and quick-reference table.
+
 ### [Animations](animations.md)
 Learn how to add smooth transitions and animations to your Lume.js applications using standard CSS and the `watch()` addon.
 

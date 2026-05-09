@@ -133,3 +133,88 @@ jobs:
 
       - name: Type check
         run: npm run typecheck
+
+  complexity:
+    name: Complexity & Maintainability
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run complexity analysis
+        id: cx
+        run: |
+          node scripts/complexity.js --json > complexity.json 2>&1 || true
+          cat complexity.json
+          PASSED=$(node -e "const d=require('./complexity.json'); console.log(d.passed)")
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+
+      - name: Post complexity comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('complexity.json', 'utf8'));
+
+            const grade = (g) => g === 'A' ? '🟢 A' : g === 'B' ? '🟡 B' : '🔴 C';
+            const status = data.passed ? '✅ Passed' : '❌ Failed';
+
+            let body = `## 🧠 Complexity & Maintainability — ${status}\n\n`;
+            body += `| File | LOC | Funcs | Max CC | Avg CC | MI | Grade | Status |\n`;
+            body += `|------|-----|-------|--------|--------|----|-------|--------|\n`;
+
+            for (const f of data.files) {
+              const st = f.overBudget ? '❌'
+                : (f.exemptions?.length || f.miExempt) ? '⚠︎ known'
+                : '✅';
+              body += `| \`${f.file}\` | ${f.loc} | ${f.funcs} | ${f.maxCC} | ${f.avgCC} | ${f.mi} | ${grade(f.grade)} | ${st} |\n`;
+              for (const v of (f.violations || [])) {
+                body += `| ↳ \`${v.name}\` (line ${v.line}) | | | **${v.cc}** | | | | ❌ CC>${data.thresholds.maxCC} |\n`;
+              }
+              for (const v of (f.exemptions || [])) {
+                body += `| ↳ \`${v.name}\` (line ${v.line}) | | | ${v.cc} | | | | ⚠︎ exempt |\n`;
+              }
+            }
+
+            body += '\n';
+            body += data.passed
+              ? '✅ No new complexity violations.'
+              : '❌ **New complexity violations detected.** Refactor or add to `KNOWN_EXCEPTIONS` with justification.';
+
+            body += `\n\n<sub>MI scale: 🟢 A ≥ 65 · 🟡 B 40–64 · 🔴 C < 40 · Thresholds: max CC ≤ ${data.thresholds.maxCC}, MI ≥ ${data.thresholds.minMI}</sub>`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('Complexity & Maintainability')
+            );
+
+            const payload = { owner: context.repo.owner, repo: context.repo.repo, body };
+            if (existing) {
+              await github.rest.issues.updateComment({ ...payload, comment_id: existing.id });
+            } else {
+              await github.rest.issues.createComment({ ...payload, issue_number: context.issue.number });
+            }
+
+      - name: Write step summary
+        run: node scripts/complexity.js 2>&1 >> $GITHUB_STEP_SUMMARY || true
+
+      - name: Fail if over budget
+        run: |
+          PASSED=$(node -e "const d=require('./complexity.json'); console.log(d.passed)")
+          if [ "$PASSED" != "true" ]; then exit 1; fi
