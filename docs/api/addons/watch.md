@@ -1,4 +1,4 @@
-# watch(store, key, fn)
+# watch(store, key, fn, options?)
 
 Subscribes to a single store key. More explicit than `effect` — no auto-tracking, and the callback always receives the new value directly.
 
@@ -8,7 +8,8 @@ Subscribes to a single store key. More explicit than `effect` — no auto-tracki
 function watch(
   store: object,
   key: string,
-  fn: (newValue: any) => void
+  fn: (newValue: any) => void,
+  options?: { immediate?: boolean }
 ): () => void
 ```
 
@@ -18,7 +19,8 @@ Imported from `lume-js/addons`.
 
 - `store` — A reactive store created by `state()`.
 - `key` — The property name to watch.
-- `fn` — Called with `(newValue)` immediately on subscribe, then on every subsequent change.
+- `fn` — Called with the new value on every change.
+- `options.immediate` — Whether to call `fn` immediately with the current value (default: `true`).
 
 ## Returns
 
@@ -65,6 +67,20 @@ watch(store, 'theme', (theme) => {
 watch(store, 'userId', (id) => {
   analytics.identify(id);
 });
+```
+
+### Skip the initial call with `{ immediate: false }`
+
+By default `watch` fires immediately so you get the current value on subscribe. Pass `{ immediate: false }` to only react to future changes.
+
+```js
+// fires immediately with current value, then on every change
+watch(store, 'count', (val) => console.log('count:', val));
+
+// only fires on future changes — initial value is NOT logged
+watch(store, 'count', (val) => {
+  sendAnalytics('count_changed', val);
+}, { immediate: false });
 ```
 
 ## Compared to `effect`

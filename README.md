@@ -233,6 +233,8 @@ Full documentation is available in the [docs/](docs/) directory:
     - [Handlers](docs/api/core/handlers.md) — Extensible attribute handlers
     - [Plugins](docs/api/core/plugins.md) — State extension system
     - [Addons](docs/api/addons/computed.md) — computed, watch, repeat, debug
+- **Guides**
+    - [Choosing reactive primitives](docs/guides/choosing-reactive-primitives.md) — when to use effect vs computed vs watch
 - **Design**
     - [Design Decisions](docs/design/design-decisions.md)
 
