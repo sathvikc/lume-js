@@ -58,6 +58,7 @@ let currentEffect = null;
  *   analytics.log(store.count);  // Won't track store.count automatically
  * }, [[store, 'count']]);        // Explicit: only re-run on store.count
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- handles both auto-tracking and explicit-deps modes with cleanup; splitting would require exporting internal state
 export function effect(fn, deps) {
   if (typeof fn !== 'function') {
     throw new Error('effect() requires a function');

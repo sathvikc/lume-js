@@ -259,6 +259,7 @@ export function repeat(container, store, arrayKey, options) {
     if (restoreScroll) restoreScroll();
   }
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- keyed DOM reconciliation: create/reuse/remove nodes, key dedup, scroll/focus preservation
   function updateList() {
     const items = store[arrayKey];
 
@@ -332,6 +333,7 @@ export function repeat(container, store, arrayKey, options) {
       nextEls.push(el);
     }
 
+    // eslint-disable-next-line sonarjs/cognitive-complexity -- DOM cleanup pass: remove stale nodes, call per-item cleanup callbacks, update maps
     applyPreservation(containerEl, () => {
       reconcileDOM(containerEl, nextEls);
 
