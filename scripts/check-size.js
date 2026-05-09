@@ -1,197 +1,148 @@
 #!/usr/bin/env node
 
 /**
- * Lume.js Size Check Script
- * 
- * Verifies core bundle size stays under 3KB gzipped.
- * GitHub Actions friendly - outputs summaries for PR comments.
- * 
+ * Lume.js Size Check
+ *
+ * Measures gzipped size of every dist entry point after build.
+ * Run `npm run build` first, then `npm run size`.
+ *
+ * Budgets:
+ *   dist/index.mjs (core)   ≤ 3 KB gzipped
+ *   dist/addons.mjs         ≤ 6 KB gzipped
+ *   dist/handlers.mjs       ≤ 2 KB gzipped
+ *   dist/lume.global.js     ≤ 8 KB gzipped  (all-in-one CDN build)
+ *
  * Usage:
- *   node scripts/check-size.js
- *   npm run size
+ *   npm run size              # local terminal output
+ *   npm run size -- --json    # machine-readable JSON (for CI diffing)
  */
 
 import { gzip } from 'node:zlib';
 import { promisify } from 'node:util';
 import { readFile, readdir } from 'node:fs/promises';
-import { resolve, extname } from 'node:path';
+import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { minify } from 'terser';
 
 const gzipAsync = promisify(gzip);
-
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const srcDir = resolve(__dirname, '../src');
-
-// Core folder budget
-const CORE_BUDGET = 3072; // 3KB gzipped - leaves room for exploration while staying lightweight
-
-// Check if running in GitHub Actions
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const distDir = resolve(__dirname, '../dist');
 const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
+const isJson = process.argv.includes('--json');
 
-/**
- * Minify code with Terser (production settings)
- */
-async function minifyCode(code) {
-  const result = await minify(code, {
-    compress: {
-      passes: 2,
-      unsafe: true,
-      unsafe_comps: true,
-      unsafe_methods: true,
-    },
-    mangle: {
-      toplevel: true,
-    },
-    format: {
-      comments: false,
-    },
-  });
+// ── Budgets (gzipped bytes) ──────────────────────────────────────────────────
 
-  return result.code;
+const BUDGETS = {
+  'index.mjs':      3 * 1024,  // 3 KB  — core must stay tight
+  'addons.mjs':     6 * 1024,  // 6 KB
+  'handlers.mjs':   2 * 1024,  // 2 KB
+  'lume.global.js': 8 * 1024,  // 8 KB  — full CDN build
+};
+
+// Files to skip in the dist report (sourcemaps, shared chunks)
+const SKIP = /\.(map)$|^shared-/;
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function kb(bytes) { return (bytes / 1024).toFixed(2); }
+function pct(used, budget) { return ((used / budget) * 100).toFixed(1); }
+function bar(used, budget, width = 20) {
+  const filled = Math.round(Math.min(used / budget, 1) * width);
+  return '█'.repeat(filled) + '░'.repeat(width - filled);
 }
 
-/**
- * Recursively scan directory for .js files
- */
-async function scanDirectory(dir, baseDir) {
-  const entries = await readdir(dir, { withFileTypes: true });
-  const files = [];
+// ── Main ─────────────────────────────────────────────────────────────────────
 
-  for (const entry of entries) {
-    const fullPath = resolve(dir, entry.name);
-
-    if (entry.isDirectory()) {
-      files.push(...await scanDirectory(fullPath, baseDir));
-    } else if (entry.isFile() && extname(entry.name) === '.js') {
-      const relativePath = fullPath.substring(baseDir.length + 1);
-      files.push({ path: relativePath, fullPath });
-    }
-  }
-
-  return files;
-}
-
-/**
- * Get size of a file
- */
-async function getFileSize(filePath, name) {
-  const originalCode = await readFile(filePath, 'utf-8');
-  const minifiedCode = await minifyCode(originalCode);
-  const gzipped = await gzipAsync(Buffer.from(minifiedCode));
-
-  return {
-    name,
-    original: Buffer.byteLength(originalCode),
-    minified: Buffer.byteLength(minifiedCode),
-    gzipped: gzipped.length
-  };
-}
-
-/**
- * Format bytes
- */
-function formatSize(bytes) {
-  return (bytes / 1024).toFixed(2) + ' KB';
-}
-
-function formatBytes(bytes) {
-  return bytes + ' B';
-}
-
-/**
- * Output for terminal
- */
-function printTerminalOutput(coreResults, coreGzipped, passed) {
-  console.log('🔍 Lume.js Size Check');
-  console.log('=====================\n');
-  console.log('Core Budget: <3KB gzipped\n');
-
-  console.log('📦 Core Files:');
-  for (const file of coreResults) {
-    console.log(`   ${file.name.padEnd(25)} ${formatSize(file.gzipped)}`);
-  }
-
-  const percentage = ((coreGzipped / CORE_BUDGET) * 100).toFixed(1);
-
-  console.log('\n=====================');
-  console.log(`Core Total: ${formatSize(coreGzipped)} / ${formatSize(CORE_BUDGET)} (${percentage}%)`);
-  console.log('=====================\n');
-
-  if (passed) {
-    console.log(`✅ PASSED: Core is under 3KB!`);
-  } else {
-    const overBy = coreGzipped - CORE_BUDGET;
-    console.log(`❌ FAILED: Core is over 3KB by ${formatBytes(overBy)}!`);
-  }
-}
-
-/**
- * Output for GitHub Actions
- */
-function printGitHubOutput(coreResults, coreGzipped, passed) {
-  const percentage = ((coreGzipped / CORE_BUDGET) * 100).toFixed(1);
-  const overBy = coreGzipped - CORE_BUDGET;
-
-  // GitHub Actions Step Summary
-  console.log('\n## 📦 Lume.js Bundle Size Report\n');
-  console.log('| File | Gzipped |');
-  console.log('|------|---------|');
-
-  for (const file of coreResults) {
-    console.log(`| ${file.name} | ${formatSize(file.gzipped)} |`);
-  }
-
-  console.log(`| **Core Total** | **${formatSize(coreGzipped)}** |`);
-  console.log(`\n**Budget:** ${formatSize(CORE_BUDGET)} gzipped\n`);
-
-  if (passed) {
-    console.log(`### ✅ Size Check Passed\n`);
-    console.log(`Core bundle is **${formatSize(coreGzipped)}** (${percentage}% of budget)\n`);
-    console.log(`🎉 Well done! Core is under 3KB gzipped.`);
-  } else {
-    console.log(`### ❌ Size Check Failed\n`);
-    console.log(`Core bundle is **${formatSize(coreGzipped)}** (${percentage}% of budget)\n`);
-    console.log(`⚠️  Core exceeds 3KB budget by **${formatBytes(overBy)}**\n`);
-    console.log(`**Action Required:**`);
-    console.log(`- Remove unnecessary code from core`);
-    console.log(`- Move non-essential features to addons`);
-    console.log(`- Simplify complex logic`);
-  }
-}
-
-/**
- * Main
- */
 async function main() {
+  let files;
   try {
-    // Scan core directory
-    const coreDir = resolve(srcDir, 'core');
-    const coreFiles = await scanDirectory(coreDir, srcDir);
-
-    // Get sizes
-    const coreResults = [];
-    for (const file of coreFiles) {
-      const size = await getFileSize(file.fullPath, file.path);
-      coreResults.push(size);
-    }
-
-    // Calculate total
-    const coreGzipped = coreResults.reduce((sum, r) => sum + r.gzipped, 0);
-    const passed = coreGzipped <= CORE_BUDGET;
-
-    // Output based on environment
-    if (isGitHubActions) {
-      printGitHubOutput(coreResults, coreGzipped, passed);
-    } else {
-      printTerminalOutput(coreResults, coreGzipped, passed);
-    }
-
-    process.exit(passed ? 0 : 1);
-  } catch (error) {
-    console.error('\n❌ Error during size check:', error.message);
+    const entries = await readdir(distDir);
+    files = entries.filter(f => !SKIP.test(f) && (f.endsWith('.mjs') || f.endsWith('.js')));
+  } catch {
+    console.error('❌ dist/ not found. Run `npm run build` first.');
     process.exit(1);
   }
+
+  const results = [];
+
+  for (const file of files.sort()) {
+    const content = await readFile(resolve(distDir, file));
+    const gz = await gzipAsync(content);
+    const budget = BUDGETS[file] ?? null;
+    const overBudget = budget != null && gz.length > budget;
+
+    results.push({
+      file,
+      raw: content.length,
+      gzipped: gz.length,
+      budget,
+      overBudget,
+    });
+  }
+
+  const anyFailed = results.some(r => r.overBudget);
+
+  // ── JSON output (for CI diffing) ─────────────────────────────────────────
+
+  if (isJson) {
+    console.log(JSON.stringify({ passed: !anyFailed, files: results }, null, 2));
+    process.exit(anyFailed ? 1 : 0);
+  }
+
+  // ── GitHub Actions step summary ──────────────────────────────────────────
+
+  if (isGitHubActions) {
+    console.log('## 📦 Lume.js Bundle Size Report\n');
+    console.log('| File | Raw | Gzipped | Budget | Status |');
+    console.log('|------|-----|---------|--------|--------|');
+    for (const r of results) {
+      const status = r.budget == null ? '—'
+        : r.overBudget ? `❌ over by ${kb(r.gzipped - r.budget)} KB`
+        : `✅ ${pct(r.gzipped, r.budget)}%`;
+      const budget = r.budget != null ? `${kb(r.budget)} KB` : '—';
+      console.log(`| \`${r.file}\` | ${kb(r.raw)} KB | **${kb(r.gzipped)} KB** | ${budget} | ${status} |`);
+    }
+    if (!anyFailed) {
+      console.log('\n✅ All bundles within budget.');
+    } else {
+      console.log('\n❌ One or more bundles exceed their budget.');
+    }
+    process.exit(anyFailed ? 1 : 0);
+  }
+
+  // ── Terminal output ───────────────────────────────────────────────────────
+
+  console.log('\n🔍 Lume.js Bundle Size Report');
+  console.log('═'.repeat(72));
+  console.log(`${'File'.padEnd(24)} ${'Raw'.padStart(8)} ${'Gzipped'.padStart(9)} ${'Budget'.padStart(8)}  Usage`);
+  console.log('─'.repeat(72));
+
+  for (const r of results) {
+    const budgetStr = r.budget != null ? `${kb(r.budget)} KB` : '   —   ';
+    const usageStr = r.budget != null
+      ? `${bar(r.gzipped, r.budget)} ${pct(r.gzipped, r.budget)}%${r.overBudget ? ' ❌' : ''}`
+      : '';
+    console.log(
+      `${r.file.padEnd(24)} ${(kb(r.raw) + ' KB').padStart(8)} ${(kb(r.gzipped) + ' KB').padStart(9)} ${budgetStr.padStart(8)}  ${usageStr}`
+    );
+  }
+
+  console.log('─'.repeat(72));
+  const totalGz = results.reduce((s, r) => s + r.gzipped, 0);
+  const totalRaw = results.reduce((s, r) => s + r.raw, 0);
+  console.log(`${'TOTAL'.padEnd(24)} ${(kb(totalRaw) + ' KB').padStart(8)} ${(kb(totalGz) + ' KB').padStart(9)}`);
+  console.log('═'.repeat(72));
+
+  if (!anyFailed) {
+    console.log('\n✅ All bundles within budget.\n');
+  } else {
+    console.log('\n❌ Budget exceeded:\n');
+    for (const r of results.filter(r => r.overBudget)) {
+      console.log(`   ${r.file}: ${kb(r.gzipped)} KB gzipped (budget ${kb(r.budget)} KB, over by ${kb(r.gzipped - r.budget)} KB)`);
+    }
+    console.log();
+  }
+
+  process.exit(anyFailed ? 1 : 0);
 }
 
 main();
