@@ -4,12 +4,12 @@
 
 Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required, no framework lock-in.
 
-> **Current Release:** v2.0.1
+> **Current Release:** v2.1.0
 > Install: `npm install lume-js`  
-> Bundle size: ~2.44KB gzipped | 330 tests passing
+> Bundle size: ~2.44KB gzipped | 339 tests passing
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.0.1-orange.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-2.1.0-orange.svg)](package.json)
 [![Tests](https://img.shields.io/badge/tests-339%20passing-brightgreen.svg)](tests/)
 [![Size](https://img.shields.io/badge/core-2.44KB-blue.svg)](scripts/check-size.js)
 
