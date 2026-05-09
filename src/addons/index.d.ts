@@ -56,26 +56,44 @@ export interface Computed<T> {
  */
 export function computed<T>(fn: () => T): Computed<T>;
 
+export interface WatchOptions {
+  /**
+   * Whether to call the callback immediately with the current value (default: true).
+   * Set to false to skip the initial call and only react to future changes.
+   */
+  immediate?: boolean;
+}
+
 /**
  * Watch a single key on a reactive state object; convenience wrapper around $subscribe.
- * 
+ *
+ * By default the callback fires immediately with the current value, then on every change.
+ * Pass `{ immediate: false }` to skip the initial call and only react to future changes.
+ *
  * @param store - Reactive state object created with state().
  * @param key - Property key to observe.
- * @param callback - Invoked immediately and on subsequent changes.
+ * @param callback - Called with new value on change (and immediately unless immediate=false).
+ * @param options - Watch options
  * @returns Unsubscribe function for cleanup
  * @throws {Error} If store is not a reactive state object
- * 
+ *
  * @example
  * ```typescript
  * import { state } from 'lume-js';
  * import { watch } from 'lume-js/addons';
- * 
+ *
  * const store = state({ count: 0 });
- * 
+ *
+ * // Fires immediately with 0, then on every change
  * const unwatch = watch(store, 'count', (value) => {
  *   console.log('Count is now:', value);
  * });
- * 
+ *
+ * // Only fires on future changes (not the initial value)
+ * watch(store, 'count', (value) => {
+ *   console.log('Count changed to:', value);
+ * }, { immediate: false });
+ *
  * // Cleanup
  * unwatch();
  * ```
@@ -83,7 +101,8 @@ export function computed<T>(fn: () => T): Computed<T>;
 export function watch<T extends object, K extends keyof T>(
   store: ReactiveState<T>,
   key: K,
-  callback: Subscriber<T[K]>
+  callback: Subscriber<T[K]>,
+  options?: WatchOptions
 ): Unsubscribe;
 
 /**
