@@ -142,6 +142,7 @@ bindDom(document.body, store, {
 | `ariaAttr(name)` | `data-aria-pressed="key"` | Sets ARIA attribute to "true"/"false" |
 | `classToggle(...names)` | `data-class-active="key"` | Toggles individual CSS classes |
 | `stringAttr(name)` | `data-href="key"` | Sets string attributes (removes on null) |
+| `htmlAttrs()` | *(all of the above)* | One-import preset — all standard HTML + ARIA attrs |
 
 ### Presets
 

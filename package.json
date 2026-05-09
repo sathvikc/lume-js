@@ -28,7 +28,7 @@
     "dev": "vite",
     "dev:site": "node scripts/build-site-assets.js && vite -c vite.site.config.js",
     "build:site": "node scripts/build-site-assets.js && vite build -c vite.site.config.js",
-    "preview:site": "node scripts/build-site-assets.js && vite build -c vite.site.config.js --base / && vite preview -c vite.site.config.js",
+    "preview:site": "node scripts/build-site-assets.js && vite build -c vite.site.config.js --base / && vite preview -c vite.site.config.js --base /",
     "build": "node scripts/build.js",
     "size": "npm run build && node scripts/check-size.js",
     "size:ci": "node scripts/check-size.js",

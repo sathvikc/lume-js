@@ -56,7 +56,7 @@ bindDom(root, store, {
 
 ### `stringAttr(name)` — `data-{name}` → `{name}`
 
-Mirrors a reactive value to a string attribute. Perfect for `href`, `src`, `alt`, `title`.
+Mirrors a reactive value to a string attribute. Perfect for `href`, `src`, `alt`, `title`. Removes the attribute when the value is `null` or `undefined`.
 
 ```js
 import { stringAttr } from 'lume-js/handlers';
@@ -69,6 +69,70 @@ bindDom(root, store, {
 // <a data-href="profileUrl">Profile</a>
 // <img data-src="avatarUrl" alt="Avatar">
 ```
+
+### `className` — `data-classname`
+
+Replaces the element's entire class string. Use when reactive state holds a full class string rather than toggling individual classes.
+
+```js
+import { className } from 'lume-js/handlers';
+
+bindDom(root, store, { handlers: [className] });
+
+// HTML:
+// <div data-classname="cardClasses">Card</div>
+```
+
+### `boolAttr(name)` — `data-{name}` → boolean attribute
+
+Toggles any HTML boolean attribute by name. Works with any attribute `toggleAttribute()` supports.
+
+```js
+import { boolAttr } from 'lume-js/handlers';
+
+bindDom(root, store, {
+  handlers: [boolAttr('readonly'), boolAttr('open')]
+});
+
+// HTML:
+// <input data-readonly="isLocked">
+// <details data-open="isExpanded">...</details>
+```
+
+> The built-in `data-hidden`, `data-disabled`, `data-checked`, and `data-required` use direct property assignment. `boolAttr()` uses `toggleAttribute()` — correct for all attribute names.
+
+### `ariaAttr(name)` — `data-aria-{name}` → `"true"`/`"false"`
+
+Sets a boolean ARIA attribute, coercing the value to the string `"true"` or `"false"`. Use `stringAttr('aria-label')` for string-valued ARIA attributes.
+
+```js
+import { ariaAttr } from 'lume-js/handlers';
+
+bindDom(root, store, {
+  handlers: [ariaAttr('pressed'), ariaAttr('selected')]
+});
+
+// HTML:
+// <button data-aria-pressed="isPressed">Toggle</button>
+```
+
+### `htmlAttrs()` — batteries-included preset
+
+Returns a flat array of handlers covering all standard HTML boolean attributes, string attributes, and ARIA attributes. Ideal for prototyping or apps that need many different `data-*` bindings without per-handler imports.
+
+```js
+import { htmlAttrs } from 'lume-js/handlers';
+
+bindDom(document.body, store, { handlers: [htmlAttrs()] });
+
+// Now works without additional imports:
+// <input data-readonly="isLocked" data-placeholder="hint" />
+// <a data-href="url" data-title="tooltip">Link</a>
+// <button data-aria-pressed="active" data-aria-label="btnLabel">…</button>
+// <div data-show="isVisible">…</div>
+```
+
+> **Note:** `htmlAttrs()` is a function that returns an array — use `[htmlAttrs()]` (not `htmlAttrs` directly) so `bindDom` can flatten it. For production bundles, cherry-pick individual handlers to keep the import minimal.
 
 ## Writing your own
 

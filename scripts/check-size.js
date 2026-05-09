@@ -6,6 +6,12 @@
  * Measures gzipped size of every dist entry point after build.
  * Run `npm run build` first, then `npm run size`.
  *
+ * Why core is the headline metric:
+ *   dist/index.mjs is the mandatory baseline — every user pays it.
+ *   dist/addons.mjs and dist/handlers.mjs are fully optional; tree-shaking
+ *   means users only pay for what they actually import. Advertising the core
+ *   size is honest: it's the minimum cost to use Lume.js at all.
+ *
  * Budgets:
  *   dist/index.mjs (core)   ≤ 3 KB gzipped
  *   dist/addons.mjs         ≤ 6 KB gzipped
