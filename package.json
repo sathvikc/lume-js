@@ -33,11 +33,12 @@
     "size": "npm run build && node scripts/check-size.js",
     "size:ci": "node scripts/check-size.js",
     "bench": "npm run build && node scripts/bench-core.js",
+    "complexity": "node scripts/complexity.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
-    "validate": "npm run build && node scripts/check-size.js && npm run typecheck && npm run coverage",
+    "validate": "npm run build && node scripts/check-size.js && node scripts/complexity.js && npm run typecheck && npm run coverage",
     "prepublishOnly": "npm run validate"
   },
   "files": [
