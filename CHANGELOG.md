@@ -1,5 +1,47 @@
 # Changelog
 
+## [2.2.0] - 2026-05-09
+
+### Added
+
+- **`className` handler** (`lume-js/handlers`) — `data-classname="key"` sets `el.className = val`. Use when reactive state holds a computed class string. Import: `import { className } from 'lume-js/handlers'`.
+- **`watch({ immediate: false })`** — pass `{ immediate: false }` as the fourth argument to skip the initial callback and only fire on future changes.
+- **`choosing-reactive-primitives` guide** (`docs/guides/choosing-reactive-primitives.md`) — when to use `effect` vs `computed` vs `watch`.
+- **Core benchmark suite** (`scripts/bench-core.js`) — microbenchmarks for state, effect, bindDom, and repeat.
+
+### Fixed
+
+- **`preview:site` styles** — added `--base /` to the `vite preview` command so asset paths match the build step's `--base /` override. Previously styles and scripts 404'd in local preview.
+- **CI coverage reporter** — removed invalid `--reporter` CLI flags that crashed vitest at startup; reporters are now configured exclusively in `vitest.config.js`.
+- **CI size-check JSON parse** — base-branch size comparison now handles the old check-size.js output format gracefully.
+
+### Refactor
+
+- **Handler source split** — `src/handlers/index.js` monolith split into one file per handler. Bundle output is unchanged.
+
+### CI
+
+- **Coverage gate** — `vitest --coverage` enforces 100% statements, branches, functions, and lines on every PR.
+- **Bundle size gate** — budgets now enforced on self-contained CDN builds (`index.min.mjs` ≤ 3 KB, `addons.min.mjs` ≤ 6 KB, `handlers.min.mjs` ≤ 2 KB, `lume.global.js` ≤ 8 KB). Size diff posted as PR comment.
+- **Cyclomatic complexity gate** — max CC ≤ 10 per function, MI ≥ 50 per file (acorn AST walk).
+- **Cognitive complexity gate** — `sonarjs/cognitive-complexity` ≤ 15 per function via ESLint.
+- **npm publish workflow** — publishing to npm now automated on GitHub Release creation (requires `NPM_TOKEN` secret).
+
+### Documentation
+
+- `README.md` — added `htmlAttrs()` to handler table, updated version to v2.2.0, corrected core size badge to 2.09 KB (now measured from `dist/index.min.mjs`).
+- `docs/guides/handlers.md` — documented `boolAttr`, `ariaAttr`, `className`, and `htmlAttrs()`.
+- `CONTRIBUTING.md` — updated project structure, corrected size budget, added CI gates table.
+- **Dev process templates** — `.github/pull_request_template.md`, `COMMIT_CHECKLIST.md`, `RELEASE_CHECKLIST.md`, `RELEASE_TEMPLATE.md`.
+
+### Tests
+
+348 tests passing (from 339 in v2.1.0) | 9 new tests for `className` and `watch({ immediate: false })`
+
+100% coverage: statements, branches, functions, lines across all 29 source files.
+
+---
+
 ## [2.1.0] - 2026-05-09
 
 ### Added
