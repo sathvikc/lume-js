@@ -30,6 +30,8 @@ jobs:
 
       - name: Run tests with coverage
         id: coverage
+        env:
+          NO_COLOR: 1
         run: |
           npm run coverage 2>&1 | tee coverage-output.txt
           echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
