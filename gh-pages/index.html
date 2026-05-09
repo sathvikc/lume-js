@@ -84,7 +84,8 @@
   <script src="https://cdn.jsdelivr.net/npm/marked@4/marked.min.js" defer></script>
 
   <!-- Lume.js global build — sets window.Lume; loaded in parallel with the site bundle -->
-  <script src="https://cdn.jsdelivr.net/npm/lume-js@__LUME_VERSION__/dist/lume.global.js" defer></script>
+  <!-- @latest always resolves to the last published stable release, preventing 404s during the merge→publish window -->
+  <script src="https://cdn.jsdelivr.net/npm/lume-js@latest/dist/lume.global.js" defer></script>
 
   <!-- FOUC prevention: apply saved theme before first paint -->
   <script>
@@ -104,9 +105,9 @@
   <script type="importmap">
   {
     "imports": {
-      "lume-js":          "https://cdn.jsdelivr.net/npm/lume-js@__LUME_VERSION__/dist/index.min.mjs",
-      "lume-js/addons":   "https://cdn.jsdelivr.net/npm/lume-js@__LUME_VERSION__/dist/addons.min.mjs",
-      "lume-js/handlers": "https://cdn.jsdelivr.net/npm/lume-js@__LUME_VERSION__/dist/handlers.min.mjs"
+      "lume-js":          "https://cdn.jsdelivr.net/npm/lume-js@latest/dist/index.min.mjs",
+      "lume-js/addons":   "https://cdn.jsdelivr.net/npm/lume-js@latest/dist/addons.min.mjs",
+      "lume-js/handlers": "https://cdn.jsdelivr.net/npm/lume-js@latest/dist/handlers.min.mjs"
     }
   }
   </script>
