@@ -1,5 +1,47 @@
 # Changelog
 
+## [2.1.0] - 2026-05-09
+
+### Added
+
+- **`repeat()` — create-returned cleanup functions:** `create()` can now return a cleanup function that `repeat()` calls automatically when the element is removed (list update or full cleanup). Replaces the fragile `el._lumeCleanup` DOM-property pattern with an internal `Map<key, fn>` — no DOM pollution.
+
+  ```js
+  repeat('#list', store, 'items', {
+    create(item, el) {
+      const handler = () => doSomething(item);
+      el.addEventListener('click', handler);
+      return () => el.removeEventListener('click', handler); // auto-called on removal
+    },
+    update(item, el) { /* sync content */ },
+  });
+  ```
+
+  The optional `remove` callback remains for secondary teardown, called after the create-returned cleanup.
+
+- **`repeat()` — cleanup error isolation:** All cleanup function calls are wrapped in `try/catch` with `logError`, so a single buggy cleanup no longer aborts the remaining cleanup loop or leaves the internal `cleanupByKey` Map in an inconsistent state. Covers element-removal, reactive-store full cleanup, and non-reactive-store full cleanup paths.
+
+### Tests
+
+- **339 tests passing** (from 321) | 10 new tests added across `repeat.test.js`
+  - Auto-cleanup on element removal
+  - Full cleanup for reactive and non-reactive stores
+  - `remove` callback ordering (fires after create-returned cleanup)
+  - Error isolation: a throwing cleanup does not prevent subsequent cleanups
+  - `hydrateState` — document-undefined branch coverage
+
+### Documentation
+
+- **`bindDom` cleanup guidance expanded:** API reference now documents retention semantics, when to call the returned cleanup, and how to pair `bindDom` with `repeat()` for component-style teardown.
+
+### Site / gh-pages
+
+- **CI fix:** `lumeGlobalShimPlugin` moved to `enforce: pre` to fix gh-pages build failure in Vite plugin pipeline.
+- **Performance:** `highlight.js` bundled from npm instead of CDN; `lume.global.js` loaded as parallel global script to reduce render-blocking.
+- **Accessibility:** Contrast and static asset fixes on the documentation site.
+
+---
+
 ## [2.0.1] - 2026-05-06
 
 ### Fixed
