@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  test:
+    name: Tests & Coverage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        id: coverage
+        run: |
+          npm run coverage -- --reporter=json --reporter=json-summary 2>&1 | tee coverage-output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+
+      - name: Parse coverage summary
+        if: github.event_name == 'pull_request'
+        id: parse
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            STMTS=$(node -e "const c=require('./coverage/coverage-summary.json').total; console.log(c.statements.pct)")
+            BRANCH=$(node -e "const c=require('./coverage/coverage-summary.json').total; console.log(c.branches.pct)")
+            FUNCS=$(node -e "const c=require('./coverage/coverage-summary.json').total; console.log(c.functions.pct)")
+            LINES=$(node -e "const c=require('./coverage/coverage-summary.json').total; console.log(c.lines.pct)")
+            echo "statements=$STMTS" >> $GITHUB_OUTPUT
+            echo "branches=$BRANCH" >> $GITHUB_OUTPUT
+            echo "functions=$FUNCS" >> $GITHUB_OUTPUT
+            echo "lines=$LINES" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Count tests
+        if: github.event_name == 'pull_request'
+        id: tests
+        run: |
+          COUNT=$(grep -oP 'Tests\s+\K\d+(?= passed)' coverage-output.txt || echo "?")
+          FILES=$(grep -oP 'Test Files\s+\K\d+(?= passed)' coverage-output.txt || echo "?")
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+          echo "files=$FILES" >> $GITHUB_OUTPUT
+
+      - name: Post coverage comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const stmts    = '${{ steps.parse.outputs.statements }}';
+            const branches = '${{ steps.parse.outputs.branches }}';
+            const funcs    = '${{ steps.parse.outputs.functions }}';
+            const lines    = '${{ steps.parse.outputs.lines }}';
+            const count    = '${{ steps.tests.outputs.count }}';
+            const files    = '${{ steps.tests.outputs.files }}';
+
+            const icon = (pct) => parseFloat(pct) >= 100 ? '✅' : '❌';
+            const all100 = [stmts, branches, funcs, lines].every(p => parseFloat(p) >= 100);
+
+            let body = `## ${all100 ? '✅' : '❌'} Test Coverage\n\n`;
+            body += `**${count} tests** across **${files} files**\n\n`;
+            body += `| Metric | Coverage | Required |\n`;
+            body += `|--------|----------|----------|\n`;
+            body += `| Statements | ${icon(stmts)} ${stmts}% | 100% |\n`;
+            body += `| Branches   | ${icon(branches)} ${branches}% | 100% |\n`;
+            body += `| Functions  | ${icon(funcs)} ${funcs}% | 100% |\n`;
+            body += `| Lines      | ${icon(lines)} ${lines}% | 100% |\n`;
+
+            if (!all100) {
+              body += `\n⚠️ **Coverage must be 100% across all metrics.** Add tests for any new code.`;
+            } else {
+              body += `\n🎉 Full coverage maintained.`;
+            }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('Test Coverage')
+            );
+
+            const payload = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            };
+
+            if (existing) {
+              await github.rest.issues.updateComment({ ...payload, comment_id: existing.id });
+            } else {
+              await github.rest.issues.createComment({ ...payload, issue_number: context.issue.number });
+            }
+
+      - name: Fail if coverage dropped below 100%
+        run: |
+          if grep -q "ERROR: Coverage" coverage-output.txt; then
+            echo "❌ Coverage thresholds not met"
+            exit 1
+          fi
+
+  typecheck:
+    name: TypeScript
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
