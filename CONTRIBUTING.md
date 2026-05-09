@@ -38,20 +38,25 @@ lume-js/
 ├── dist/               # Build artifacts (minified files)
 ├── docs/               # Documentation
 │   ├── api/            # API Reference
-│   │   ├── core/       # Core API (state, bindDom, effect)
-│   │   └── addons/     # Addons (computed, repeat, watch)
+│   │   ├── core/       # Core API (state, bindDom, effect, handlers)
+│   │   ├── addons/     # Addons (computed, repeat, watch)
+│   │   └── handlers/   # Individual handler API docs
 │   ├── design/         # Design decisions
-│   ├── guides/         # Guides (forms, routing, etc.)
+│   ├── guides/         # Guides (forms, routing, handlers, etc.)
 │   └── tutorials/      # Step-by-step tutorials
 ├── examples/           # Example projects
+├── scripts/            # Build, size, complexity, and benchmark scripts
 ├── src/                # Source code
-│   ├── addons/         # Addon source code
+│   ├── addons/         # Addon source (computed, watch, repeat, debug)
 │   ├── core/           # Core logic (state, effect, bindDom)
+│   ├── handlers/       # Handler source (one file per handler)
+│   ├── utils/          # Shared utilities (log, etc.)
 │   ├── index.d.ts      # TypeScript definitions
 │   └── index.js        # Main entry point
 ├── tests/              # Test suite
 │   ├── addons/         # Addon tests
-│   └── core/           # Core tests
+│   ├── core/           # Core tests
+│   └── handlers/       # Handler tests
 ├── CONTRIBUTING.md     # Contribution guidelines
 ├── LICENSE             # MIT License
 ├── package.json        # NPM configuration
@@ -79,6 +84,25 @@ npm run test:watch
 npm run coverage
 ```
 
+## CI Gates
+
+Every pull request must pass these automated checks:
+
+| Check | Command | Requirement |
+|-------|---------|-------------|
+| Tests & Coverage | `npm run coverage` | 100% statements, branches, functions, lines |
+| TypeScript | `npm run typecheck` | Zero type errors |
+| Cognitive Complexity | `npm run lint` | All functions ≤ 15 (sonarjs/cognitive-complexity) |
+| Cyclomatic & MI | `node scripts/complexity.js` | Max CC ≤ 10 per function, MI ≥ 50 per file |
+
+Run everything locally before pushing:
+
+```bash
+npm run validate
+```
+
+This runs: build → size check → complexity → lint → typecheck → coverage.
+
 ## Contribution Guidelines
 
 ### 1. Code Style & Philosophy
@@ -87,7 +111,7 @@ Before writing code, please read [DESIGN_DECISIONS.md](docs/design/design-decisi
 
 - **Standards-Only**: Use `data-*` attributes and standard JS APIs. No custom syntax.
 - **No Build Step**: Core library must run directly in the browser.
-- **Minimal Size**: Keep the bundle size <2KB gzipped.
+- **Minimal Size**: Keep the core bundle (`dist/index.mjs`) ≤ 3 KB gzipped. Run `npm run size` after any change to the source.
 - **TypeScript**: We use JSDoc and `index.d.ts` for types. Do not write `.ts` source files for the core library. Update `index.d.ts` if you change the public API.
 
 ### 2. Documentation
