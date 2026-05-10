@@ -135,22 +135,22 @@
         }
       } else if (strategy === 'dedupe-false') {
         // Batch without dedupe
-        for (let i = 0; i < NUM_UPDATES; i++) {
-          batch(() => {
+        batch(() => {
+          for (let i = 0; i < NUM_UPDATES; i++) {
             for (let s = 0; s < NUM_STORES; s++) {
               stores[s].value++;
             }
-          }, { dedupe: false });
-        }
+          }
+        }, { dedupe: false });
       } else if (strategy === 'dedupe-true') {
         // Batch with dedupe
-        for (let i = 0; i < NUM_UPDATES; i++) {
-          batch(() => {
+        batch(() => {
+          for (let i = 0; i < NUM_UPDATES; i++) {
             for (let s = 0; s < NUM_STORES; s++) {
               stores[s].value++;
             }
-          }, { dedupe: true });
-        }
+          }
+        }, { dedupe: true });
       }
 
       // We wait for a microtask to ensure 'none' strategy completes its async flush
