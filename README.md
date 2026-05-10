@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="lume-logo.png" alt="Lume.js" width="96" height="96">
+</p>
+
 # Lume.js
 
 **Reactivity that follows web standards.**
