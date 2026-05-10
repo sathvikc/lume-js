@@ -424,37 +424,41 @@
       const start = performance.now();
       const startRuns = globalEffectRuns;
 
-      const NUM_UPDATES = 1; // Lowered to 1 to prevent the synchronous JS loop itself from freezing the browser
-      const totalOps = NUM_UPDATES * currentStoreCount;
+      // yieldToMain: lets the browser paint a frame and process events before continuing
+      const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
+
+      // CHUNK_SIZE: how many stores to mutate before yielding back to the browser
+      // Tuned to ~5ms of JS work so the clock never drops a frame
+      const CHUNK_SIZE = 5000;
+      const totalOps = currentStoreCount;
 
       if (strategy === 'none') {
-        for (let i = 0; i < NUM_UPDATES; i++) {
-          for (let s = 0; s < currentStoreCount; s++) storesData[s].store[storesData[s].key]++;
-        }
+        for (let s = 0; s < currentStoreCount; s++) storesData[s].store[storesData[s].key]++;
       } else if (strategy === 'dedupe-false') {
         batch(() => {
-          for (let i = 0; i < NUM_UPDATES; i++) {
-            for (let s = 0; s < currentStoreCount; s++) storesData[s].store[storesData[s].key]++;
-          }
+          for (let s = 0; s < currentStoreCount; s++) storesData[s].store[storesData[s].key]++;
         }, { dedupe: false });
       } else if (strategy === 'dedupe-true') {
         batch(() => {
-          for (let i = 0; i < NUM_UPDATES; i++) {
-            for (let s = 0; s < currentStoreCount; s++) storesData[s].store[storesData[s].key]++;
-          }
+          for (let s = 0; s < currentStoreCount; s++) storesData[s].store[storesData[s].key]++;
         }, { dedupe: true });
       } else if (strategy === 'dedupe-true-slice') {
-        // Show immediate feedback that it is processing in background
         ui.statusMessage = "Rendering chunks in background... (Clock won't freeze!)";
-        
-        // Yield to allow the browser to paint the feedback message and the clock before starting the heavy 500k JS loop
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await yieldToMain(); // let the browser paint the status message first
 
-        await batch(() => {
-          for (let i = 0; i < NUM_UPDATES; i++) {
-            for (let s = 0; s < currentStoreCount; s++) storesData[s].store[storesData[s].key]++;
+        // Step 1: Chunk the DATA GENERATION loop so it never blocks for > ~5ms
+        // This is the key trick: we yield every CHUNK_SIZE stores
+        for (let s = 0; s < currentStoreCount; s++) {
+          storesData[s].store[storesData[s].key]++;
+          if (s > 0 && s % CHUNK_SIZE === 0) {
+            await yieldToMain(); // yield to let clock animate and input respond
           }
-        }, { dedupe: true, timeSlice: true, timeBudget: 10 });
+        }
+
+        // Step 2: batch() with timeSlice handles the RENDERING in chunks
+        // By this point all store values are already mutated, so batch just
+        // drains its queue of 2,000 pending effects in 10ms slices
+        await batch(() => {}, { dedupe: true, timeSlice: true, timeBudget: 10 });
       }
 
       // If we didn't use the async time-slice, just resolve instantly for timing logic
