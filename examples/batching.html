@@ -395,8 +395,8 @@
     input.addEventListener('input', async (e) => {
       const strategy = document.querySelector('input[name="strategy"]:checked').value;
       
-      if (strategy !== 'dedupe-true' && currentStoreCount > 10000) {
-        timeDisplay.innerHTML = `<span style="color:red">ERROR: Modes capped at 10k stores to prevent your browser from instantly crashing.<br>Lower the Grid Size to test this mode, or switch to dedupe: true!</span>`;
+      if (strategy !== 'dedupe-true' && strategy !== 'dedupe-true-slice' && currentStoreCount > 10000) {
+        timeDisplay.innerHTML = `<span style="color:red">ERROR: Modes capped at 10k stores to prevent your browser from instantly crashing.<br>Lower the Grid Size to test this mode, or switch to dedupe: true (with or without Time-Slicing)!</span>`;
         return;
       }
 
