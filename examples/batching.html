@@ -107,10 +107,13 @@
       }
       globalEffectRuns++;
       
-      // Force a tiny layout read to make it slightly heavier
+      // Force a heavy layout update across all 100 grid cells
       const r = (sum % 255);
-      const cell = document.getElementById(`cell-${sum % NUM_STORES}`);
-      if (cell) cell.style.background = `rgb(${r}, 50, 100)`;
+      for (let i = 0; i < NUM_STORES; i++) {
+        const cell = document.getElementById(`cell-${i}`);
+        // Offset the color slightly for each cell to create a pattern
+        if (cell) cell.style.background = `rgb(${(r + i * 2) % 255}, 50, 100)`;
+      }
     });
 
     // 3. The Input Event Handler
