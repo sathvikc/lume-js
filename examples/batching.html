@@ -65,6 +65,11 @@
       background: #222;
     }
 
+    @keyframes spin {
+      from { transform: translateX(-50%) rotate(0deg); }
+      to   { transform: translateX(-50%) rotate(360deg); }
+    }
+
     .hand {
       width: 3px;
       height: 20px;
@@ -73,8 +78,10 @@
       bottom: 50%;
       left: 50%;
       transform-origin: bottom center;
-      transform: translateX(-50%) rotate(0deg);
       border-radius: 3px;
+      /* CSS animation runs on the compositor thread — immune to JS main-thread work.
+         This is intentional: the clock proves Lume-JS keeps the render pipeline free. */
+      animation: spin 2s linear infinite;
     }
 
     .clock-label {
@@ -255,17 +262,9 @@
     const matrix = document.getElementById('matrix');
     const cellCountDisplay = document.getElementById('cell-count-display');
 
-    // Spin Clock
-    let angle = 0;
-    let lastTime = performance.now();
-    function animate(time) {
-      const delta = time - lastTime;
-      lastTime = time;
-      angle = (angle + (180 * (delta / 1000))) % 360;
-      hand.style.transform = `translateX(-50%) rotate(${angle}deg)`;
-      requestAnimationFrame(animate);
-    }
-    requestAnimationFrame(animate);
+    // Clock is driven by CSS animation (compositor thread) — it cannot be blocked by JS.
+    // This is the correct architecture for a smooth indicator: never trust RAF for critical UI
+    // when heavy JS is running on the main thread.
 
     // 2. Reactive UI Bindings
     effect(() => {
@@ -306,21 +305,26 @@
     let globalEffectRuns = 0;
     let stopMatrixEffect = null;
     let currentStoreCount = 100;
+    let isInitializing = false;
 
-    function initDemo(count) {
+    const yieldFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
+    const FRAME_BUDGET_MS = 4; // 4ms budget per frame — leaves 12ms for clock + paint
+
+    async function initDemo(count) {
+      if (isInitializing) return;
+      isInitializing = true;
       currentStoreCount = count;
+
+      // Teardown old effects
       if (stopMatrixEffect) {
-        if (Array.isArray(stopMatrixEffect)) {
-          stopMatrixEffect.forEach(fn => fn());
-        } else {
-          stopMatrixEffect();
-        }
+        if (Array.isArray(stopMatrixEffect)) stopMatrixEffect.forEach(fn => fn());
+        else stopMatrixEffect();
       }
-      
+      stopMatrixEffect = null;
+
       matrix.innerHTML = '';
       globalEffectRuns = 0;
-      
-      // Reset UI state cleanly via Lume-JS Batch
+
       batch(() => {
         ui.history = {
           'none': { runs: 0, min: Infinity, max: 0, sum: 0 },
@@ -332,69 +336,79 @@
         ui.timeTaken = 0;
         ui.effectExecutions = 0;
         ui.totalOperations = 0;
-        ui.statusMessage = '';
+        ui.statusMessage = 'Initializing...';
       });
       input.value = '';
 
-      storesData = Array.from({ length: count }, () => {
+      // --- Chunked state creation (prevents freeze on large counts) ---
+      storesData = [];
+      let frameStart = performance.now();
+      for (let i = 0; i < count; i++) {
         const rKey = 'v' + Math.random().toString(36).substr(2, 4);
-        
-        // Add 10 randomized heavy keys per store
         const obj = { [rKey]: 0 };
-        for (let j = 0; j < 10; j++) {
-          obj['dummy_' + Math.random().toString(36).substr(2, 4)] = Math.random();
+        for (let j = 0; j < 10; j++) obj['dummy_' + j] = Math.random();
+        storesData.push({ store: state(obj), key: rKey });
+        if ((performance.now() - frameStart) >= FRAME_BUDGET_MS) {
+          await yieldFrame();
+          frameStart = performance.now();
         }
+      }
 
-        return { store: state(obj), key: rKey };
-      });
-
+      // --- Build DOM cells ---
       const visibleCount = Math.min(count, 2000);
-      const cellWidth = Math.max(12, Math.floor(800 / (visibleCount / 5))); 
+      const cellWidth = Math.max(12, Math.floor(800 / (visibleCount / 5)));
+      const frag = document.createDocumentFragment();
       for (let i = 0; i < visibleCount; i++) {
         const cell = document.createElement('div');
         cell.className = 'cell';
         cell.id = `cell-${i}`;
         cell.style.minWidth = `${cellWidth}px`;
         cell.style.height = `${cellWidth}px`;
-        matrix.appendChild(cell);
+        frag.appendChild(cell);
       }
-      
-      if (count > 2000) {
-        cellCountDisplay.innerText = `${count.toLocaleString()} Stores • ${(count * 11).toLocaleString()} Total Keys (2k visible nodes)`;
-      } else {
-        cellCountDisplay.innerText = `${count.toLocaleString()} Active Cells • ${(count * 11).toLocaleString()} Total Keys`;
-      }
+      matrix.appendChild(frag);
 
+      cellCountDisplay.innerText = count > 2000
+        ? `${count.toLocaleString()} Stores • ${(count * 11).toLocaleString()} Total Keys (2k visible nodes)`
+        : `${count.toLocaleString()} Active Cells • ${(count * 11).toLocaleString()} Total Keys`;
+
+      // --- Chunked effect creation ---
       stopMatrixEffect = [];
       const storesPerCell = Math.ceil(count / visibleCount);
-      
+      frameStart = performance.now();
       for (let i = 0; i < visibleCount; i++) {
         const cell = document.getElementById(`cell-${i}`);
+        const si = i;
         stopMatrixEffect.push(effect(() => {
-          let sum = 0;
-          const startIdx = i * storesPerCell;
+          const startIdx = si * storesPerCell;
           const endIdx = Math.min(count, startIdx + storesPerCell);
-          
-          for (let j = startIdx; j < endIdx; j++) {
-            sum += storesData[j].store[storesData[j].key];
-          }
+          let sum = 0;
+          for (let j = startIdx; j < endIdx; j++) sum += storesData[j].store[storesData[j].key];
           globalEffectRuns++;
-
-          if (cell) cell.style.background = `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`;
+          if (cell) cell.style.background = `hsl(${(sum * 37) % 360},70%,40%)`;
         }));
+        if ((performance.now() - frameStart) >= FRAME_BUDGET_MS) {
+          await yieldFrame();
+          frameStart = performance.now();
+        }
       }
+
+      ui.statusMessage = '';
+      isInitializing = false;
     }
 
     initDemo(100);
 
+    // Debounced: don't call initDemo on every keystroke (typing "100000" = 6 calls)
+    let initDebounceTimer = null;
     storeCountInput.addEventListener('input', (e) => {
-      let val = parseInt(e.target.value);
-      if (isNaN(val) || val < 1) return;
-      if (val > 100000) {
-        val = 100000;
-        e.target.value = val;
-      }
-      initDemo(val);
+      clearTimeout(initDebounceTimer);
+      initDebounceTimer = setTimeout(() => {
+        let val = parseInt(e.target.value);
+        if (isNaN(val) || val < 1) return;
+        if (val > 100000) { val = 100000; e.target.value = val; }
+        initDemo(val);
+      }, 400);
     });
 
     document.querySelectorAll('input[name="strategy"]').forEach(radio => {
@@ -423,14 +437,6 @@
       isProcessing = true;
       const start = performance.now();
       const startRuns = globalEffectRuns;
-
-      // yieldFrame: resolves on the NEXT animation frame — syncs our work to the screen refresh rate.
-      // Unlike setTimeout(0) which can fire at any time, RAF fires exactly once per paint cycle.
-      const yieldFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
-
-      // 4ms time budget per frame for data mutation — same as batch engine.
-      // This leaves >12ms per 16.67ms frame for the clock RAF loop and layout/paint.
-      const MUTATION_BUDGET_MS = 4;
       const totalOps = currentStoreCount;
 
       if (strategy === 'none') {
@@ -444,27 +450,24 @@
           for (let s = 0; s < currentStoreCount; s++) storesData[s].store[storesData[s].key]++;
         }, { dedupe: true });
       } else if (strategy === 'dedupe-true-slice') {
-        ui.statusMessage = "Rendering chunks in background... (Clock won't freeze!)";
-        await yieldFrame(); // let browser paint the status message + clock before we start
+        ui.statusMessage = "Rendering in background... (watch the clock — it never stops!)";
+        await yieldFrame();
 
-        // Phase 1: Time-budget-based data mutation
-        // Check performance.now() on every iteration — yield the moment we exceed 4ms.
-        // This is adaptive: on fast machines we process more stores per frame, on slow ones fewer.
-        let chunkStart = performance.now();
-        for (let s = 0; s < currentStoreCount; s++) {
-          storesData[s].store[storesData[s].key]++;
-          if ((performance.now() - chunkStart) >= MUTATION_BUDGET_MS) {
-            await yieldFrame(); // yield exactly at a frame boundary
-            chunkStart = performance.now();
-          }
+        // THE KEY INSIGHT: mutate inside sequential small batch() calls.
+        // Each batch() call:
+        //   1. Suppresses microtask effects during mutation (preventing thread-blocking cascades)
+        //   2. timeSlice: true drains only THAT chunk's effects in RAF-aligned slices
+        //   3. We await it, then yield to RAF, then process the next chunk
+        // This means both data mutation AND effect rendering are RAF-synced.
+        const STORES_PER_CHUNK = Math.max(1000, Math.ceil(currentStoreCount / 20)); // ~20 chunks
+        for (let s = 0; s < currentStoreCount; s += STORES_PER_CHUNK) {
+          const end = Math.min(currentStoreCount, s + STORES_PER_CHUNK);
+          await batch(() => {
+            for (let i = s; i < end; i++) storesData[i].store[storesData[i].key]++;
+          }, { dedupe: true, timeSlice: true, timeBudget: FRAME_BUDGET_MS });
         }
-
-        // Phase 2: Time-budget-based rendering via batch + timeSlice
-        // All stores are mutated; batch drains its 2,000 pending effects in 4ms RAF chunks.
-        await batch(() => {}, { dedupe: true, timeSlice: true, timeBudget: MUTATION_BUDGET_MS });
       }
 
-      // If we didn't use the async time-slice, just resolve instantly for timing logic
       if (strategy !== 'dedupe-true-slice') await Promise.resolve();
 
       const end = performance.now();
