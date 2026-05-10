@@ -6,244 +6,485 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lume-JS Performance Demo</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+    :root {
+      --bg: #0d0d0d;
+      --surface: #1a1a1a;
+      --border: #333;
+      --primary: #3b82f6;
+      --text: #e5e5e5;
+      --text-muted: #888;
+      --accent: #10b981;
+    }
+
     body {
-      font-family: -apple-system, sans-serif;
-      padding: 2rem;
-      background: #111;
-      color: #fff;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .dashboard {
+      max-width: 1200px;
+      margin: 0 auto;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      gap: 20px;
     }
 
     .header {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-
-    .container {
       display: flex;
-      gap: 40px;
-      width: 100%;
-      max-width: 900px;
-    }
-
-    .controls {
-      flex: 1;
-      background: #222;
-      padding: 20px;
-      border-radius: 8px;
-    }
-
-    .animation {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
+      justify-content: space-between;
       align-items: center;
-      justify-content: center;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .clock-container {
+      display: flex;
+      align-items: center;
+      gap: 15px;
     }
 
     .clock {
-      width: 200px;
-      height: 200px;
-      border: 4px solid #fff;
+      width: 40px;
+      height: 40px;
+      border: 3px solid #555;
       border-radius: 50%;
       position: relative;
-      background: #333;
+      background: #222;
     }
 
     .hand {
-      width: 4px;
-      height: 90px;
-      background: #007bff;
+      width: 3px;
+      height: 20px;
+      background: var(--primary);
       position: absolute;
       bottom: 50%;
       left: 50%;
       transform-origin: bottom center;
       transform: translateX(-50%) rotate(0deg);
+      border-radius: 3px;
     }
 
-    select,
-    input {
+    .clock-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      max-width: 150px;
+      line-height: 1.2;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .panel h2 {
+      margin: 0 0 15px 0;
+      font-size: 1rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .radio-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .radio-row label {
+      background: var(--bg);
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+    }
+
+    .radio-row input {
+      margin-right: 10px;
+    }
+
+    input[type="text"],
+    input[type="number"] {
       width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      margin-bottom: 20px;
-      background: #333;
-      color: white;
-      border: 1px solid #555;
-      border-radius: 4px;
+      padding: 10px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: #fff;
+      font-family: inherit;
+      box-sizing: border-box;
     }
 
-    .stats {
+    .stats-display {
       background: #000;
       padding: 15px;
-      border-radius: 6px;
-      font-family: monospace;
-      font-size: 14px;
-      color: #0f0;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-bottom: 15px;
     }
 
-    /* Small decorative grid to cause layout recalculations */
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(10, 1fr);
-      gap: 2px;
-      margin-top: 20px;
+    table {
       width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    th,
+    td {
+      padding: 8px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+
+    th {
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    td {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .grid-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .grid-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    #cell-count-display {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-family: 'JetBrains Mono', monospace;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+      letter-spacing: 0.5px;
+    }
+
+    .matrix {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1px;
+      background: #000;
+      padding: 1px;
+      max-height: 400px;
+      overflow-y: auto;
     }
 
     .cell {
-      width: 100%;
-      aspect-ratio: 1;
-      background: #444;
-      transition: background 0.1s;
+      background: #333;
+      flex-grow: 1;
     }
   </style>
   <script type="module">
-    import { state, effect } from '../src/index.js';
-    import { batch } from '../src/addons/index.js';
+    import { state, effect } from '../src/index.js?v=6';
+    import { batch } from '../src/addons/index.js?v=6';
 
-    // UI Elements
     const hand = document.getElementById('hand');
     const input = document.getElementById('heavy-input');
-    const strategySelect = document.getElementById('strategy');
+    const storeCountInput = document.getElementById('store-count');
     const timeDisplay = document.getElementById('time-display');
-    const gridContainer = document.getElementById('grid');
+    const matrix = document.getElementById('matrix');
+    const cellCountDisplay = document.getElementById('cell-count-display');
 
-    // 1. Independent Animation Loop (using rAF)
-    // This clock spins continuously. If the main thread is blocked by heavy DOM updates
-    // or JS execution from our input, this clock will visibly stutter.
+    let historyStats = {
+      'none': { runs: 0, min: Infinity, max: 0, sum: 0 },
+      'dedupe-false': { runs: 0, min: Infinity, max: 0, sum: 0 },
+      'dedupe-true': { runs: 0, min: Infinity, max: 0, sum: 0 }
+    };
+
+    // Spin Clock
     let angle = 0;
     let lastTime = performance.now();
     function animate(time) {
       const delta = time - lastTime;
       lastTime = time;
-
-      // Rotate 90 degrees per second
-      angle = (angle + (90 * (delta / 1000))) % 360;
+      angle = (angle + (180 * (delta / 1000))) % 360;
       hand.style.transform = `translateX(-50%) rotate(${angle}deg)`;
-
       requestAnimationFrame(animate);
     }
     requestAnimationFrame(animate);
 
-    // 2. Setup Heavy Workload
-    // Create 100 independent stores.
-    const NUM_STORES = 100;
-    const stores = Array.from({ length: NUM_STORES }, () => state({ value: 0 }));
+    let storesData = [];
+    let globalEffectRuns = 0;
+    let stopCurrentEffect = null;
+    let currentStoreCount = 100;
+    let cumulativeOperations = 0;
 
-    // Create DOM cells mapped to stores to force render updates
-    for (let i = 0; i < NUM_STORES; i++) {
-      const cell = document.createElement('div');
-      cell.className = 'cell';
-      cell.id = `cell-${i}`;
-      gridContainer.appendChild(cell);
+    function resetHistory() {
+      historyStats = {
+        'none': { runs: 0, min: Infinity, max: 0, sum: 0 },
+        'dedupe-false': { runs: 0, min: Infinity, max: 0, sum: 0 },
+        'dedupe-true': { runs: 0, min: Infinity, max: 0, sum: 0 }
+      };
+      ['none', 'dedupe-false', 'dedupe-true'].forEach(s => {
+        document.getElementById(`hist-${s}-low`).innerText = '-';
+        document.getElementById(`hist-${s}-avg`).innerText = '-';
+        document.getElementById(`hist-${s}-high`).innerText = '-';
+      });
+      timeDisplay.innerHTML = "Strategy: none<br>Time taken: 0.00 ms<br>Effect Executions: 0<br>Total Operations: 0";
+      input.value = '';
+      cumulativeOperations = 0;
+      
+      const defaultRadio = document.querySelector('input[value="none"]');
+      if (defaultRadio) defaultRadio.checked = true;
     }
 
-    // Effect that reads ALL stores. 
-    // This is computationally heavy because it registers 100 dependencies.
-    let globalEffectRuns = 0;
-    effect(() => {
-      let sum = 0;
-      for (let i = 0; i < NUM_STORES; i++) {
-        sum += stores[i].value;
-      }
-      globalEffectRuns++;
+    function initDemo(count) {
+      currentStoreCount = count;
+      if (stopCurrentEffect) stopCurrentEffect();
+      
+      matrix.innerHTML = '';
+      globalEffectRuns = 0;
+      resetHistory();
 
-      // Force a heavy layout update across all 100 grid cells
-      const r = (sum % 255);
-      for (let i = 0; i < NUM_STORES; i++) {
-        const cell = document.getElementById(`cell-${i}`);
-        // Offset the color slightly for each cell to create a pattern
-        if (cell) cell.style.background = `rgb(${(r + i * 2) % 255}, 50, 100)`;
+      storesData = Array.from({ length: count }, () => {
+        const rKey = 'v' + Math.random().toString(36).substr(2, 4);
+        
+        // Add 10 randomized heavy keys per store for the marketing pitch!
+        const obj = { [rKey]: 0 };
+        for (let j = 0; j < 10; j++) {
+          obj['dummy_' + Math.random().toString(36).substr(2, 4)] = Math.random();
+        }
+
+        return { store: state(obj), key: rKey };
+      });
+
+      // Calculate size. Cap max visible cells at ~2000 to prevent DOM memory crash
+      const visibleCount = Math.min(count, 2000);
+      const cellWidth = Math.max(12, Math.floor(800 / (visibleCount / 5))); 
+      for (let i = 0; i < visibleCount; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.id = `cell-${i}`;
+        cell.style.minWidth = `${cellWidth}px`;
+        cell.style.height = `${cellWidth}px`;
+        matrix.appendChild(cell);
       }
+      
+      if (count > 2000) {
+        cellCountDisplay.innerText = `${count.toLocaleString()} Stores • ${(count * 11).toLocaleString()} Total Keys (2k visible nodes)`;
+      } else {
+        cellCountDisplay.innerText = `${count.toLocaleString()} Active Cells • ${(count * 11).toLocaleString()} Total Keys`;
+      }
+
+      stopCurrentEffect = effect(() => {
+        let sum = 0;
+        for (let i = 0; i < count; i++) sum += storesData[i].store[storesData[i].key];
+        globalEffectRuns++;
+
+        for (let i = 0; i < visibleCount; i++) {
+          const cell = document.getElementById(`cell-${i}`);
+          if (cell) {
+            cell.style.background = `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`;
+          }
+        }
+      });
+    }
+
+    initDemo(100);
+
+    storeCountInput.addEventListener('input', (e) => {
+      let val = parseInt(e.target.value);
+      if (isNaN(val) || val < 1) return; // Wait for valid input
+      if (val > 100000) {
+        val = 100000;
+        e.target.value = val;
+      }
+      initDemo(val);
     });
 
-    // 3. The Input Event Handler
-    // Whenever you type a letter, we mutate ALL 100 stores 100 times.
-    // This simulates typing triggering a huge cascade of complex reactive updates.
+    document.querySelectorAll('input[name="strategy"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        input.value = '';
+        timeDisplay.innerHTML = `Strategy: ${e.target.value}<br>Time taken: 0.00 ms<br>Effect Executions: 0<br>Total Operations: 0`;
+        cumulativeOperations = 0;
+      });
+    });
+
     input.addEventListener('input', async (e) => {
-      const strategy = strategySelect.value;
-      const NUM_UPDATES = 100;
+      const strategy = document.querySelector('input[name="strategy"]:checked').value;
+      
+      // Safety Cap for Jittery Modes!
+      if (strategy !== 'dedupe-true' && currentStoreCount > 10000) {
+        timeDisplay.innerHTML = `<span style="color:red">ERROR: Modes capped at 10k stores to prevent your browser from instantly crashing.<br>Lower the Grid Size to test this mode, or switch to dedupe: true!</span>`;
+        return;
+      }
 
       const start = performance.now();
       const startRuns = globalEffectRuns;
 
+      // We only loop a few times so the raw JS execution doesn't artificially block
+      const NUM_UPDATES = 5;
+      const totalOps = NUM_UPDATES * currentStoreCount;
+
       if (strategy === 'none') {
-        // Microtasks queue
         for (let i = 0; i < NUM_UPDATES; i++) {
-          for (let s = 0; s < NUM_STORES; s++) {
-            stores[s].value++;
-          }
+          for (let s = 0; s < currentStoreCount; s++) storesData[s].store[storesData[s].key]++;
         }
       } else if (strategy === 'dedupe-false') {
-        // Batch without dedupe
         batch(() => {
           for (let i = 0; i < NUM_UPDATES; i++) {
-            for (let s = 0; s < NUM_STORES; s++) {
-              stores[s].value++;
-            }
+            for (let s = 0; s < currentStoreCount; s++) storesData[s].store[storesData[s].key]++;
           }
         }, { dedupe: false });
       } else if (strategy === 'dedupe-true') {
-        // Batch with dedupe
         batch(() => {
           for (let i = 0; i < NUM_UPDATES; i++) {
-            for (let s = 0; s < NUM_STORES; s++) {
-              stores[s].value++;
-            }
+            for (let s = 0; s < currentStoreCount; s++) storesData[s].store[storesData[s].key]++;
           }
         }, { dedupe: true });
       }
 
-      // We wait for a microtask to ensure 'none' strategy completes its async flush
       await Promise.resolve();
 
       const end = performance.now();
-      const duration = (end - start).toFixed(2);
+      const duration = parseFloat((end - start).toFixed(2));
       const runs = globalEffectRuns - startRuns;
 
-      timeDisplay.innerText = `Strategy: ${strategy}\nTime taken: ${duration} ms\nEffect Executions: ${runs}`;
+      cumulativeOperations += totalOps;
+
+      timeDisplay.innerHTML = `Strategy: ${strategy}<br>Time taken: ${duration} ms<br>Effect Executions: ${runs}<br>Total Operations: <strong>${cumulativeOperations.toLocaleString()}</strong>`;
+
+      const stat = historyStats[strategy];
+      stat.runs++;
+      stat.sum += duration;
+      if (duration < stat.min) stat.min = duration;
+      if (duration > stat.max) stat.max = duration;
+
+      const avg = (stat.sum / stat.runs).toFixed(2);
+      document.getElementById(`hist-${strategy}-low`).innerText = stat.min.toFixed(2);
+      document.getElementById(`hist-${strategy}-avg`).innerText = avg;
+      document.getElementById(`hist-${strategy}-high`).innerText = stat.max.toFixed(2);
     });
   </script>
 </head>
 
 <body>
-  <div class="header">
-    <h1>Lume-JS Animation & Jitter Demo</h1>
-    <p>Type continuously in the input box. Watch the spinning clock. If the strategy is slow, the clock will jitter and
-      freeze.</p>
-  </div>
-
-  <div class="container">
-    <div class="controls">
-      <label for="strategy"><b>Select Batching Strategy:</b></label>
-      <select id="strategy">
-        <option value="none">1. Default (Microtasks) - Jittery!</option>
-        <option value="dedupe-false">2. Batch (dedupe: false) - Silky Smooth!</option>
-        <option value="dedupe-true">3. Batch (dedupe: true) - Moderate Jitter</option>
-      </select>
-
-      <label for="heavy-input"><b>Type fast to trigger updates:</b></label>
-      <input type="text" id="heavy-input" placeholder="Start typing... dfgjkhdfg" autocomplete="off" />
-
-      <div class="stats" id="time-display">
-        Strategy: none<br>
-        Time taken: 0.00 ms<br>
-        Effect Executions: 0
+  <div class="dashboard">
+    <div class="header">
+      <h1>Lume-JS Architecture Demo</h1>
+      <div class="clock-container">
+        <div class="clock"><div class="hand" id="hand"></div></div>
+        <div class="clock-label">If the JS thread blocks,<br>this clock stutters.</div>
       </div>
-
-      <div class="grid" id="grid"></div>
     </div>
 
-    <div class="animation">
-      <div class="clock">
-        <div class="hand" id="hand"></div>
+    <div class="main-grid">
+      <!-- Controls Panel -->
+      <div class="panel">
+        <h2>Controls</h2>
+        
+        <div class="form-group">
+          <label>Grid Size (Store Count)</label>
+          <input type="number" id="store-count" value="100" min="1" max="100000" step="100" />
+        </div>
+
+        <div class="form-group">
+          <label>Batching Strategy</label>
+          <div class="radio-row">
+            <label><input type="radio" name="strategy" value="none" checked> Default (Microtasks) - Jittery!</label>
+            <label><input type="radio" name="strategy" value="dedupe-false"> Batch (dedupe: false) - Jittery!</label>
+            <label><input type="radio" name="strategy" value="dedupe-true"> Batch (dedupe: true) - <strong style="color:var(--accent);margin-left:4px;">Smooth!</strong></label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Trigger Rapid State Mutations</label>
+          <input type="text" id="heavy-input" placeholder="Type here..." autocomplete="off" />
+        </div>
       </div>
-      <p style="margin-top: 20px; color: #888;">If the JS thread blocks,<br>this clock will freeze.</p>
+
+      <!-- Stats Panel -->
+      <div class="panel">
+        <h2>Performance</h2>
+        
+        <div class="stats-display" id="time-display">
+          Strategy: none<br>
+          Time taken: 0.00 ms<br>
+          Effect Executions: 0<br>
+          Total Operations: 0
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Mode</th>
+              <th>Low (ms)</th>
+              <th>Avg (ms)</th>
+              <th>High (ms)</th>
+            </tr>
+          </thead>
+          <tbody id="history-body">
+            <tr><td>Default</td><td id="hist-none-low">-</td><td id="hist-none-avg">-</td><td id="hist-none-high">-</td></tr>
+            <tr><td>dedupe: false</td><td id="hist-dedupe-false-low">-</td><td id="hist-dedupe-false-avg">-</td><td id="hist-dedupe-false-high">-</td></tr>
+            <tr><td>dedupe: true</td><td id="hist-dedupe-true-low">-</td><td id="hist-dedupe-true-avg">-</td><td id="hist-dedupe-true-high">-</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Grid Panel -->
+    <div class="grid-container">
+      <div class="grid-header">
+        <span>Render Matrix</span>
+        <span id="cell-count-display">100 Cells</span>
+      </div>
+      <div class="matrix" id="matrix"></div>
     </div>
   </div>
 </body>
-
 </html>
