@@ -239,6 +239,7 @@
       timeTaken: 0,
       effectExecutions: 0,
       totalOperations: 0,
+      statusMessage: '',
       history: {
         'none': { runs: 0, min: Infinity, max: 0, sum: 0 },
         'dedupe-false': { runs: 0, min: Infinity, max: 0, sum: 0 },
@@ -274,6 +275,7 @@
         Time taken: ${ui.timeTaken.toFixed(2)} ms<br>
         Effect Executions: ${ui.effectExecutions}<br>
         Total Operations: <strong>${ui.totalOperations.toLocaleString()}</strong>
+        ${ui.statusMessage ? `<br><span style="color:var(--accent)">${ui.statusMessage}</span>` : ''}
       `;
     });
 
@@ -307,7 +309,13 @@
 
     function initDemo(count) {
       currentStoreCount = count;
-      if (stopMatrixEffect) stopMatrixEffect();
+      if (stopMatrixEffect) {
+        if (Array.isArray(stopMatrixEffect)) {
+          stopMatrixEffect.forEach(fn => fn());
+        } else {
+          stopMatrixEffect();
+        }
+      }
       
       matrix.innerHTML = '';
       globalEffectRuns = 0;
@@ -324,6 +332,7 @@
         ui.timeTaken = 0;
         ui.effectExecutions = 0;
         ui.totalOperations = 0;
+        ui.statusMessage = '';
       });
       input.value = '';
 
@@ -356,16 +365,24 @@
         cellCountDisplay.innerText = `${count.toLocaleString()} Active Cells • ${(count * 11).toLocaleString()} Total Keys`;
       }
 
-      stopMatrixEffect = effect(() => {
-        let sum = 0;
-        for (let i = 0; i < count; i++) sum += storesData[i].store[storesData[i].key];
-        globalEffectRuns++;
+      stopMatrixEffect = [];
+      const storesPerCell = Math.ceil(count / visibleCount);
+      
+      for (let i = 0; i < visibleCount; i++) {
+        const cell = document.getElementById(`cell-${i}`);
+        stopMatrixEffect.push(effect(() => {
+          let sum = 0;
+          const startIdx = i * storesPerCell;
+          const endIdx = Math.min(count, startIdx + storesPerCell);
+          
+          for (let j = startIdx; j < endIdx; j++) {
+            sum += storesData[j].store[storesData[j].key];
+          }
+          globalEffectRuns++;
 
-        for (let i = 0; i < visibleCount; i++) {
-          const cell = document.getElementById(`cell-${i}`);
           if (cell) cell.style.background = `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`;
-        }
-      });
+        }));
+      }
     }
 
     initDemo(100);
@@ -392,18 +409,22 @@
       });
     });
 
+    let isProcessing = false;
     input.addEventListener('input', async (e) => {
+      if (isProcessing) return;
+      
       const strategy = document.querySelector('input[name="strategy"]:checked').value;
       
       if (strategy !== 'dedupe-true' && strategy !== 'dedupe-true-slice' && currentStoreCount > 10000) {
-        timeDisplay.innerHTML = `<span style="color:red">ERROR: Modes capped at 10k stores to prevent your browser from instantly crashing.<br>Lower the Grid Size to test this mode, or switch to dedupe: true (with or without Time-Slicing)!</span>`;
+        ui.statusMessage = '<span style="color:red">ERROR: Modes capped at 10k stores to prevent crashing. Switch to dedupe: true!</span>';
         return;
       }
 
+      isProcessing = true;
       const start = performance.now();
       const startRuns = globalEffectRuns;
 
-      const NUM_UPDATES = 5;
+      const NUM_UPDATES = 1; // Lowered to 1 to prevent the synchronous JS loop itself from freezing the browser
       const totalOps = NUM_UPDATES * currentStoreCount;
 
       if (strategy === 'none') {
@@ -424,7 +445,11 @@
         }, { dedupe: true });
       } else if (strategy === 'dedupe-true-slice') {
         // Show immediate feedback that it is processing in background
-        timeDisplay.innerHTML += `<br><span style="color:var(--accent)">Rendering chunks in background... (Clock won't freeze!)</span>`;
+        ui.statusMessage = "Rendering chunks in background... (Clock won't freeze!)";
+        
+        // Yield to allow the browser to paint the feedback message and the clock before starting the heavy 500k JS loop
+        await new Promise(resolve => setTimeout(resolve, 10));
+
         await batch(() => {
           for (let i = 0; i < NUM_UPDATES; i++) {
             for (let s = 0; s < currentStoreCount; s++) storesData[s].store[storesData[s].key]++;
@@ -459,7 +484,9 @@
         ui.effectExecutions = runs;
         ui.totalOperations += totalOps;
         ui.history = newHistory;
+        ui.statusMessage = ''; // clear status
       });
+      isProcessing = false;
     });
   </script>
 </head>
