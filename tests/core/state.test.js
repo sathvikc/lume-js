@@ -472,4 +472,37 @@ describe('state edge cases', () => {
     cleanup();
     logErrorSpy.mockRestore();
   });
+
+  it('stateContext exposes internal queues correctly', async () => {
+    const { setScheduler, state } = await import('../../src/core/state.js');
+    let capturedContext;
+    setScheduler({
+      schedule(ctx) {
+        capturedContext = ctx;
+        ctx.resetScheduleFlag(); // prevent infinite microtasks if left hanging
+      }
+    });
+
+    const store = state({ count: 0 });
+    store.count = 1;
+
+    expect(capturedContext.pendingNotifications instanceof Map).toBe(true);
+    expect(capturedContext.pendingEffects instanceof Set).toBe(true);
+
+    // Reset scheduler to default for other tests
+    setScheduler({
+      schedule(ctx) {
+        queueMicrotask(() => {
+          try { ctx.flush(); } finally { ctx.resetScheduleFlag(); }
+        });
+      }
+    });
+  });
+
+  it('setScheduler throws if not passed a valid scheduler object', async () => {
+    // Need to dynamically import to get setScheduler since it's exported but not imported at top
+    const { setScheduler } = await import('../../src/core/state.js');
+    expect(() => setScheduler(null)).toThrow('Scheduler must be an object with a .schedule() method');
+    expect(() => setScheduler({ schedule: 'not a function' })).toThrow('Scheduler must be an object with a .schedule() method');
+  });
 });

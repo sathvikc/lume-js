@@ -501,3 +501,22 @@ export function createCleanupGroup(): CleanupGroup;
  */
 export function hydrateState(selector?: string): object;
 
+/**
+ * Suppress microtask flushes during a group of writes, then flush synchronously once.
+ * Note: If multiple states are mutated, their effects are NOT deduplicated across states.
+ * This maintains Lume-JS's per-state isolation design while providing synchronous DOM updates.
+ *
+ * @param fn - The function containing state mutations
+ * @throws {Error} If fn is not a function
+ * 
+ * @example
+ * ```typescript
+ * import { batch } from 'lume-js/addons';
+ * 
+ * batch(() => {
+ *   store.count++;
+ *   store.name = 'Alice';
+ * }); // DOM updates synchronously here!
+ * ```
+ */
+export function batch(fn: () => void): void;

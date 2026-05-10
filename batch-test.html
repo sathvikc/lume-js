@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lume-JS Multi-State Batching Test</title>
+</head>
+<body>
+  <h1>Lume-JS Batching Test</h1>
+  <div id="output"></div>
+  <button id="run-test">Run Test</button>
+
+  <script type="module">
+    import { state } from './src/core/state.js';
+    import { effect } from './src/core/effect.js';
+
+    const output = document.getElementById('output');
+    function log(msg) {
+      const p = document.createElement('p');
+      p.textContent = msg;
+      output.appendChild(p);
+      console.log(msg);
+    }
+
+    const store1 = state({ count: 0 });
+    const store2 = state({ name: 'Alice' });
+
+    let effectRunCount = 0;
+    effect(() => {
+      const c = store1.count;
+      const n = store2.name;
+      effectRunCount++;
+      log(`Effect run #${effectRunCount}: count=${c}, name=${n}`);
+    });
+
+    document.getElementById('run-test').addEventListener('click', () => {
+      log('--- Test Start ---');
+      const startRunCount = effectRunCount;
+      
+      // Mutate multiple DIFFERENT stores synchronously
+      store1.count++;
+      store2.name = 'Bob';
+
+      log('Mutations done (synchronous). Effect has not run yet.');
+      
+      // Let microtasks flush
+      queueMicrotask(() => {
+        log(`Microtasks flushed. Effect ran ${effectRunCount - startRunCount} times during test.`);
+      });
+      // But wait! queueMicrotask queues a new microtask. 
+      // State's microtasks might be queued before this one.
+      // So they will flush, and then this will flush. 
+      // If there are 2 state microtasks, they will flush first.
+      setTimeout(() => {
+        log(`setTimeout: Effect ran ${effectRunCount - startRunCount} times during test.`);
+      }, 10);
+    });
+  </script>
+</body>
+</html>

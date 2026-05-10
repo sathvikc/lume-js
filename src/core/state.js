@@ -73,6 +73,22 @@ export function withReadObserver(onRead, fn) {
   }
 }
 
+export let currentScheduler = {
+  schedule(stateContext) {
+    queueMicrotask(() => {
+      try { stateContext.flush(); }
+      finally { stateContext.resetScheduleFlag(); }
+    });
+  }
+};
+
+export function setScheduler(schedulerObj) {
+  if (!schedulerObj || typeof schedulerObj.schedule !== 'function') {
+    throw new Error('Scheduler must be an object with a .schedule() method');
+  }
+  currentScheduler = schedulerObj;
+}
+
 export function state(obj) {
   // Validate input
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
@@ -89,87 +105,68 @@ export function state(obj) {
   const beforeFlushHooks = [];
   let flushScheduled = false;
 
-  /**
-   * Schedule a single microtask flush for this state object.
-   *
-   * Flush order per state:
-   * 1) Notify subscribers for changed keys (key → subscribers)
-   * 2) Run each queued effect exactly once (Set-based dedupe)
-   * 3) Repeat up to 100 iterations to handle cascading updates,
-   *    then log an error to prevent infinite loops.
-   *
-   * Notes:
-   * - Batching is per state; effects that depend on multiple states
-   *   may run once per state that changed (by design).
-   */
-  function scheduleFlush() {
-    if (flushScheduled) return;
-
-    flushScheduled = true;
-    // eslint-disable-next-line sonarjs/cognitive-complexity -- single-pass flush loop: hooks → subscribers → effects → cycle detection; must stay atomic
-    queueMicrotask(() => {
-      let iterations = 0;
-      const MAX_ITERATIONS = 100;
-
-      try {
-        while ((pendingNotifications.size > 0 || pendingEffects.size > 0) && iterations < MAX_ITERATIONS) {
-          iterations++;
-
-          // Run registered before-flush hooks (e.g. plugin onNotify)
-          for (let i = 0; i < beforeFlushHooks.length; i++) {
-            try {
-              beforeFlushHooks[i]();
-            } catch (err) {
-              logError('[Lume.js state] Error in beforeFlush hook:', err);
-            }
-          }
-
-          // Notify all subscribers of changed keys
-          for (const [key, value] of pendingNotifications) {
-            if (listeners[key]) {
-              const subs = listeners[key];
-              let i = 0;
-              while (i < subs.length) {
-                const fn = subs[i];
-                try {
-                  fn(value);
-                } catch (err) {
-                  logError(`[Lume.js state] Error notifying subscriber for key "${String(key)}":`, err);
-                }
-                // Only advance if fn wasn't removed (something shifted into its place)
-                if (subs[i] === fn) i++;
-              }
-            }
-          }
-
-          pendingNotifications.clear();
-
-          // Run each effect exactly once (Set deduplicates)
-          const effects = new Array(pendingEffects.size);
-          let idx = 0;
-          for (const effect of pendingEffects) {
-            effects[idx++] = effect;
-          }
-          pendingEffects.clear();
-          for (let i = 0; i < effects.length; i++) {
-            try {
-              effects[i]();
-            } catch (err) {
-              logError('[Lume.js state] Error in effect:', err);
-            }
+  const stateContext = {
+    get pendingNotifications() { return pendingNotifications; },
+    get pendingEffects() { return pendingEffects; },
+    runBeforeFlushHooks() {
+      for (let i = 0; i < beforeFlushHooks.length; i++) {
+        try { beforeFlushHooks[i](); } 
+        catch (err) { logError('[Lume.js state] Error in beforeFlush hook:', err); }
+      }
+    },
+    notifySubscribers() {
+      for (const [key, value] of pendingNotifications) {
+        if (listeners[key]) {
+          const subs = listeners[key];
+          let i = 0;
+          while (i < subs.length) {
+            const fn = subs[i];
+            try { fn(value); } 
+            catch (err) { logError(`[Lume.js state] Error notifying subscriber for key "${String(key)}":`, err); }
+            if (subs[i] === fn) i++;
           }
         }
-      } finally {
-        flushScheduled = false;
       }
-
+      pendingNotifications.clear();
+    },
+    runPendingEffects() {
+      const effects = new Array(pendingEffects.size);
+      let idx = 0;
+      for (const effect of pendingEffects) effects[idx++] = effect;
+      pendingEffects.clear();
+      for (let i = 0; i < effects.length; i++) {
+        try { effects[i](); } 
+        catch (err) { logError('[Lume.js state] Error in effect:', err); }
+      }
+    },
+    flush() {
+      let iterations = 0;
+      const MAX_ITERATIONS = 100;
+      while ((pendingNotifications.size > 0 || pendingEffects.size > 0) && iterations < MAX_ITERATIONS) {
+        iterations++;
+        this.runBeforeFlushHooks();
+        this.notifySubscribers();
+        this.runPendingEffects();
+      }
       if (iterations >= MAX_ITERATIONS) {
         logError(
           '[Lume.js state] Maximum flush iterations reached (100). ' +
           'This usually indicates an infinite loop caused by an effect or computed mutating state it depends on.'
         );
       }
-    });
+    },
+    resetScheduleFlag() {
+      flushScheduled = false;
+    }
+  };
+
+  /**
+   * Schedule a single flush for this state object using the current scheduler.
+   */
+  function scheduleFlush() {
+    if (flushScheduled) return;
+    flushScheduled = true;
+    currentScheduler.schedule(stateContext);
   }
 
   // Brand symbol for type-level reactive identification
