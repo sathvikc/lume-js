@@ -1,21 +1,24 @@
-<p align="center">
-  <img src="lume-logo.png" alt="Lume.js" width="96" height="96">
-</p>
+<div align="center">
+  <img src="lume-logo.png" alt="Lume.js" width="128"><br><br>
+  <h3>Lume.js</h3>
+  <p><strong>Reactivity that follows web standards.</strong></p>
+  <p>
+    Minimal reactive state management using only standard JavaScript and HTML.<br>
+    No custom syntax &nbsp;·&nbsp; No build step &nbsp;·&nbsp; No framework lock-in.
+  </p>
+  <p>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+    &nbsp;
+    <a href="package.json"><img src="https://img.shields.io/badge/version-2.2.0-orange.svg" alt="v2.2.0"></a>
+    &nbsp;
+    <a href="tests/"><img src="https://img.shields.io/badge/tests-348%20passing-brightgreen.svg" alt="348 tests"></a>
+    &nbsp;
+    <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core-2.09KB%20gzipped-blue.svg" alt="2.09KB"></a>
+  </p>
+  <p><code>npm install lume-js</code></p>
+</div>
 
-# Lume.js
-
-**Reactivity that follows web standards.**
-
-Minimal reactive state management using only standard JavaScript and HTML. No custom syntax, no build step required, no framework lock-in.
-
-> **Current Release:** v2.2.0
-> Install: `npm install lume-js`  
-> Bundle size: ~2.09KB gzipped | 348 tests passing
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.2.0-orange.svg)](package.json)
-[![Tests](https://img.shields.io/badge/tests-348%20passing-brightgreen.svg)](tests/)
-[![Size](https://img.shields.io/badge/core-2.09KB-blue.svg)](scripts/check-size.js)
+---
 
 ## Why Lume.js?
 
