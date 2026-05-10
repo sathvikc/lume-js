@@ -110,4 +110,63 @@ describe('batch()', () => {
     store.count++;
     expect(effectCount).toBe(2); // Hasn't run synchronously
   });
+
+  describe('with { dedupe: true }', () => {
+    it('runs an effect exactly once when multiple dependencies are mutated', () => {
+      const storeA = state({ a: 0 });
+      const storeB = state({ b: 0 });
+      
+      let effectCount = 0;
+      effect(() => {
+        // eslint-disable-next-line no-unused-expressions
+        storeA.a;
+        // eslint-disable-next-line no-unused-expressions
+        storeB.b;
+        effectCount++;
+      });
+      
+      expect(effectCount).toBe(1); // initial run
+      
+      batch(() => {
+        storeA.a++;
+        storeB.b++;
+      }, { dedupe: true });
+      
+      // Because we used dedupe: true, the effect should run EXACTLY ONCE
+      expect(effectCount).toBe(2); // 1 initial + 1 global deduplicated update
+    });
+
+    it('handles cascading updates properly in dedupe mode', () => {
+      const storeA = state({ val: 0 });
+      const storeB = state({ cascaded: 0 });
+      let effectRuns = 0;
+
+      effect(() => {
+        if (storeA.val < 3) {
+          storeA.val++;
+          storeB.cascaded++;
+        }
+        effectRuns++;
+      });
+
+      // Initial run:
+      // val starts 0 -> effect runs, mutates to 1
+      // microtask 1 -> effect runs, mutates to 2
+      // microtask 2 -> effect runs, mutates to 3
+      // microtask 3 -> effect runs, val=3 (no mutation)
+      // Actually, since we're setting it synchronously right here, let's reset effectRuns
+      
+      effectRuns = 0;
+      storeA.val = 10;
+      storeB.cascaded = 10;
+      
+      batch(() => {
+        storeA.val = 0; // Will trigger cascading up to 3
+      }, { dedupe: true });
+
+      // The global batch loop should catch the cascading updates synchronously
+      expect(storeA.val).toBe(3);
+      expect(storeB.cascaded).toBeGreaterThan(10); // Proves cascading writes happened
+    });
+  });
 });

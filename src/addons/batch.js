@@ -1,12 +1,9 @@
 import { setScheduler } from '../core/state.js';
 
+import { logError } from '../utils/log.js';
+
 let isBatching = false;
 let batchQueue = new Set(); // Use Set to deduplicate states if mutated multiple times
-
-// We need to keep a reference to whatever scheduler was active before
-// However, since state.js doesn't export a `getScheduler`, we assume queueMicrotask 
-// is the default, or we can just run them synchronously for the batch.
-// Actually, `batch()` is supposed to suppress microtasks and flush synchronously at the end.
 
 setScheduler({
   schedule: (stateContext) => {
@@ -24,12 +21,12 @@ setScheduler({
 
 /**
  * Suppress microtask flushes during a group of writes, then flush synchronously once.
- * Note: If multiple states are mutated, their effects are NOT deduplicated across states.
- * This maintains Lume-JS's per-state isolation design while providing synchronous DOM updates.
- *
+ * 
  * @param {function} fn - The function containing state mutations
+ * @param {object} [options] - Configuration options
+ * @param {boolean} [options.dedupe=false] - If true, effects reading multiple mutated states run exactly once.
  */
-export function batch(fn) {
+export function batch(fn, options = { dedupe: false }) {
   if (typeof fn !== 'function') {
     throw new Error('batch() requires a function');
   }
@@ -43,17 +40,63 @@ export function batch(fn) {
   try {
     return fn();
   } finally {
-    isBatching = false;
-    
-    // Flush all queued states synchronously
-    // Iterate over the Set and flush each
-    for (const ctx of batchQueue) {
-      try {
-        ctx.flush();
-      } finally {
-        ctx.resetScheduleFlag();
+    if (options.dedupe) {
+      let iterations = 0;
+      const MAX_ITERATIONS = 100;
+      const globalEffects = new Set();
+
+      // Loop to handle cascading updates (effects mutating state)
+      while (batchQueue.size > 0 && iterations < MAX_ITERATIONS) {
+        iterations++;
+        
+        // Take a snapshot and clear so new mutations add to the next iteration
+        const currentQueue = Array.from(batchQueue);
+        batchQueue.clear();
+
+        // 1. Run hooks and notify subscribers for all states in this iteration
+        for (const ctx of currentQueue) {
+          ctx.runBeforeFlushHooks();
+          ctx.notifySubscribers();
+          
+          // Collect all effects into a single global Set for deduplication
+          for (const fx of ctx.pendingEffects) {
+            globalEffects.add(fx);
+          }
+          ctx.pendingEffects.clear();
+          ctx.resetScheduleFlag();
+        }
+
+        // 2. Run deduplicated effects
+        // Take a snapshot of effects because running them might trigger new effects
+        const effectsToRun = Array.from(globalEffects);
+        globalEffects.clear();
+
+        for (const fx of effectsToRun) {
+          try { fx(); } catch (err) { logError('[Lume.js batch] Error in effect:', err); }
+        }
       }
+
+      if (iterations >= MAX_ITERATIONS) {
+        logError(
+          '[Lume.js batch] Maximum global batch iterations reached (100). ' +
+          'This usually indicates an infinite loop caused by an effect or computed mutating state it depends on.'
+        );
+      }
+    } else {
+      // Flush all queued states synchronously, preserving per-state isolation
+      isBatching = false; // Must be false so cascading updates within ctx.flush() schedule normally
+      for (const ctx of batchQueue) {
+        try {
+          ctx.flush();
+        } finally {
+          ctx.resetScheduleFlag();
+        }
+      }
+      batchQueue.clear();
     }
+    
+    // Safety fallback
+    isBatching = false;
     batchQueue.clear();
   }
 }

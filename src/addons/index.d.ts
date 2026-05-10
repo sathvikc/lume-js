@@ -502,11 +502,21 @@ export function createCleanupGroup(): CleanupGroup;
 export function hydrateState(selector?: string): object;
 
 /**
+ * Configuration options for the batch API.
+ */
+export interface BatchOptions {
+  /**
+   * If true, effects that read multiple mutated states will run exactly once.
+   * If false (default), preserves per-state isolation and effects may run multiple times.
+   */
+  dedupe?: boolean;
+}
+
+/**
  * Suppress microtask flushes during a group of writes, then flush synchronously once.
- * Note: If multiple states are mutated, their effects are NOT deduplicated across states.
- * This maintains Lume-JS's per-state isolation design while providing synchronous DOM updates.
- *
+ * 
  * @param fn - The function containing state mutations
+ * @param options - Configuration options for the batch
  * @throws {Error} If fn is not a function
  * 
  * @example
@@ -516,7 +526,7 @@ export function hydrateState(selector?: string): object;
  * batch(() => {
  *   store.count++;
  *   store.name = 'Alice';
- * }); // DOM updates synchronously here!
+ * }, { dedupe: true }); // DOM updates synchronously and effects are globally deduplicated!
  * ```
  */
-export function batch(fn: () => void): void;
+export function batch(fn: () => void, options?: BatchOptions): void;
