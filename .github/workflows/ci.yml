@@ -10,13 +10,10 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # ── Tests & Coverage ────────────────────────────────────────────────────────
   test:
     name: Tests & Coverage
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-
     steps:
       - uses: actions/checkout@v4
 
@@ -29,99 +26,151 @@ jobs:
         run: npm ci
 
       - name: Run tests with coverage
-        id: coverage
         env:
           NO_COLOR: 1
-        run: |
-          npm run coverage 2>&1 | tee coverage-output.txt
-          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+        run: npm run coverage 2>&1 | tee coverage-output.txt
 
-      - name: Parse coverage summary
-        if: github.event_name == 'pull_request'
-        id: parse
-        run: |
-          if [ -f coverage/coverage-summary.json ]; then
-            STMTS=$(node -e "const c=require('./coverage/coverage-summary.json').total; console.log(c.statements.pct)")
-            BRANCH=$(node -e "const c=require('./coverage/coverage-summary.json').total; console.log(c.branches.pct)")
-            FUNCS=$(node -e "const c=require('./coverage/coverage-summary.json').total; console.log(c.functions.pct)")
-            LINES=$(node -e "const c=require('./coverage/coverage-summary.json').total; console.log(c.lines.pct)")
-            echo "statements=$STMTS" >> $GITHUB_OUTPUT
-            echo "branches=$BRANCH" >> $GITHUB_OUTPUT
-            echo "functions=$FUNCS" >> $GITHUB_OUTPUT
-            echo "lines=$LINES" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Count tests
-        if: github.event_name == 'pull_request'
-        id: tests
+      - name: Save results
+        if: always()
         run: |
           COUNT=$(grep -oP 'Tests\s+\K\d+(?= passed)' coverage-output.txt || echo "?")
           FILES=$(grep -oP 'Test Files\s+\K\d+(?= passed)' coverage-output.txt || echo "?")
-          echo "count=$COUNT" >> $GITHUB_OUTPUT
-          echo "files=$FILES" >> $GITHUB_OUTPUT
+          echo "{\"count\":\"$COUNT\",\"files\":\"$FILES\"}" > test-meta.json
+          cp coverage/coverage-summary.json coverage-summary.json 2>/dev/null || true
 
-      - name: Post coverage comment
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          script: |
-            const stmts    = '${{ steps.parse.outputs.statements }}';
-            const branches = '${{ steps.parse.outputs.branches }}';
-            const funcs    = '${{ steps.parse.outputs.functions }}';
-            const lines    = '${{ steps.parse.outputs.lines }}';
-            const count    = '${{ steps.tests.outputs.count }}';
-            const files    = '${{ steps.tests.outputs.files }}';
+          name: ci-coverage
+          path: |
+            test-meta.json
+            coverage-summary.json
 
-            const icon = (pct) => parseFloat(pct) >= 100 ? '✅' : '❌';
-            const all100 = [stmts, branches, funcs, lines].every(p => parseFloat(p) >= 100);
-
-            let body = `## ${all100 ? '✅' : '❌'} Test Coverage\n\n`;
-            body += `**${count} tests** across **${files} files**\n\n`;
-            body += `| Metric | Coverage | Required |\n`;
-            body += `|--------|----------|----------|\n`;
-            body += `| Statements | ${icon(stmts)} ${stmts}% | 100% |\n`;
-            body += `| Branches   | ${icon(branches)} ${branches}% | 100% |\n`;
-            body += `| Functions  | ${icon(funcs)} ${funcs}% | 100% |\n`;
-            body += `| Lines      | ${icon(lines)} ${lines}% | 100% |\n`;
-
-            if (!all100) {
-              body += `\n⚠️ **Coverage must be 100% across all metrics.** Add tests for any new code.`;
-            } else {
-              body += `\n🎉 Full coverage maintained.`;
-            }
-
-            const { data: comments } = await github.rest.issues.listComments({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            });
-            const existing = comments.find(c =>
-              c.user.type === 'Bot' && c.body.includes('Test Coverage')
-            );
-
-            const payload = {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body,
-            };
-
-            if (existing) {
-              await github.rest.issues.updateComment({ ...payload, comment_id: existing.id });
-            } else {
-              await github.rest.issues.createComment({ ...payload, issue_number: context.issue.number });
-            }
-
-      - name: Fail if coverage dropped below 100%
+      - name: Fail if coverage dropped
         run: |
           if grep -q "ERROR: Coverage" coverage-output.txt; then
             echo "❌ Coverage thresholds not met"
             exit 1
           fi
 
+  # ── Cognitive Complexity (ESLint) ───────────────────────────────────────────
+  lint:
+    name: Cognitive Complexity (ESLint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npx eslint src/ --format json > eslint-report.json 2>&1 || true
+
+      - name: Upload lint artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-lint
+          path: eslint-report.json
+
+      - name: Fail if violations found
+        run: |
+          PASS=$(node -e "const r=require('./eslint-report.json'); console.log(r.reduce((n,f)=>n+f.errorCount,0)===0?'true':'false')")
+          if [ "$PASS" != "true" ]; then exit 1; fi
+
+  # ── Complexity & Maintainability ────────────────────────────────────────────
+  complexity:
+    name: Complexity & Maintainability
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run complexity analysis
+        run: node scripts/complexity.js --json > complexity.json 2>&1 || true
+
+      - name: Upload complexity artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-complexity
+          path: complexity.json
+
+      - name: Write step summary
+        run: node scripts/complexity.js 2>&1 >> $GITHUB_STEP_SUMMARY || true
+
+      - name: Fail if over budget
+        run: |
+          PASS=$(node -e "const d=require('./complexity.json'); console.log(d.passed)")
+          if [ "$PASS" != "true" ]; then exit 1; fi
+
+  # ── Bundle Size ─────────────────────────────────────────────────────────────
+  size:
+    name: Bundle Size
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and measure PR sizes
+        run: |
+          npm run build
+          node scripts/check-size.js --json > pr-size.json 2>&1 || true
+
+      - name: Checkout base branch
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+          path: base-branch
+
+      - name: Build and measure base sizes
+        if: github.event_name == 'pull_request'
+        run: |
+          cd base-branch && npm ci && npm run build
+          node base-branch/scripts/check-size.js --json > base-size.json 2>&1 || true
+
+      - name: Upload size artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-size
+          path: |
+            pr-size.json
+            base-size.json
+
+      - name: Write step summary
+        run: node scripts/check-size.js 2>&1 >> $GITHUB_STEP_SUMMARY || true
+
+      - name: Fail if over budget
+        run: |
+          PASS=$(node -e "const d=require('./pr-size.json'); console.log(d.passed)")
+          if [ "$PASS" != "true" ]; then exit 1; fi
+
+  # ── TypeScript ──────────────────────────────────────────────────────────────
   typecheck:
     name: TypeScript
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -136,159 +185,190 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
-  lint:
-    name: Cognitive Complexity (ESLint)
+  # ── Unified PR Report ───────────────────────────────────────────────────────
+  report:
+    name: PR Report
     runs-on: ubuntu-latest
+    if: always() && github.event_name == 'pull_request'
+    needs: [test, lint, complexity, size, typecheck]
     permissions:
-      contents: read
       pull-requests: write
-
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v6
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
-          node-version: '22'
-          cache: 'npm'
+          name: ci-coverage
+          path: ci-coverage
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Download lint artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: ci-lint
+          path: ci-lint
 
-      - name: Run ESLint (cognitive complexity)
-        id: lint
-        run: |
-          npx eslint src/ --format json > eslint-report.json 2>&1 || true
-          PASS=$(node -e "
-            const r = require('./eslint-report.json');
-            const errors = r.reduce((n, f) => n + f.errorCount, 0);
-            console.log(errors === 0 ? 'true' : 'false');
-          ")
-          echo "passed=$PASS" >> $GITHUB_OUTPUT
+      - name: Download complexity artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: ci-complexity
+          path: ci-complexity
 
-      - name: Post lint comment
-        if: github.event_name == 'pull_request'
+      - name: Download size artifacts
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: ci-size
+          path: ci-size
+
+      - name: Post unified PR comment
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const report = JSON.parse(fs.readFileSync('eslint-report.json', 'utf8'));
 
-            const violations = report.flatMap(f =>
-              f.messages
-                .filter(m => m.severity === 2)
-                .map(m => ({ file: f.filePath.replace(process.cwd() + '/', ''), line: m.line, message: m.message }))
-            );
+            const results = {
+              test:       '${{ needs.test.result }}',
+              lint:       '${{ needs.lint.result }}',
+              complexity: '${{ needs.complexity.result }}',
+              size:       '${{ needs.size.result }}',
+              typecheck:  '${{ needs.typecheck.result }}',
+            };
 
-            const passed = violations.length === 0;
-            const status = passed ? '✅ Passed' : '❌ Failed';
-            let body = `## 🧠 Cognitive Complexity — ${status}\n\n`;
+            const ok    = r => r === 'success';
+            const icon  = r => ok(r) ? '✅' : r === 'skipped' ? '⏭️' : '❌';
+            const allOk = Object.values(results).every(ok);
 
-            if (passed) {
-              body += 'All functions within cognitive complexity threshold of 15.';
+            let body = `## ${allOk ? '✅' : '❌'} PR Quality Report\n\n`;
+
+            // ── Tests & Coverage ───────────────────────────────────────────
+            body += `### ${icon(results.test)} Tests & Coverage\n\n`;
+            if (fs.existsSync('ci-coverage/test-meta.json') && fs.existsSync('ci-coverage/coverage-summary.json')) {
+              const meta = JSON.parse(fs.readFileSync('ci-coverage/test-meta.json', 'utf8'));
+              const cov  = JSON.parse(fs.readFileSync('ci-coverage/coverage-summary.json', 'utf8')).total;
+              const pct  = p => `${parseFloat(p) >= 100 ? '✅' : '❌'} ${p}%`;
+              body += `**${meta.count} tests** across **${meta.files} files**\n\n`;
+              body += `| Metric | Coverage | Required |\n`;
+              body += `|--------|----------|----------|\n`;
+              body += `| Statements | ${pct(cov.statements.pct)} | 100% |\n`;
+              body += `| Branches   | ${pct(cov.branches.pct)} | 100% |\n`;
+              body += `| Functions  | ${pct(cov.functions.pct)} | 100% |\n`;
+              body += `| Lines      | ${pct(cov.lines.pct)} | 100% |\n`;
             } else {
-              body += `${violations.length} violation(s) found:\n\n`;
-              body += '| File | Line | Issue |\n|------|------|-------|\n';
-              for (const v of violations) {
-                body += `| \`${v.file}\` | ${v.line} | ${v.message} |\n`;
-              }
-              body += '\n**To fix:** Refactor the function, or add `// eslint-disable-next-line sonarjs/cognitive-complexity -- <reason>` if it is intentionally complex (e.g. a core algorithm).';
+              body += ok(results.test) ? '✅ All tests passed.' : '❌ Tests failed — see job logs for details.';
             }
+            body += '\n\n';
 
-            body += '\n\n<sub>Cognitive Complexity counts nesting penalties — nested loops/conditions score higher than flat ones. Threshold: 15 per function.</sub>';
+            // ── Bundle Size ────────────────────────────────────────────────
+            body += `### ${icon(results.size)} Bundle Size\n\n`;
+            if (fs.existsSync('ci-size/pr-size.json')) {
+              const pr  = JSON.parse(fs.readFileSync('ci-size/pr-size.json', 'utf8'));
+              let base  = null;
+              if (fs.existsSync('ci-size/base-size.json')) {
+                try { base = JSON.parse(fs.readFileSync('ci-size/base-size.json', 'utf8')); } catch (e) {}
+              }
+              const baseMap = {};
+              if (base) base.files.forEach(f => { baseMap[f.file] = f; });
 
-            const { data: comments } = await github.rest.issues.listComments({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            });
-            const existing = comments.find(c =>
-              c.user.type === 'Bot' && c.body.includes('Cognitive Complexity')
-            );
+              const fmt   = b => (b / 1024).toFixed(2) + ' KB';
+              const delta = (a, b) => { const d = a - b; return `${d > 0 ? '+' : ''}${(d / 1024).toFixed(2)} KB`; };
+              const arrow = (a, b) => a > b ? '📈' : a < b ? '📉' : '➡️';
 
-            const payload = { owner: context.repo.owner, repo: context.repo.repo, body };
-            if (existing) {
-              await github.rest.issues.updateComment({ ...payload, comment_id: existing.id });
+              const budgeted = pr.files.filter(f => f.budget != null);
+              const splits   = pr.files.filter(f => f.budget == null);
+
+              body += `**CDN standalone builds** — budgeted (self-contained)\n\n`;
+              body += `| File | Gzipped | Budget | Change vs main | Status |\n`;
+              body += `|------|---------|--------|----------------|--------|\n`;
+              for (const f of budgeted) {
+                const st = f.overBudget
+                  ? `❌ over by ${fmt(f.gzipped - f.budget)}`
+                  : `✅ ${((f.gzipped / f.budget) * 100).toFixed(0)}% of budget`;
+                const bf = baseMap[f.file];
+                const ch = bf ? `${arrow(f.gzipped, bf.gzipped)} ${delta(f.gzipped, bf.gzipped)}` : '—';
+                body += `| \`${f.file}\` | **${fmt(f.gzipped)}** | ${fmt(f.budget)} | ${ch} | ${st} |\n`;
+              }
+
+              if (splits.length > 0) {
+                body += `\n**npm split builds** — reference only (share a common chunk, not self-contained)\n\n`;
+                body += `| File | Gzipped | Change vs main |\n`;
+                body += `|------|---------|----------------|\n`;
+                for (const f of splits) {
+                  const bf = baseMap[f.file];
+                  const ch = bf ? `${arrow(f.gzipped, bf.gzipped)} ${delta(f.gzipped, bf.gzipped)}` : '—';
+                  body += `| \`${f.file}\` | **${fmt(f.gzipped)}** | ${ch} |\n`;
+                }
+              }
             } else {
-              await github.rest.issues.createComment({ ...payload, issue_number: context.issue.number });
+              body += ok(results.size) ? '✅ Size check passed.' : '❌ Size check failed — see job logs for details.';
             }
+            body += '\n\n';
 
-      - name: Fail if violations found
-        run: |
-          PASS=$(node -e "
-            const r = require('./eslint-report.json');
-            console.log(r.reduce((n,f) => n + f.errorCount, 0) === 0 ? 'true' : 'false');
-          ")
-          if [ "$PASS" != "true" ]; then exit 1; fi
-
-  complexity:
-    name: Complexity & Maintainability
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run complexity analysis
-        id: cx
-        run: |
-          node scripts/complexity.js --json > complexity.json 2>&1 || true
-          cat complexity.json
-          PASSED=$(node -e "const d=require('./complexity.json'); console.log(d.passed)")
-          echo "passed=$PASSED" >> $GITHUB_OUTPUT
-
-      - name: Post complexity comment
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const data = JSON.parse(fs.readFileSync('complexity.json', 'utf8'));
-
-            const grade = (g) => g === 'A' ? '🟢 A' : g === 'B' ? '🟡 B' : '🔴 C';
-            const status = data.passed ? '✅ Passed' : '❌ Failed';
-
-            let body = `## 🧠 Complexity & Maintainability — ${status}\n\n`;
-            body += `| File | LOC | Funcs | Max CC | Avg CC | MI | Grade | Status |\n`;
-            body += `|------|-----|-------|--------|--------|----|-------|--------|\n`;
-
-            for (const f of data.files) {
-              const st = f.overBudget ? '❌'
-                : (f.exemptions?.length || f.miExempt) ? '⚠︎ known'
-                : '✅';
-              body += `| \`${f.file}\` | ${f.loc} | ${f.funcs} | ${f.maxCC} | ${f.avgCC} | ${f.mi} | ${grade(f.grade)} | ${st} |\n`;
-              for (const v of (f.violations || [])) {
-                body += `| ↳ \`${v.name}\` (line ${v.line}) | | | **${v.cc}** | | | | ❌ CC>${data.thresholds.maxCC} |\n`;
+            // ── Cognitive Complexity (ESLint) ──────────────────────────────
+            body += `### ${icon(results.lint)} Cognitive Complexity (ESLint)\n\n`;
+            if (fs.existsSync('ci-lint/eslint-report.json')) {
+              const report = JSON.parse(fs.readFileSync('ci-lint/eslint-report.json', 'utf8'));
+              const violations = report.flatMap(f =>
+                f.messages
+                  .filter(m => m.severity === 2)
+                  .map(m => ({ file: f.filePath.replace(process.cwd() + '/', ''), line: m.line, message: m.message }))
+              );
+              if (violations.length === 0) {
+                body += 'All functions within cognitive complexity threshold of 15.\n';
+              } else {
+                body += `${violations.length} violation(s) found:\n\n`;
+                body += '| File | Line | Issue |\n|------|------|-------|\n';
+                for (const v of violations) {
+                  body += `| \`${v.file}\` | ${v.line} | ${v.message} |\n`;
+                }
               }
-              for (const v of (f.exemptions || [])) {
-                body += `| ↳ \`${v.name}\` (line ${v.line}) | | | ${v.cc} | | | | ⚠︎ exempt |\n`;
-              }
+            } else {
+              body += ok(results.lint) ? '✅ Passed.' : '❌ Failed — see job logs for details.';
             }
+            body += '\n\n';
 
+            // ── Complexity & Maintainability ───────────────────────────────
+            body += `### ${icon(results.complexity)} Complexity & Maintainability\n\n`;
+            if (fs.existsSync('ci-complexity/complexity.json')) {
+              const data  = JSON.parse(fs.readFileSync('ci-complexity/complexity.json', 'utf8'));
+              const grade = g => g === 'A' ? '🟢 A' : g === 'B' ? '🟡 B' : '🔴 C';
+              body += `| File | LOC | Funcs | Max CC | Avg CC | MI | Grade | Status |\n`;
+              body += `|------|-----|-------|--------|--------|----|-------|--------|\n`;
+              for (const f of data.files) {
+                const st = f.overBudget ? '❌' : (f.exemptions?.length || f.miExempt) ? '⚠️ known' : '✅';
+                body += `| \`${f.file}\` | ${f.loc} | ${f.funcs} | ${f.maxCC} | ${f.avgCC} | ${f.mi} | ${grade(f.grade)} | ${st} |\n`;
+                for (const v of (f.violations || [])) {
+                  body += `| ↳ \`${v.name}\` (line ${v.line}) | | | **${v.cc}** | | | | ❌ CC>${data.thresholds.maxCC} |\n`;
+                }
+                for (const v of (f.exemptions || [])) {
+                  body += `| ↳ \`${v.name}\` (line ${v.line}) | | | ${v.cc} | | | | ⚠️ exempt |\n`;
+                }
+              }
+              body += data.passed
+                ? '\n✅ No new complexity violations.'
+                : '\n❌ New complexity violations detected. Refactor or add to `KNOWN_EXCEPTIONS` with justification.';
+              body += `\n\n<sub>MI scale: 🟢 A ≥ 65 · 🟡 B 40–64 · 🔴 C < 40 · Thresholds: max CC ≤ ${data.thresholds.maxCC}, MI ≥ ${data.thresholds.minMI}</sub>`;
+            } else {
+              body += ok(results.complexity) ? '✅ Passed.' : '❌ Failed — see job logs for details.';
+            }
+            body += '\n\n';
+
+            // ── TypeScript ─────────────────────────────────────────────────
+            body += `### ${icon(results.typecheck)} TypeScript\n\n`;
+            body += ok(results.typecheck) ? 'No type errors found.' : '❌ Type errors found — see job logs for details.';
             body += '\n';
-            body += data.passed
-              ? '✅ No new complexity violations.'
-              : '❌ **New complexity violations detected.** Refactor or add to `KNOWN_EXCEPTIONS` with justification.';
 
-            body += `\n\n<sub>MI scale: 🟢 A ≥ 65 · 🟡 B 40–64 · 🔴 C < 40 · Thresholds: max CC ≤ ${data.thresholds.maxCC}, MI ≥ ${data.thresholds.minMI}</sub>`;
+            // ── Post / update comment ──────────────────────────────────────
+            const MARKER = '<!-- lume-ci-report -->';
+            body = MARKER + '\n' + body;
 
             const { data: comments } = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
             });
-            const existing = comments.find(c =>
-              c.user.type === 'Bot' && c.body.includes('Complexity & Maintainability')
-            );
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body.includes(MARKER));
 
             const payload = { owner: context.repo.owner, repo: context.repo.repo, body };
             if (existing) {
@@ -296,11 +376,3 @@ jobs:
             } else {
               await github.rest.issues.createComment({ ...payload, issue_number: context.issue.number });
             }
-
-      - name: Write step summary
-        run: node scripts/complexity.js 2>&1 >> $GITHUB_STEP_SUMMARY || true
-
-      - name: Fail if over budget
-        run: |
-          PASSED=$(node -e "const d=require('./complexity.json'); console.log(d.passed)")
-          if [ "$PASSED" != "true" ]; then exit 1; fi
