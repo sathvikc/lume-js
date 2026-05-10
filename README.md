@@ -189,6 +189,8 @@ import { computed, watch, repeat } from 'lume-js/addons';
 | `computed(fn)` | Derive a read-only value from state to consume *outside* the store (templates, display logic) |
 | `watch(store, key, fn)` | React to a *specific* key changing — DOM updates, analytics, syncing external state |
 | `repeat(container, store, key, opts)` | Render a keyed list with element reuse (no full re-render on change) |
+| `createCleanupGroup()` | Collect multiple cleanup/unsubscribe functions and dispose them all at once |
+| `hydrateState(selector?)` | Read initial state from a `<script type="application/json">` tag (SSR hydration) |
 
 **Quick rule:** `effect` for writing back into state → `computed` for reading outside state → `watch` for observing a single key → `repeat` for arrays in the DOM.
 
@@ -240,9 +242,11 @@ Full documentation is available in the [docs/](docs/) directory:
     - [effect()](docs/api/core/effect.md) — Reactive effects
     - [Handlers](docs/api/core/handlers.md) — Extensible attribute handlers
     - [Plugins](docs/api/core/plugins.md) — State extension system
-    - [Addons](docs/api/addons/computed.md) — computed, watch, repeat, debug
+    - [Addons](docs/api/addons/computed.md) — computed, watch, repeat, createCleanupGroup, hydrateState
 - **Guides**
     - [Choosing reactive primitives](docs/guides/choosing-reactive-primitives.md) — when to use effect vs computed vs watch
+    - [Cleanup & Disposal](docs/guides/cleanup-and-dispose.md) — tearing down effects, bindings, and subscriptions
+    - [SSR & Hydration](docs/guides/ssr-hydration.md) — server-rendered HTML with reactive hydration
 - **Design**
     - [Design Decisions](docs/design/design-decisions.md)
 
