@@ -3,573 +3,370 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lume-JS · Concurrent Rendering Demo</title>
+  <title>Lume-JS · Concurrent Rendering</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
-
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
     :root {
-      --bg: #080810;
-      --surface: #12121e;
-      --surface2: #1a1a2e;
-      --border: #2a2a40;
-      --primary: #6366f1;
-      --accent: #10b981;
-      --warn: #f59e0b;
-      --danger: #ef4444;
-      --text: #e2e2f0;
-      --muted: #6b6b8a;
+      --bg:#07070f; --s1:#0f0f1c; --s2:#161628; --bd:#252540;
+      --p:#6366f1; --g:#10b981; --y:#f59e0b; --r:#ef4444;
+      --t:#ddddf5; --m:#6060a0;
     }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--t);height:100vh;display:flex;flex-direction:column;overflow:hidden}
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* ── Top bar ── */
+    .topbar{
+      display:flex;align-items:center;gap:12px;
+      padding:10px 20px;
+      background:var(--s1);border-bottom:1px solid var(--bd);
+      flex-shrink:0;
+    }
+    .logo{font-weight:800;font-size:1rem;background:linear-gradient(135deg,#fff,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .logo sub{font-size:0.6rem;font-weight:600;background:rgba(99,102,241,0.2);color:#a5b4fc;padding:2px 6px;border-radius:99px;-webkit-text-fill-color:#a5b4fc;vertical-align:middle;margin-left:4px}
+    .fps-wrap{display:flex;align-items:baseline;gap:5px;margin-left:auto}
+    .fps-label{font-size:0.65rem;color:var(--m);letter-spacing:1px;text-transform:uppercase}
+    #fps{font-family:'JetBrains Mono',monospace;font-size:1.6rem;font-weight:700;color:var(--g);line-height:1;min-width:52px;text-align:right;transition:color 0.3s}
+    .clock{width:32px;height:32px;border:2px solid #333;border-radius:50%;position:relative;background:#111;flex-shrink:0}
+    @keyframes spin{to{transform:translateX(-50%) rotate(360deg)}}
+    .hand{width:2px;height:13px;background:var(--p);position:absolute;bottom:50%;left:50%;transform-origin:bottom center;border-radius:2px;animation:spin 1s linear infinite}
+    .topbar-input{
+      flex:1;max-width:260px;
+      padding:7px 12px;
+      background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+      color:var(--t);font-family:inherit;font-size:0.85rem;
+    }
+    .topbar-input::placeholder{color:var(--m)}
+    .count-input{
+      width:100px;padding:7px 10px;
+      background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+      color:var(--t);font-family:inherit;font-size:0.85rem;
+    }
+    .stat-mini{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--m);line-height:1.6;white-space:pre}
 
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 24px;
+    /* ── Mode tabs ── */
+    .modes{
+      display:flex;gap:6px;padding:10px 20px;
+      background:var(--s1);border-bottom:1px solid var(--bd);
+      flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;
     }
+    .modes::-webkit-scrollbar{display:none}
+    .mode-btn{
+      display:flex;align-items:center;gap:6px;
+      padding:7px 13px;border-radius:8px;cursor:pointer;
+      border:1px solid var(--bd);background:var(--bg);
+      color:var(--m);font-size:0.78rem;font-weight:500;
+      white-space:nowrap;transition:all 0.15s;font-family:inherit;
+    }
+    .mode-btn:hover{border-color:#444;color:var(--t)}
+    .mode-btn.active{border-color:var(--p);background:rgba(99,102,241,0.12);color:#fff}
+    .chip{font-size:0.6rem;font-weight:700;letter-spacing:0.5px;padding:2px 6px;border-radius:99px}
+    .cr{background:rgba(239,68,68,0.15);color:var(--r)}
+    .cy{background:rgba(245,158,11,0.15);color:var(--y)}
+    .cb{background:rgba(99,102,241,0.15);color:#a5b4fc}
+    .cg{background:rgba(16,185,129,0.15);color:var(--g)}
 
-    /* ── Header ── */
-    .hero {
-      text-align: center;
-      padding: 32px 0 24px;
-    }
-    .badge {
-      display: inline-block;
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      color: #fff;
-      font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 1px;
-      padding: 4px 12px;
-      border-radius: 99px;
-      margin-bottom: 12px;
-    }
-    .hero h1 {
-      font-size: 2.4rem;
-      font-weight: 800;
-      background: linear-gradient(135deg, #fff 40%, #6366f1);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      line-height: 1.2;
-    }
-    .hero p {
-      color: var(--muted);
-      margin-top: 10px;
-      font-size: 1rem;
-    }
-
-    /* ── FPS Bar ── */
-    .fps-bar {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 28px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px 28px;
-      margin-bottom: 24px;
-    }
-    .fps-item { text-align: center; }
-    .fps-item label { font-size: 0.7rem; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; display: block; margin-bottom: 4px; }
-    #fps-value {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 2.4rem;
-      font-weight: 700;
-      color: var(--accent);
-      line-height: 1;
-      transition: color 0.3s;
-    }
-    .clock-wrap { display: flex; align-items: center; gap: 10px; }
-    .clock {
-      width: 44px; height: 44px;
-      border: 3px solid #444;
-      border-radius: 50%;
-      position: relative;
-      background: #1a1a2e;
-      flex-shrink: 0;
-    }
-    @keyframes spin { to { transform: translateX(-50%) rotate(360deg); } }
-    .hand {
-      width: 3px; height: 18px;
-      background: var(--primary);
-      position: absolute;
-      bottom: 50%; left: 50%;
-      transform-origin: bottom center;
-      border-radius: 3px;
-      animation: spin 1s linear infinite;
-    }
-    .clock-label { font-size: 0.8rem; color: var(--muted); line-height: 1.3; max-width: 130px; }
-
-    /* ── Layout ── */
-    .layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
-
-    /* ── Panel ── */
-    .panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 20px;
-    }
-    .panel h2 {
-      font-size: 0.7rem;
-      letter-spacing: 1.5px;
-      color: var(--muted);
-      text-transform: uppercase;
-      margin-bottom: 16px;
-    }
-
-    /* ── Mode Cards ── */
-    .mode-card {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 14px;
-      margin-bottom: 8px;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-    }
-    .mode-card:hover { background: var(--surface2); }
-    .mode-card.active { border-color: var(--primary); background: rgba(99,102,241,0.08); }
-    .mode-card input[type=radio] { display: none; }
-    .mode-title {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 0.88rem; font-weight: 600; margin-bottom: 3px;
-    }
-    .mode-chip {
-      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.5px;
-      padding: 2px 7px; border-radius: 99px;
-    }
-    .chip-danger { background: rgba(239,68,68,0.15); color: var(--danger); }
-    .chip-warn   { background: rgba(245,158,11,0.15); color: var(--warn); }
-    .chip-ok     { background: rgba(99,102,241,0.15); color: var(--primary); }
-    .chip-good   { background: rgba(16,185,129,0.15); color: var(--accent); }
-    .mode-desc { font-size: 0.75rem; color: var(--muted); line-height: 1.4; }
-    .mode-code {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.72rem;
-      color: #a5b4fc;
-      background: rgba(99,102,241,0.08);
-      padding: 4px 8px;
-      border-radius: 5px;
-      margin-top: 6px;
-      display: block;
-    }
-
-    /* ── Input ── */
-    .field label {
-      display: block; font-size: 0.8rem; color: var(--muted);
-      margin-bottom: 6px; font-weight: 500;
-    }
-    .field input {
-      width: 100%; padding: 9px 12px;
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text);
-      font-family: inherit; font-size: 0.9rem;
-    }
-    .field { margin-bottom: 14px; }
-
-    /* ── Stats ── */
-    .stats-box {
-      background: #000;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 14px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.82rem;
-      color: var(--accent);
-      line-height: 1.8;
-      margin-bottom: 16px;
-    }
-
-    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
-    th, td { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: left; }
-    th { color: var(--muted); font-weight: 600; font-size: 0.7rem; letter-spacing: 0.5px; }
-    td { font-family: 'JetBrains Mono', monospace; }
-    tr.active-row td { color: #a5b4fc; }
+    /* ── Main split ── */
+    .main{display:flex;flex:1;min-height:0;gap:0}
 
     /* ── Grid ── */
-    .grid-panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 20px;
-      margin-top: 20px;
+    .grid-wrap{flex:1;display:flex;flex-direction:column;padding:14px;min-width:0}
+    .grid-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .grid-header span{font-size:0.65rem;color:var(--m);letter-spacing:1px;text-transform:uppercase}
+    #store-badge{font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--g);background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);padding:3px 10px;border-radius:99px}
+    /* fixed height status — NO layout shift */
+    .status-row{height:22px;display:flex;align-items:center;margin-bottom:6px}
+    #status-msg{font-size:0.75rem;color:var(--g);font-family:'JetBrains Mono',monospace}
+    .matrix{
+      flex:1;display:flex;flex-wrap:wrap;
+      background:#000;border-radius:10px;
+      padding:2px;gap:2px;overflow:hidden;
+      border:1px solid var(--bd);
     }
-    .grid-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 14px;
+    .cell{background:#0d0d1e;border-radius:2px;flex-grow:1;min-width:10px;height:14px}
+
+    /* ── Sidebar ── */
+    .sidebar{
+      width:280px;flex-shrink:0;
+      border-left:1px solid var(--bd);
+      background:var(--s1);
+      display:flex;flex-direction:column;
+      overflow-y:auto;padding:16px;gap:16px;
     }
-    .grid-header span { font-size: 0.7rem; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
-    .store-badge {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.78rem;
-      color: var(--accent);
-      background: rgba(16,185,129,0.1);
-      border: 1px solid rgba(16,185,129,0.3);
-      padding: 4px 12px;
-      border-radius: 99px;
-    }
-    .matrix {
-      display: flex; flex-wrap: wrap; gap: 2px;
-      background: #000; padding: 2px;
-      border-radius: 8px;
-      max-height: 340px; overflow-y: auto;
-    }
-    .cell { background: #222; flex-grow: 1; border-radius: 2px; transition: background 0.05s; }
+    .sidebar h3{font-size:0.65rem;letter-spacing:1.5px;color:var(--m);text-transform:uppercase;margin-bottom:8px}
+    table{width:100%;border-collapse:collapse;font-size:0.74rem}
+    th,td{padding:5px 6px;border-bottom:1px solid var(--bd);text-align:right}
+    th:first-child,td:first-child{text-align:left}
+    th{color:var(--m);font-size:0.65rem;font-weight:600}
+    td{font-family:'JetBrains Mono',monospace;font-size:0.72rem}
+    tr.hi td{color:#a5b4fc}
+
+    .story{background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:14px;font-size:0.75rem;line-height:1.7;color:#a0a0c0}
+    .story b{color:#fff}
+    .story .accent{color:var(--g);font-weight:600}
   </style>
 
   <script type="module">
     import { state, effect } from '../src/index.js?v=8';
     import { batch } from '../src/addons/index.js?v=8';
 
-    // ─── FPS Counter ───────────────────────────────────────────
-    const fpsEl = document.getElementById('fps-value');
-    let frameCount = 0, lastFpsTime = performance.now();
-    (function tick() {
-      frameCount++;
-      const now = performance.now();
-      if (now - lastFpsTime >= 500) {
-        const fps = Math.round(frameCount * 1000 / (now - lastFpsTime));
-        frameCount = 0; lastFpsTime = now;
-        fpsEl.textContent = fps;
-        fpsEl.style.color = fps >= 55 ? 'var(--accent)' : fps >= 30 ? 'var(--warn)' : 'var(--danger)';
+    // ── FPS ──────────────────────────────────────────────────
+    const fpsEl = document.getElementById('fps');
+    let fc=0, lt=performance.now();
+    (function tick(){
+      fc++;
+      const n=performance.now();
+      if(n-lt>=500){
+        const f=Math.round(fc*1000/(n-lt)); fc=0; lt=n;
+        fpsEl.textContent=f;
+        fpsEl.style.color = f>=55?'var(--g)':f>=30?'var(--y)':'var(--r)';
       }
       requestAnimationFrame(tick);
     })();
 
-    // ─── App State (powered by Lume-JS) ───────────────────────
-    const MODES = ['none','dedupe-false','dedupe-true','priority-urgent','priority-normal','priority-background'];
-
+    // ── App State ─────────────────────────────────────────────
+    const MODES=['none','dedupe-false','dedupe-true','priority-urgent','priority-normal','priority-background'];
     const ui = state({
-      strategy: 'none',
-      timeTaken: 0,
-      effectRuns: 0,
-      totalOps: 0,
-      status: '',
-      history: Object.fromEntries(MODES.map(m => [m, { runs:0, min:Infinity, max:0, sum:0 }]))
+      strategy:'none', time:0, runs:0, ops:0, status:'',
+      history: Object.fromEntries(MODES.map(m=>[m,{n:0,min:Infinity,max:0,sum:0}]))
     });
 
-    // Reactive: stats display
-    effect(() => {
-      document.getElementById('stat-box').innerHTML =
-        `Strategy: <b>${ui.strategy}</b><br>` +
-        `Time: <b>${ui.timeTaken.toFixed(1)} ms</b><br>` +
-        `Effect Runs: <b>${ui.effectRuns.toLocaleString()}</b><br>` +
-        `Total Ops: <b>${ui.totalOps.toLocaleString()}</b>` +
-        (ui.status ? `<br><span style="color:var(--accent)">${ui.status}</span>` : '');
+    // Reactive: stat-mini display in topbar
+    effect(()=>{
+      document.getElementById('stat-mini').textContent =
+        `Time  ${ui.time.toFixed(1)} ms\nRuns  ${ui.runs.toLocaleString()}\nOps   ${ui.ops.toLocaleString()}`;
     });
+
+    // Reactive: status message (fixed height row — no layout shift)
+    effect(()=>{ document.getElementById('status-msg').textContent = ui.status; });
 
     // Reactive: history table
-    effect(() => {
-      MODES.forEach(m => {
-        const s = ui.history[m];
-        document.getElementById(`h-${m}-lo`).textContent  = s.runs ? s.min.toFixed(0) : '-';
-        document.getElementById(`h-${m}-avg`).textContent = s.runs ? (s.sum/s.runs).toFixed(0) : '-';
-        document.getElementById(`h-${m}-hi`).textContent  = s.runs ? s.max.toFixed(0) : '-';
+    effect(()=>{
+      MODES.forEach(m=>{
+        const s=ui.history[m];
+        document.getElementById(`h-${m}-lo`).textContent  = s.n ? s.min.toFixed(0)    : '-';
+        document.getElementById(`h-${m}-av`).textContent  = s.n ? (s.sum/s.n).toFixed(0) : '-';
+        document.getElementById(`h-${m}-hi`).textContent  = s.n ? s.max.toFixed(0)    : '-';
       });
     });
 
-    // Reactive: highlight active mode row
-    effect(() => {
-      MODES.forEach(m => {
-        const row = document.getElementById(`row-${m}`);
-        if (row) row.className = ui.strategy === m ? 'active-row' : '';
-      });
-      // highlight active card
-      MODES.forEach(m => {
-        const card = document.getElementById(`card-${m}`);
-        if (card) card.className = 'mode-card' + (ui.strategy === m ? ' active' : '');
+    // Reactive: active mode row + button highlight
+    effect(()=>{
+      MODES.forEach(m=>{
+        document.getElementById(`row-${m}`)?.classList.toggle('hi', ui.strategy===m);
+        document.getElementById(`btn-${m}`)?.classList.toggle('active', ui.strategy===m);
       });
     });
 
-    // ─── Demo Engine ──────────────────────────────────────────
-    const FRAME_MS = 4;
-    const yieldFrame = () => new Promise(r => requestAnimationFrame(r));
+    // ── Demo Engine ───────────────────────────────────────────
+    const FM=4; // 4ms frame budget
+    const yieldF=()=>new Promise(r=>requestAnimationFrame(r));
 
-    let stores = [], stopEffects = null, storeCount = 100, isProcessing = false, isInit = false;
+    let stores=[], stopFx=null, count=100, busy=false, initing=false, globalRuns=0;
 
-    async function initDemo(count) {
-      if (isInit) return;
-      isInit = true;
-      storeCount = count;
+    async function initDemo(n){
+      if(initing) return; initing=true; count=n;
+      if(stopFx){ stopFx.forEach(f=>f()); stopFx=null; }
+      document.getElementById('matrix').innerHTML='';
+      batch(()=>{ ui.history=Object.fromEntries(MODES.map(m=>[m,{n:0,min:Infinity,max:0,sum:0}]));
+        ui.strategy='none'; ui.time=0; ui.runs=0; ui.ops=0; ui.status='Initializing…'; });
+      document.getElementById('trigger').value=''; globalRuns=0;
 
-      if (stopEffects) { stopEffects.forEach(f => f()); stopEffects = null; }
-      document.getElementById('matrix').innerHTML = '';
-
-      batch(() => {
-        ui.history = Object.fromEntries(MODES.map(m => [m, { runs:0, min:Infinity, max:0, sum:0 }]));
-        ui.strategy = 'none';
-        ui.timeTaken = 0; ui.effectRuns = 0; ui.totalOps = 0;
-        ui.status = 'Initializing…';
-      });
-      document.getElementById('trigger-input').value = '';
-
-      // Chunked store creation
-      stores = [];
-      let t = performance.now();
-      for (let i = 0; i < count; i++) {
-        const k = 'v' + i;
-        const obj = { [k]: 0 };
-        for (let j = 0; j < 10; j++) obj['x'+j] = 0;
-        stores.push({ store: state(obj), key: k });
-        if (performance.now() - t >= FRAME_MS) { await yieldFrame(); t = performance.now(); }
+      stores=[];
+      let t=performance.now();
+      for(let i=0;i<n;i++){
+        const k='v'+i, obj={[k]:0};
+        for(let j=0;j<10;j++) obj['x'+j]=0;
+        stores.push({store:state(obj),key:k});
+        if(performance.now()-t>=FM){await yieldF();t=performance.now();}
       }
 
-      // DOM cells
-      const visible = Math.min(count, 2000);
-      const cellW = Math.max(10, Math.floor(700 / Math.sqrt(visible)));
-      const frag = document.createDocumentFragment();
-      for (let i = 0; i < visible; i++) {
-        const c = document.createElement('div');
-        c.className = 'cell'; c.id = `c${i}`;
-        c.style.minWidth = `${cellW}px`; c.style.height = `${cellW}px`;
+      const vis=Math.min(n,2000);
+      const cw=Math.max(10,Math.floor((document.getElementById('matrix').offsetWidth||900)/Math.sqrt(vis)-2));
+      const frag=document.createDocumentFragment();
+      for(let i=0;i<vis;i++){
+        const c=document.createElement('div');
+        c.className='cell';c.id=`c${i}`;
+        c.style.minWidth=cw+'px';c.style.height=cw+'px';
         frag.appendChild(c);
       }
       document.getElementById('matrix').appendChild(frag);
 
-      const label = count > 2000
-        ? `${count.toLocaleString()} stores · ${(count*11).toLocaleString()} reactive keys · 2k DOM nodes`
-        : `${count.toLocaleString()} stores · ${(count*11).toLocaleString()} reactive keys`;
-      document.getElementById('store-badge').textContent = label;
+      document.getElementById('store-badge').textContent =
+        n>2000 ? `${n.toLocaleString()} stores · ${(n*11).toLocaleString()} keys · 2k DOM`
+               : `${n.toLocaleString()} stores · ${(n*11).toLocaleString()} keys`;
 
-      // Chunked effect creation — one granular effect per cell
-      stopEffects = [];
-      const spc = Math.ceil(count / visible); // stores per cell
-      t = performance.now();
-      for (let i = 0; i < visible; i++) {
-        const cell = document.getElementById(`c${i}`);
-        const start = i * spc, end = Math.min(count, start + spc);
-        stopEffects.push(effect(() => {
-          let sum = 0;
-          for (let j = start; j < end; j++) sum += stores[j].store[stores[j].key];
-          if (cell) cell.style.background = `hsl(${Math.random()*360},75%,48%)`;
+      stopFx=[];
+      const spc=Math.ceil(n/vis);
+      t=performance.now();
+      for(let i=0;i<vis;i++){
+        const cell=document.getElementById(`c${i}`);
+        const s0=i*spc, s1=Math.min(n,s0+spc);
+        stopFx.push(effect(()=>{
+          let sum=0;
+          for(let j=s0;j<s1;j++) sum+=stores[j].store[stores[j].key];
+          globalRuns++;
+          if(cell){
+            const hue=(sum*97+i*13)%360;
+            const sat=50+Math.random()*40;
+            cell.style.transition='none';
+            cell.style.background=`hsl(${hue},${sat}%,55%)`;
+            requestAnimationFrame(()=>{
+              cell.style.transition='background 0.9s ease-out';
+              cell.style.background=`hsl(${hue},40%,18%)`;
+            });
+          }
         }));
-        if (performance.now() - t >= FRAME_MS) { await yieldFrame(); t = performance.now(); }
+        if(performance.now()-t>=FM){await yieldF();t=performance.now();}
       }
-
-      ui.status = '';
-      isInit = false;
+      ui.status=''; initing=false;
     }
 
     initDemo(100);
 
-    // Grid size with debounce
-    let debTimer;
-    document.getElementById('store-count').addEventListener('input', e => {
-      clearTimeout(debTimer);
-      debTimer = setTimeout(() => {
-        let v = parseInt(e.target.value);
-        if (isNaN(v) || v < 1) return;
-        if (v > 100000) { v = 100000; e.target.value = v; }
+    let debT;
+    document.getElementById('store-count').addEventListener('input',e=>{
+      clearTimeout(debT); debT=setTimeout(()=>{
+        let v=parseInt(e.target.value);
+        if(isNaN(v)||v<1) return;
+        if(v>100000){v=100000;e.target.value=v;}
         initDemo(v);
-      }, 400);
+      },400);
     });
 
-    // Mode cards
-    document.querySelectorAll('.mode-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const m = card.dataset.mode;
-        document.getElementById('trigger-input').value = '';
-        batch(() => { ui.strategy = m; ui.timeTaken = 0; ui.effectRuns = 0; ui.totalOps = 0; ui.status = ''; });
+    document.querySelectorAll('.mode-btn').forEach(b=>{
+      b.addEventListener('click',()=>{
+        document.getElementById('trigger').value='';
+        batch(()=>{ui.strategy=b.dataset.mode;ui.time=0;ui.runs=0;ui.ops=0;ui.status='';});
       });
     });
 
-    // ─── Benchmark ────────────────────────────────────────────
-    let globalRuns = 0;
+    // ── Benchmark ─────────────────────────────────────────────
+    document.getElementById('trigger').addEventListener('input', async()=>{
+      if(busy||initing) return;
+      const m=ui.strategy;
+      const safe=m==='dedupe-true'||m.startsWith('priority-');
+      if(!safe&&count>10000){ ui.status='⚠ Cap 10k for non-dedupe modes.'; return; }
 
-    document.getElementById('trigger-input').addEventListener('input', async () => {
-      if (isProcessing || isInit) return;
-      const strategy = ui.strategy;
-      const safe = strategy === 'dedupe-true' || strategy.startsWith('priority-');
-      if (!safe && storeCount > 10000) {
-        ui.status = '⚠ Cap 10k for non-dedupe modes. Switch mode or lower count.';
-        return;
-      }
+      busy=true;
+      const t0=performance.now(), r0=globalRuns;
+      const CHUNK=Math.max(1000,Math.ceil(count/20));
 
-      isProcessing = true;
-      const t0 = performance.now();
-      const r0 = globalRuns;
-      const CHUNK = Math.max(1000, Math.ceil(storeCount / 20));
-
-      if (strategy === 'none') {
-        for (let s = 0; s < storeCount; s++) stores[s].store[stores[s].key]++;
-      } else if (strategy === 'dedupe-false') {
-        batch(() => { for (let s = 0; s < storeCount; s++) stores[s].store[stores[s].key]++; }, { dedupe: false });
-      } else if (strategy === 'dedupe-true') {
-        batch(() => { for (let s = 0; s < storeCount; s++) stores[s].store[stores[s].key]++; }, { dedupe: true });
-      } else if (strategy === 'priority-urgent') {
-        batch(() => { for (let s = 0; s < storeCount; s++) stores[s].store[stores[s].key]++; }, { priority: 'urgent' });
-      } else if (strategy === 'priority-normal') {
-        ui.status = 'Rendering via RAF time-slicing…';
-        await yieldFrame();
-        for (let s = 0; s < storeCount; s += CHUNK) {
-          const end = Math.min(storeCount, s + CHUNK);
-          await batch(() => { for (let i = s; i < end; i++) stores[i].store[stores[i].key]++; }, { priority: 'normal', timeBudget: FRAME_MS });
+      if(m==='none'){
+        for(let s=0;s<count;s++) stores[s].store[stores[s].key]++;
+      } else if(m==='dedupe-false'){
+        batch(()=>{for(let s=0;s<count;s++) stores[s].store[stores[s].key]++;},{dedupe:false});
+      } else if(m==='dedupe-true'){
+        batch(()=>{for(let s=0;s<count;s++) stores[s].store[stores[s].key]++;},{dedupe:true});
+      } else if(m==='priority-urgent'){
+        batch(()=>{for(let s=0;s<count;s++) stores[s].store[stores[s].key]++;},{priority:'urgent'});
+      } else if(m==='priority-normal'){
+        ui.status='Rendering via RAF slices…';
+        await yieldF();
+        for(let s=0;s<count;s+=CHUNK){
+          const e=Math.min(count,s+CHUNK);
+          await batch(()=>{for(let i=s;i<e;i++) stores[i].store[stores[i].key]++;},{priority:'normal',timeBudget:FM});
         }
-      } else if (strategy === 'priority-background') {
-        ui.status = 'Rendering via MessageChannel (max throughput)…';
-        await yieldFrame();
-        for (let s = 0; s < storeCount; s += CHUNK) {
-          const end = Math.min(storeCount, s + CHUNK);
-          await batch(() => { for (let i = s; i < end; i++) stores[i].store[stores[i].key]++; }, { priority: 'background', timeBudget: FRAME_MS });
+      } else if(m==='priority-background'){
+        ui.status='Rendering via MessageChannel…';
+        await yieldF();
+        for(let s=0;s<count;s+=CHUNK){
+          const e=Math.min(count,s+CHUNK);
+          await batch(()=>{for(let i=s;i<e;i++) stores[i].store[stores[i].key]++;},{priority:'background',timeBudget:FM});
         }
       }
 
-      if (!strategy.startsWith('priority-') || strategy === 'priority-urgent') await Promise.resolve();
-
-      const duration = parseFloat((performance.now() - t0).toFixed(1));
-      const runs = globalRuns - r0;
-
-      const newHistory = Object.fromEntries(MODES.map(m => [m, { ...ui.history[m] }]));
-      const s = newHistory[strategy];
-      s.runs++; s.sum += duration;
-      if (duration < s.min) s.min = duration;
-      if (duration > s.max) s.max = duration;
-
-      batch(() => {
-        ui.timeTaken = duration;
-        ui.effectRuns = runs;
-        ui.totalOps += storeCount;
-        ui.history = newHistory;
-        ui.status = '';
-      });
-
-      isProcessing = false;
+      if(!m.startsWith('priority-')||m==='priority-urgent') await Promise.resolve();
+      const dur=parseFloat((performance.now()-t0).toFixed(1));
+      const runs=globalRuns-r0;
+      const nh=Object.fromEntries(MODES.map(k=>[k,{...ui.history[k]}]));
+      const sh=nh[m]; sh.n++; sh.sum+=dur;
+      if(dur<sh.min) sh.min=dur; if(dur>sh.max) sh.max=dur;
+      batch(()=>{ui.time=dur;ui.runs=runs;ui.ops+=count;ui.history=nh;ui.status='';});
+      busy=false;
     });
-
-    // track effect runs
-    const origEffect = effect;
-    // patch globalRuns via wrapper inside effects (done via inline globalEffectRuns++ in stopEffects)
   </script>
 </head>
 <body>
-  <div style="max-width:1200px;margin:0 auto">
 
-    <div class="hero">
-      <div class="badge">⚡ < 3KB · Zero Dependencies · No Build Step</div>
-      <h1>How is this possible?</h1>
-      <p>100,000 reactive stores. 1.1M reactive keys. Silky 60 FPS. All in under 3 kilobytes.</p>
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="logo">Lume-JS <sub>< 3KB</sub></div>
+    <div class="clock"><div class="hand"></div></div>
+    <div class="fps-wrap">
+      <span class="fps-label">FPS</span>
+      <span id="fps">60</span>
     </div>
+    <div style="width:1px;height:28px;background:var(--bd);margin:0 4px"></div>
+    <label style="font-size:0.75rem;color:var(--m);white-space:nowrap">Stores</label>
+    <input class="count-input" type="number" id="store-count" value="100" min="1" max="100000" step="100">
+    <input class="topbar-input" type="text" id="trigger" placeholder="Type to fire mutations…" autocomplete="off">
+    <pre class="stat-mini" id="stat-mini">Time  0.0 ms
+Runs  0
+Ops   0</pre>
+  </div>
 
-    <div class="fps-bar">
-      <div class="fps-item">
-        <label>Live FPS</label>
-        <div id="fps-value">60</div>
-      </div>
-      <div class="clock-wrap">
-        <div class="clock"><div class="hand"></div></div>
-        <div class="clock-label">This clock is JS-driven.<br>Watch it freeze or stay smooth.</div>
-      </div>
-      <div class="fps-item">
-        <label>Strategy</label>
-        <div id="stat-box" style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:var(--accent);line-height:1.6">
-          Strategy: none<br>Time: 0.0 ms<br>Effect Runs: 0<br>Total Ops: 0
-        </div>
-      </div>
-    </div>
+  <!-- Mode Tabs -->
+  <div class="modes">
+    <button class="mode-btn active" id="btn-none" data-mode="none">
+      Default <span class="chip cr">JITTER</span>
+    </button>
+    <button class="mode-btn" id="btn-dedupe-false" data-mode="dedupe-false">
+      dedupe: false <span class="chip cr">JITTER</span>
+    </button>
+    <button class="mode-btn" id="btn-dedupe-true" data-mode="dedupe-true">
+      dedupe: true <span class="chip cy">BLOCKS</span>
+    </button>
+    <button class="mode-btn" id="btn-priority-urgent" data-mode="priority-urgent">
+      priority: urgent <span class="chip cy">BLOCKS</span>
+    </button>
+    <button class="mode-btn" id="btn-priority-normal" data-mode="priority-normal">
+      priority: normal <span class="chip cb">RAF SLICED</span>
+    </button>
+    <button class="mode-btn" id="btn-priority-background" data-mode="priority-background">
+      priority: background <span class="chip cg">MAX THROUGHPUT</span>
+    </button>
+  </div>
 
-    <div class="layout">
-      <!-- Controls -->
-      <div>
-        <div class="panel" style="margin-bottom:16px">
-          <h2>Configuration</h2>
-          <div class="field">
-            <label>Store Count (1 – 100,000)</label>
-            <input type="number" id="store-count" value="100" min="1" max="100000" step="100">
-          </div>
-          <div class="field">
-            <label>Type to trigger mutations</label>
-            <input type="text" id="trigger-input" placeholder="Type here to fire benchmark…" autocomplete="off">
-          </div>
-        </div>
-
-        <div class="panel">
-          <h2>Select Mode</h2>
-
-          <label class="mode-card active" id="card-none" data-mode="none">
-            <input type="radio" name="mode" value="none">
-            <div class="mode-title">Default (Microtasks) <span class="mode-chip chip-danger">JITTER</span></div>
-            <div class="mode-desc">No batching. Each store mutation queues its own microtask. At 100k stores this floods the event loop.</div>
-            <code class="mode-code">// no batch — raw mutations</code>
-          </label>
-
-          <label class="mode-card" id="card-dedupe-false" data-mode="dedupe-false">
-            <input type="radio" name="mode" value="dedupe-false">
-            <div class="mode-title">batch(dedupe: false) <span class="mode-chip chip-danger">JITTER</span></div>
-            <div class="mode-desc">Groups mutations into one sync flush but effects still run per-state. Cross-state effects fire N times.</div>
-            <code class="mode-code">batch(fn, { dedupe: false })</code>
-          </label>
-
-          <label class="mode-card" id="card-dedupe-true" data-mode="dedupe-true">
-            <input type="radio" name="mode" value="dedupe-true">
-            <div class="mode-title">batch(dedupe: true) <span class="mode-chip chip-warn">BLOCKS</span></div>
-            <div class="mode-desc">True cross-state deduplication. Each effect runs exactly once. But the flush is synchronous — blocks the thread.</div>
-            <code class="mode-code">batch(fn, { dedupe: true })</code>
-          </label>
-
-          <label class="mode-card" id="card-priority-urgent" data-mode="priority-urgent">
-            <input type="radio" name="mode" value="priority-urgent">
-            <div class="mode-title">priority: 'urgent' <span class="mode-chip chip-warn">BLOCKS</span></div>
-            <div class="mode-desc">Shorthand for dedupe:true. Fastest synchronous path. Use when you need immediate guaranteed consistency.</div>
-            <code class="mode-code">batch(fn, { priority: 'urgent' })</code>
-          </label>
-
-          <label class="mode-card" id="card-priority-normal" data-mode="priority-normal">
-            <input type="radio" name="mode" value="priority-normal">
-            <div class="mode-title">priority: 'normal' <span class="mode-chip chip-ok">RAF SLICED</span></div>
-            <div class="mode-desc">Effects drain in 4ms RAF-aligned slices. Yields to screen refresh between chunks. Clock stays smooth.</div>
-            <code class="mode-code">batch(fn, { priority: 'normal' })</code>
-          </label>
-
-          <label class="mode-card" id="card-priority-background" data-mode="priority-background">
-            <input type="radio" name="mode" value="priority-background">
-            <div class="mode-title">priority: 'background' <span class="mode-chip chip-good">MAX THROUGHPUT</span></div>
-            <div class="mode-desc">Uses MessageChannel (~0.1ms yield) instead of RAF. Processes far more chunks per second. Fastest + smooth.</div>
-            <code class="mode-code">batch(fn, { priority: 'background' })</code>
-          </label>
-        </div>
-      </div>
-
-      <!-- Stats -->
-      <div class="panel">
-        <h2>Performance History (ms)</h2>
-        <table>
-          <thead>
-            <tr><th>Mode</th><th>Low</th><th>Avg</th><th>High</th></tr>
-          </thead>
-          <tbody>
-            <tr id="row-none"><td>Default</td><td id="h-none-lo">-</td><td id="h-none-avg">-</td><td id="h-none-hi">-</td></tr>
-            <tr id="row-dedupe-false"><td>dedupe: false</td><td id="h-dedupe-false-lo">-</td><td id="h-dedupe-false-avg">-</td><td id="h-dedupe-false-hi">-</td></tr>
-            <tr id="row-dedupe-true"><td>dedupe: true</td><td id="h-dedupe-true-lo">-</td><td id="h-dedupe-true-avg">-</td><td id="h-dedupe-true-hi">-</td></tr>
-            <tr id="row-priority-urgent"><td>priority: urgent</td><td id="h-priority-urgent-lo">-</td><td id="h-priority-urgent-avg">-</td><td id="h-priority-urgent-hi">-</td></tr>
-            <tr id="row-priority-normal"><td>priority: normal</td><td id="h-priority-normal-lo">-</td><td id="h-priority-normal-avg">-</td><td id="h-priority-normal-hi">-</td></tr>
-            <tr id="row-priority-background"><td>priority: background</td><td id="h-priority-background-lo">-</td><td id="h-priority-background-avg">-</td><td id="h-priority-background-hi">-</td></tr>
-          </tbody>
-        </table>
-
-        <div style="margin-top:24px;padding:16px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
-          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px;font-weight:600;letter-spacing:0.5px">THE STORY</div>
-          <div style="font-size:0.82rem;line-height:1.7;color:#b0b0cc">
-            Modes 1–2 flood the JS event loop → FPS drops, clock freezes.<br>
-            Mode 3–4 deduplicate effects → <b style="color:#fff">50× fewer effect runs</b>.<br>
-            Mode 5 slices rendering into 4ms RAF chunks → <b style="color:var(--accent)">clock never skips</b>.<br>
-            Mode 6 uses MessageChannel (0.1ms yield) → <b style="color:var(--accent)">same smoothness, 4× throughput</b>.<br><br>
-            <span style="color:var(--primary);font-weight:600">All of this. Under 3KB. No build step.</span>
-          </div>
-        </div>
-      </div>
-    </div>
+  <!-- Main -->
+  <div class="main">
 
     <!-- Grid -->
-    <div class="grid-panel">
+    <div class="grid-wrap">
       <div class="grid-header">
         <span>Reactive Matrix</span>
-        <div class="store-badge" id="store-badge">100 stores · 1,100 reactive keys</div>
+        <span id="store-badge">100 stores</span>
       </div>
+      <!-- Fixed height — no layout shift -->
+      <div class="status-row"><span id="status-msg"></span></div>
       <div class="matrix" id="matrix"></div>
     </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div>
+        <h3>Performance (ms)</h3>
+        <table>
+          <thead><tr><th>Mode</th><th>Lo</th><th>Avg</th><th>Hi</th></tr></thead>
+          <tbody>
+            <tr id="row-none"><td>Default</td><td id="h-none-lo">-</td><td id="h-none-av">-</td><td id="h-none-hi">-</td></tr>
+            <tr id="row-dedupe-false"><td>d:false</td><td id="h-dedupe-false-lo">-</td><td id="h-dedupe-false-av">-</td><td id="h-dedupe-false-hi">-</td></tr>
+            <tr id="row-dedupe-true"><td>d:true</td><td id="h-dedupe-true-lo">-</td><td id="h-dedupe-true-av">-</td><td id="h-dedupe-true-hi">-</td></tr>
+            <tr id="row-priority-urgent"><td>urgent</td><td id="h-priority-urgent-lo">-</td><td id="h-priority-urgent-av">-</td><td id="h-priority-urgent-hi">-</td></tr>
+            <tr id="row-priority-normal"><td>normal</td><td id="h-priority-normal-lo">-</td><td id="h-priority-normal-av">-</td><td id="h-priority-normal-hi">-</td></tr>
+            <tr id="row-priority-background"><td>background</td><td id="h-priority-background-lo">-</td><td id="h-priority-background-av">-</td><td id="h-priority-background-hi">-</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="story">
+        <b>Modes 1–2:</b> Flood the event loop. FPS → 0.<br>
+        <b>Modes 3–4:</b> <b>50× fewer</b> effect runs via dedup. Fast — but blocks the thread.<br>
+        <b>Mode 5:</b> RAF time-slicing. <span class="accent">Clock never drops a frame.</span><br>
+        <b>Mode 6:</b> MessageChannel (0.1ms yield). <span class="accent">4× throughput. Still 60 FPS.</span><br><br>
+        All of this.<br><b>Under 3KB. No build step.</b>
+      </div>
+    </div>
   </div>
+
 </body>
 </html>
