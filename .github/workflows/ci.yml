@@ -164,7 +164,7 @@ jobs:
       - name: Build and measure base sizes
         if: github.event_name == 'pull_request'
         run: |
-          cd base-branch && npm ci && npm run build
+          (cd base-branch && npm ci && npm run build)
           node base-branch/scripts/check-size.js --json > base-size.json 2>&1 || true
 
       - name: Upload size artifacts
