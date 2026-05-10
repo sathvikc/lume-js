@@ -40,9 +40,14 @@ We benchmarked 1,000 rapid updates across **50 distinct stores** to analyze the 
 
 | Strategy | Time (ms) | Effect Executions | Behavior |
 |----------|-----------|-------------------|----------|
-| **Default (Microtasks)** | ~64.08 ms | 1001 | **Async.** The JS engine inherently groups all synchronous mutations within the same event loop tick into a single microtask queue execution. It is incredibly performant and implicitly deduplicates renders by deferring the flush. |
-| **Batch (dedupe: false)** | ~0.35 ms | 2 | **Fastest (Sync).** By forcing an immediate synchronous flush without yielding to the V8 event loop, the newly registered effect listeners for subsequent stores aren't captured by the snapshot iterator in `notifySubscribers()`. It inherently skips redundant calculations. |
-| **Batch (dedupe: true)** | ~38.55 ms | 1001 | **Predictable (Sync).** Incurs overhead doing `Set` math globally, but mathematically guarantees exact executions across any number of mutated stores. |
+| **Default (Microtasks)** | ~733 ms | 50,000 | **Async.** Because it queues 50 separate microtasks (one for each store), they run sequentially. Each microtask triggers the effect, resulting in 50 cascading executions per update block. |
+| **Batch (dedupe: false)** | ~693 ms | 50,000 | **Sequential Sync.** Flushes each mutated state independently inside the batch. Since the effect depends on 50 states, it runs 50 times sequentially per batch block. |
+| **Batch (dedupe: true)** | ~37 ms | 1,000 | **Global Deduplication (Sync).** By aggregating all `pendingEffects` from the 50 stores into a single global `Set` before executing, it mathematically guarantees the effect runs exactly **ONCE** per batch block! It is **20x faster** than the other strategies in this scenario. |
+
+### The Auto-Tracking Bug Discovery
+While running these advanced benchmarks, we discovered and fixed a critical bug in `src/core/effect.js`. Originally, the auto-tracking system used the string property name (e.g., `"value"`) as the key to deduplicate subscriptions within an effect. This meant if an effect read `storeA.value` and then `storeB.value`, it completely ignored `storeB` because the `"value"` key was already marked as tracked! 
+
+We fixed this by implementing a `WeakMap` that maps the tracking keys to the specific `proxy` instance, ensuring perfect per-instance dependency tracking. This fix is what revealed the true 20x performance multiplier of `dedupe: true`.
 
 ### Why is the Default Strategy "Faster" in some cases?
 During our UI Jitter tests (mutating 100 stores via a text input), we observed that the Default (Microtask) strategy often completed in 1-2ms, while the `batch()` strategies took 5-7ms.

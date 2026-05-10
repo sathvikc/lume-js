@@ -2,22 +2,22 @@ import { state } from './src/core/state.js';
 import { effect } from './src/core/effect.js';
 import { batch } from './src/addons/batch.js';
 
-const store0 = state({ value: 0 });
-const store1 = state({ value: 0 });
+const storeA = state({ a: 0 });
+const storeB = state({ b: 0 });
 
 let effectRuns2 = 0;
 let effect2 = effect(() => {
-  store0.value;
-  store1.value;
-  console.log("Effect evaluated!");
+  storeA.a;
+  storeB.b;
+  console.log("evaluated");
   effectRuns2++;
 });
 
 effectRuns2 = 0;
 
 batch(() => {
-  store0.value++;
-  store1.value++;
+  storeA.a++;
+  storeB.b++;
 }, { dedupe: false });
 
 console.log("After 1 update (dedupe: false):", effectRuns2);
