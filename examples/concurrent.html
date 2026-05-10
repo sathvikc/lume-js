@@ -27,8 +27,14 @@
     .fps-label{font-size:0.65rem;color:var(--m);letter-spacing:1px;text-transform:uppercase}
     #fps{font-family:'JetBrains Mono',monospace;font-size:1.6rem;font-weight:700;color:var(--g);line-height:1;min-width:52px;text-align:right;transition:color 0.3s}
     .clock{width:32px;height:32px;border:2px solid #333;border-radius:50%;position:relative;background:#111;flex-shrink:0}
-    @keyframes spin{to{transform:translateX(-50%) rotate(360deg)}}
-    .hand{width:2px;height:13px;background:var(--p);position:absolute;bottom:50%;left:50%;transform-origin:bottom center;border-radius:2px;animation:spin 1s linear infinite}
+    @keyframes flash { 0%{opacity:1} 100%{opacity:0.6} }
+    .hand {
+      width:2px;height:13px;background:var(--p);position:absolute;
+      bottom:50%;left:50%;
+      transform-origin:bottom center;
+      transform:translateX(-50%) rotate(0deg);
+      border-radius:2px;
+    }
     .topbar-input{
       flex:1;max-width:260px;
       padding:7px 12px;
@@ -108,6 +114,18 @@
   <script type="module">
     import { state, effect } from '../src/index.js?v=8';
     import { batch } from '../src/addons/index.js?v=8';
+
+    // ── JS RAF Clock — deliberately on the main thread so it visibly
+    // freezes in blocking modes and stays smooth in time-sliced modes.
+    // This is the KEY visual proof of concurrent rendering.
+    const hand = document.getElementById('hand');
+    let angle = 0, clt = performance.now();
+    (function clockTick(t) {
+      const d = t - clt; clt = t;
+      angle = (angle + 360 * d / 1000) % 360;
+      hand.style.transform = `translateX(-50%) rotate(${angle}deg)`;
+      requestAnimationFrame(clockTick);
+    })(performance.now());
 
     // ── FPS ──────────────────────────────────────────────────
     const fpsEl = document.getElementById('fps');
@@ -205,16 +223,9 @@
           let sum=0;
           for(let j=s0;j<s1;j++) sum+=stores[j].store[stores[j].key];
           globalRuns++;
-          if(cell){
-            const hue=(sum*97+i*13)%360;
-            const sat=50+Math.random()*40;
-            cell.style.transition='none';
-            cell.style.background=`hsl(${hue},${sat}%,55%)`;
-            requestAnimationFrame(()=>{
-              cell.style.transition='background 0.9s ease-out';
-              cell.style.background=`hsl(${hue},40%,18%)`;
-            });
-          }
+          // Instant bright color — no RAF, no setTimeout.
+          // The wave of updates sweeping the grid IS the visual proof.
+          if(cell) cell.style.background=`hsl(${(Math.random()*360)|0},80%,52%)`;
         }));
         if(performance.now()-t>=FM){await yieldF();t=performance.now();}
       }
@@ -249,7 +260,7 @@
 
       busy=true;
       const t0=performance.now(), r0=globalRuns;
-      const CHUNK=Math.max(1000,Math.ceil(count/20));
+      const CHUNK=Math.max(500,Math.ceil(count/40)); // ~40 smaller chunks = shorter sync blocks
 
       if(m==='none'){
         for(let s=0;s<count;s++) stores[s].store[stores[s].key]++;
@@ -291,7 +302,6 @@
   <!-- Top Bar -->
   <div class="topbar">
     <div class="logo">Lume-JS <sub>< 3KB</sub></div>
-    <div class="clock"><div class="hand"></div></div>
     <div class="fps-wrap">
       <span class="fps-label">FPS</span>
       <span id="fps">60</span>
@@ -359,11 +369,20 @@ Ops   0</pre>
       </div>
 
       <div class="story">
-        <b>Modes 1–2:</b> Flood the event loop. FPS → 0.<br>
-        <b>Modes 3–4:</b> <b>50× fewer</b> effect runs via dedup. Fast — but blocks the thread.<br>
+        <b>Modes 1–2:</b> Flood the event loop. FPS → 0, clock freezes.<br>
+        <b>Modes 3–4:</b> <b>50× fewer</b> effect runs via dedup. Fast — but clock still stutters.<br>
         <b>Mode 5:</b> RAF time-slicing. <span class="accent">Clock never drops a frame.</span><br>
         <b>Mode 6:</b> MessageChannel (0.1ms yield). <span class="accent">4× throughput. Still 60 FPS.</span><br><br>
         All of this.<br><b>Under 3KB. No build step.</b>
+      </div>
+
+      <!-- Clock moved here: below stats, above story -->
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--s2);border:1px solid var(--bd);border-radius:10px">
+        <div class="clock" style="width:44px;height:44px;border-width:3px"><div class="hand" id="hand" style="height:17px"></div></div>
+        <div style="font-size:0.75rem;color:var(--m);line-height:1.5">
+          This clock runs on the <b style="color:var(--t)">JS main thread</b>.<br>
+          Watch it freeze or stay smooth.
+        </div>
       </div>
     </div>
   </div>
