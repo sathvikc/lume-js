@@ -102,12 +102,29 @@ jobs:
       - name: Run complexity analysis
         run: node scripts/complexity.js --json > complexity.json 2>&1 || true
 
-      - name: Upload complexity artifact
+      - name: Checkout base branch
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+          path: base-branch
+
+      - name: Install base dependencies
+        if: github.event_name == 'pull_request'
+        run: cd base-branch && npm ci
+
+      - name: Run complexity on base
+        if: github.event_name == 'pull_request'
+        run: node base-branch/scripts/complexity.js --json > complexity-base.json 2>&1 || true
+
+      - name: Upload complexity artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ci-complexity
-          path: complexity.json
+          path: |
+            complexity.json
+            complexity-base.json
 
       - name: Write step summary
         run: node scripts/complexity.js 2>&1 >> $GITHUB_STEP_SUMMARY || true
@@ -271,33 +288,48 @@ jobs:
               const baseMap = {};
               if (base) base.files.forEach(f => { baseMap[f.file] = f; });
 
-              const fmt   = b => (b / 1024).toFixed(2) + ' KB';
-              const delta = (a, b) => { const d = a - b; return `${d > 0 ? '+' : ''}${(d / 1024).toFixed(2)} KB`; };
-              const arrow = (a, b) => a > b ? '📈' : a < b ? '📉' : '➡️';
+              const fmt    = b => (b / 1024).toFixed(2) + ' KB';
+              const change = (pr, base) => {
+                const d   = pr - base;
+                const pct = base > 0 ? ((d / base) * 100).toFixed(1) : '0.0';
+                const sign = d > 0 ? '+' : '';
+                const arrow = d > 0 ? '📈' : d < 0 ? '📉' : '➡️';
+                return `${arrow} ${sign}${(d / 1024).toFixed(2)} KB (${sign}${pct}%)`;
+              };
 
-              const budgeted = pr.files.filter(f => f.budget != null);
-              const splits   = pr.files.filter(f => f.budget == null);
+              const FILE_ORDER = [
+                'index.min.mjs', 'addons.min.mjs', 'handlers.min.mjs', 'lume.global.js',
+                'index.mjs',     'addons.mjs',     'handlers.mjs',
+              ];
+              const sortFiles = files => [...files].sort((a, b) => {
+                const ai = FILE_ORDER.indexOf(a.file);
+                const bi = FILE_ORDER.indexOf(b.file);
+                return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+              });
+
+              const budgeted = sortFiles(pr.files.filter(f => f.budget != null));
+              const splits   = sortFiles(pr.files.filter(f => f.budget == null));
 
               body += `**CDN standalone builds** — budgeted (self-contained)\n\n`;
-              body += `| File | Gzipped | Budget | Change vs main | Status |\n`;
-              body += `|------|---------|--------|----------------|--------|\n`;
+              body += `| File | Main | PR | Change | Budget | Status |\n`;
+              body += `|------|------|----|--------|--------|--------|\n`;
               for (const f of budgeted) {
-                const st = f.overBudget
-                  ? `❌ over by ${fmt(f.gzipped - f.budget)}`
-                  : `✅ ${((f.gzipped / f.budget) * 100).toFixed(0)}% of budget`;
-                const bf = baseMap[f.file];
-                const ch = bf ? `${arrow(f.gzipped, bf.gzipped)} ${delta(f.gzipped, bf.gzipped)}` : '—';
-                body += `| \`${f.file}\` | **${fmt(f.gzipped)}** | ${fmt(f.budget)} | ${ch} | ${st} |\n`;
+                const bf   = baseMap[f.file];
+                const main = bf ? fmt(bf.gzipped) : '—';
+                const ch   = bf ? change(f.gzipped, bf.gzipped) : '—';
+                const st   = f.overBudget ? '❌' : '✅';
+                body += `| \`${f.file}\` | ${main} | **${fmt(f.gzipped)}** | ${ch} | ${fmt(f.budget)} | ${st} |\n`;
               }
 
               if (splits.length > 0) {
                 body += `\n**npm split builds** — reference only (share a common chunk, not self-contained)\n\n`;
-                body += `| File | Gzipped | Change vs main |\n`;
-                body += `|------|---------|----------------|\n`;
+                body += `| File | Main | PR | Change |\n`;
+                body += `|------|------|----|--------|\n`;
                 for (const f of splits) {
-                  const bf = baseMap[f.file];
-                  const ch = bf ? `${arrow(f.gzipped, bf.gzipped)} ${delta(f.gzipped, bf.gzipped)}` : '—';
-                  body += `| \`${f.file}\` | **${fmt(f.gzipped)}** | ${ch} |\n`;
+                  const bf   = baseMap[f.file];
+                  const main = bf ? fmt(bf.gzipped) : '—';
+                  const ch   = bf ? change(f.gzipped, bf.gzipped) : '—';
+                  body += `| \`${f.file}\` | ${main} | **${fmt(f.gzipped)}** | ${ch} |\n`;
                 }
               }
             } else {
@@ -331,13 +363,31 @@ jobs:
             // ── Complexity & Maintainability ───────────────────────────────
             body += `### ${icon(results.complexity)} Complexity & Maintainability\n\n`;
             if (fs.existsSync('ci-complexity/complexity.json')) {
-              const data  = JSON.parse(fs.readFileSync('ci-complexity/complexity.json', 'utf8'));
+              const data = JSON.parse(fs.readFileSync('ci-complexity/complexity.json', 'utf8'));
+              let baseData = null;
+              if (fs.existsSync('ci-complexity/complexity-base.json')) {
+                try { baseData = JSON.parse(fs.readFileSync('ci-complexity/complexity-base.json', 'utf8')); } catch (e) {}
+              }
+              const baseFileMap = {};
+              if (baseData) baseData.files.forEach(f => { baseFileMap[f.file] = f; });
+
               const grade = g => g === 'A' ? '🟢 A' : g === 'B' ? '🟡 B' : '🔴 C';
+              const d = (val, base, decimals = 0) => {
+                if (base == null) return decimals > 0 ? val.toFixed(decimals) : String(val);
+                const diff = val - base;
+                if (diff === 0) return decimals > 0 ? val.toFixed(decimals) : String(val);
+                const sign = diff > 0 ? '+' : '';
+                const diffStr = decimals > 0 ? diff.toFixed(decimals) : String(diff);
+                const valStr  = decimals > 0 ? val.toFixed(decimals) : String(val);
+                return `${valStr} (${sign}${diffStr})`;
+              };
+
               body += `| File | LOC | Funcs | Max CC | Avg CC | MI | Grade | Status |\n`;
               body += `|------|-----|-------|--------|--------|----|-------|--------|\n`;
               for (const f of data.files) {
+                const bf = baseFileMap[f.file];
                 const st = f.overBudget ? '❌' : (f.exemptions?.length || f.miExempt) ? '⚠️ known' : '✅';
-                body += `| \`${f.file}\` | ${f.loc} | ${f.funcs} | ${f.maxCC} | ${f.avgCC} | ${f.mi} | ${grade(f.grade)} | ${st} |\n`;
+                body += `| \`${f.file}\` | ${d(f.loc, bf?.loc)} | ${d(f.funcs, bf?.funcs)} | ${d(f.maxCC, bf?.maxCC)} | ${d(f.avgCC, bf?.avgCC, 1)} | ${d(f.mi, bf?.mi)} | ${grade(f.grade)} | ${st} |\n`;
                 for (const v of (f.violations || [])) {
                   body += `| ↳ \`${v.name}\` (line ${v.line}) | | | **${v.cc}** | | | | ❌ CC>${data.thresholds.maxCC} |\n`;
                 }
