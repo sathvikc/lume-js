@@ -1,18 +1,40 @@
 import { setScheduler } from '../core/state.js';
-
 import { logError } from '../utils/log.js';
 
 let isBatching = false;
-let batchQueue = new Set(); // Use Set to deduplicate states if mutated multiple times
+let batchQueue = new Set();
+
+// Singleton MessageChannel for low-latency scheduling (~0.1ms vs ~4ms for setTimeout)
+let _mcChannel = null;
+let _mcCallbacks = [];
+function scheduleViaMessageChannel(callback) {
+  if (!_mcChannel) {
+    _mcChannel = new MessageChannel();
+    _mcChannel.port1.onmessage = () => {
+      const cb = _mcCallbacks.shift();
+      if (cb) cb();
+    };
+  }
+  _mcCallbacks.push(callback);
+  _mcChannel.port2.postMessage(null);
+}
+
+function scheduleNext(via, callback) {
+  if (via === 'message-channel') {
+    scheduleViaMessageChannel(callback);
+  } else {
+    // RAF syncs to screen refresh — effects paint in the same frame as the clock
+    requestAnimationFrame(callback);
+  }
+}
 
 setScheduler({
   schedule: (stateContext) => {
     if (isBatching) {
       batchQueue.add(stateContext);
     } else {
-      // Default behavior if not batching: each state gets its own microtask
       queueMicrotask(() => {
-        try { stateContext.flush(); } 
+        try { stateContext.flush(); }
         finally { stateContext.resetScheduleFlag(); }
       });
     }
@@ -20,145 +42,122 @@ setScheduler({
 });
 
 /**
- * Suppress microtask flushes during a group of writes, then flush synchronously once.
- * 
+ * Suppress microtask flushes during a group of writes, then flush once.
+ *
  * @param {function} fn - The function containing state mutations
- * @param {object} [options] - Configuration options
- * @param {boolean} [options.dedupe=false] - If true, effects reading multiple mutated states run exactly once.
- * @param {boolean} [options.timeSlice=false] - If true, effect execution is interleaved with the browser's
- *   paint cycle using requestAnimationFrame, preventing UI jitter. Requires dedupe: true.
- *   Returns a Promise that resolves when all effects finish.
- * @param {number} [options.timeBudget=4] - Max milliseconds of effect work per animation frame.
- *   Defaults to 4ms — a quarter of a 16.67ms frame — leaving ample time for RAF animations,
- *   layout, and paint so the UI never stutters.
- * @returns {*} The return value of fn, or a Promise resolving to it if timeSlice is true.
+ * @param {object} [options]
+ * @param {boolean} [options.dedupe=false] - Deduplicate effects across states (run once even if N states changed)
+ * @param {boolean} [options.timeSlice=false] - Drain effects in non-blocking slices. Returns a Promise.
+ * @param {'raf'|'message-channel'} [options.yieldVia='raf'] - Yield primitive for timeSlice mode.
+ *   'raf' syncs to screen refresh (smooth animations).
+ *   'message-channel' yields every ~0.1ms (maximum throughput, still non-blocking).
+ * @param {'urgent'|'normal'|'background'} [options.priority] - Shorthand for common configurations:
+ *   'urgent'     → dedupe:true, synchronous flush (fastest, blocks thread briefly)
+ *   'normal'     → dedupe:true, timeSlice via RAF (smooth 60fps, medium throughput)
+ *   'background' → dedupe:true, timeSlice via MessageChannel (smooth + maximum throughput)
+ * @param {number} [options.timeBudget=4] - Max ms of effect work per yield cycle. Default 4ms.
+ * @returns {*|Promise}
  */
 export function batch(fn, options = {}) {
-  const dedupe = !!options.dedupe;
-  const timeSlice = !!options.timeSlice;
-  // 4ms default: guarantees >12ms headroom per frame for animations and input
+  // Resolve priority shorthand into low-level options
+  let dedupe = !!options.dedupe;
+  let timeSlice = !!options.timeSlice;
+  let yieldVia = options.yieldVia || 'raf';
+
+  if (options.priority === 'urgent') {
+    dedupe = true; timeSlice = false;
+  } else if (options.priority === 'normal') {
+    dedupe = true; timeSlice = true; yieldVia = 'raf';
+  } else if (options.priority === 'background') {
+    dedupe = true; timeSlice = true; yieldVia = 'message-channel';
+  }
+
   const timeBudget = options.timeBudget != null ? options.timeBudget : 4;
 
-  if (typeof fn !== 'function') {
-    throw new Error('batch() requires a function');
-  }
-
-  // Handle nested batches safely (inner batches are absorbed by the outer one)
-  if (isBatching) {
-    return fn();
-  }
+  if (typeof fn !== 'function') throw new Error('batch() requires a function');
+  if (isBatching) return fn(); // nested batch: absorbed by outer
 
   isBatching = true;
   let result;
-  
+
   try {
     result = fn();
   } finally {
     if (dedupe) {
       if (timeSlice) {
-        // --- CONCURRENT MODE (TIME-SLICING) ---
-        // Turn off batching flag so async mutations after yield schedule normally
+        // --- CONCURRENT MODE ---
         isBatching = false;
 
         return new Promise(resolve => {
           const globalEffects = new Set();
-          
-          // Drain the queue synchronously — collect every pending effect into one global Set
+
           for (const ctx of batchQueue) {
             ctx.runBeforeFlushHooks();
             ctx.notifySubscribers();
-            for (const fx of ctx.pendingEffects) {
-              globalEffects.add(fx);
-            }
+            for (const fx of ctx.pendingEffects) globalEffects.add(fx);
             ctx.pendingEffects.clear();
             ctx.resetScheduleFlag();
           }
           batchQueue.clear();
 
           const effectsToRun = Array.from(globalEffects);
-          let currentIndex = 0;
+          let idx = 0;
 
           function processChunk() {
-            const frameStart = performance.now();
-            
-            // Execute effects until we exhaust the per-frame time budget
-            while (currentIndex < effectsToRun.length && (performance.now() - frameStart) < timeBudget) {
-              try { 
-                effectsToRun[currentIndex](); 
-              } catch (err) { 
-                logError('[Lume.js batch] Error in time-sliced effect:', err); 
-              }
-              currentIndex++;
+            const t = performance.now();
+            while (idx < effectsToRun.length && (performance.now() - t) < timeBudget) {
+              try { effectsToRun[idx](); }
+              catch (err) { logError('[Lume.js batch] Effect error:', err); }
+              idx++;
             }
-
-            if (currentIndex < effectsToRun.length) {
-              // Yield via requestAnimationFrame — the browser will paint the current frame
-              // (running RAF clock animations, processing input, etc.) BEFORE calling us back.
-              // This is the key difference from setTimeout: RAF syncs to the screen refresh rate.
-              requestAnimationFrame(processChunk);
+            if (idx < effectsToRun.length) {
+              scheduleNext(yieldVia, processChunk);
             } else {
               resolve(result);
             }
           }
 
-          // Kick off on the next animation frame so the browser paints BEFORE we start working
-          requestAnimationFrame(processChunk);
+          scheduleNext(yieldVia, processChunk);
         });
 
       } else {
         // --- SYNCHRONOUS DEDUPLICATION MODE ---
         let iterations = 0;
-        const MAX_ITERATIONS = 100;
         const globalEffects = new Set();
 
-        // Loop to handle cascading updates (effects that mutate state)
-        while (batchQueue.size > 0 && iterations < MAX_ITERATIONS) {
+        while (batchQueue.size > 0 && iterations < 100) {
           iterations++;
-          
-          const currentQueue = Array.from(batchQueue);
+          const q = Array.from(batchQueue);
           batchQueue.clear();
 
-          for (const ctx of currentQueue) {
+          for (const ctx of q) {
             ctx.runBeforeFlushHooks();
             ctx.notifySubscribers();
-            
-            for (const fx of ctx.pendingEffects) {
-              globalEffects.add(fx);
-            }
+            for (const fx of ctx.pendingEffects) globalEffects.add(fx);
             ctx.pendingEffects.clear();
             ctx.resetScheduleFlag();
           }
 
-          const effectsToRun = Array.from(globalEffects);
+          const toRun = Array.from(globalEffects);
           globalEffects.clear();
-
-          for (const fx of effectsToRun) {
-            try { fx(); } catch (err) { logError('[Lume.js batch] Error in effect:', err); }
+          for (const fx of toRun) {
+            try { fx(); } catch (err) { logError('[Lume.js batch] Effect error:', err); }
           }
         }
 
-        if (iterations >= MAX_ITERATIONS) {
-          logError(
-            '[Lume.js batch] Maximum global batch iterations reached (100). ' +
-            'This usually indicates an infinite loop caused by an effect or computed mutating state it depends on.'
-          );
+        if (iterations >= 100) {
+          logError('[Lume.js batch] Max iterations reached — possible infinite loop in an effect.');
         }
       }
     } else {
       // --- DEFAULT MODE ---
-      // Must be false so cascading updates within ctx.flush() schedule normally
       isBatching = false;
       for (const ctx of batchQueue) {
-        try {
-          ctx.flush();
-        } finally {
-          ctx.resetScheduleFlag();
-        }
+        try { ctx.flush(); } finally { ctx.resetScheduleFlag(); }
       }
       batchQueue.clear();
     }
-    
-    // Safety fallback: always clear state even if an exception escaped
+
     isBatching = false;
     batchQueue.clear();
   }
