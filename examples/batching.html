@@ -424,12 +424,13 @@
       const start = performance.now();
       const startRuns = globalEffectRuns;
 
-      // yieldToMain: lets the browser paint a frame and process events before continuing
-      const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
+      // yieldFrame: resolves on the NEXT animation frame — syncs our work to the screen refresh rate.
+      // Unlike setTimeout(0) which can fire at any time, RAF fires exactly once per paint cycle.
+      const yieldFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
 
-      // CHUNK_SIZE: how many stores to mutate before yielding back to the browser
-      // Tuned to ~5ms of JS work so the clock never drops a frame
-      const CHUNK_SIZE = 5000;
+      // 4ms time budget per frame for data mutation — same as batch engine.
+      // This leaves >12ms per 16.67ms frame for the clock RAF loop and layout/paint.
+      const MUTATION_BUDGET_MS = 4;
       const totalOps = currentStoreCount;
 
       if (strategy === 'none') {
@@ -444,21 +445,23 @@
         }, { dedupe: true });
       } else if (strategy === 'dedupe-true-slice') {
         ui.statusMessage = "Rendering chunks in background... (Clock won't freeze!)";
-        await yieldToMain(); // let the browser paint the status message first
+        await yieldFrame(); // let browser paint the status message + clock before we start
 
-        // Step 1: Chunk the DATA GENERATION loop so it never blocks for > ~5ms
-        // This is the key trick: we yield every CHUNK_SIZE stores
+        // Phase 1: Time-budget-based data mutation
+        // Check performance.now() on every iteration — yield the moment we exceed 4ms.
+        // This is adaptive: on fast machines we process more stores per frame, on slow ones fewer.
+        let chunkStart = performance.now();
         for (let s = 0; s < currentStoreCount; s++) {
           storesData[s].store[storesData[s].key]++;
-          if (s > 0 && s % CHUNK_SIZE === 0) {
-            await yieldToMain(); // yield to let clock animate and input respond
+          if ((performance.now() - chunkStart) >= MUTATION_BUDGET_MS) {
+            await yieldFrame(); // yield exactly at a frame boundary
+            chunkStart = performance.now();
           }
         }
 
-        // Step 2: batch() with timeSlice handles the RENDERING in chunks
-        // By this point all store values are already mutated, so batch just
-        // drains its queue of 2,000 pending effects in 10ms slices
-        await batch(() => {}, { dedupe: true, timeSlice: true, timeBudget: 10 });
+        // Phase 2: Time-budget-based rendering via batch + timeSlice
+        // All stores are mutated; batch drains its 2,000 pending effects in 4ms RAF chunks.
+        await batch(() => {}, { dedupe: true, timeSlice: true, timeBudget: MUTATION_BUDGET_MS });
       }
 
       // If we didn't use the async time-slice, just resolve instantly for timing logic

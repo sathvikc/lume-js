@@ -25,20 +25,25 @@ setScheduler({
  * @param {function} fn - The function containing state mutations
  * @param {object} [options] - Configuration options
  * @param {boolean} [options.dedupe=false] - If true, effects reading multiple mutated states run exactly once.
- * @param {boolean} [options.timeSlice=false] - If true, effect execution yields to the main thread to prevent UI freezing. Requires dedupe: true.
- * @param {number} [options.timeBudget=10] - The maximum milliseconds to block the main thread per frame before yielding.
+ * @param {boolean} [options.timeSlice=false] - If true, effect execution is interleaved with the browser's
+ *   paint cycle using requestAnimationFrame, preventing UI jitter. Requires dedupe: true.
+ *   Returns a Promise that resolves when all effects finish.
+ * @param {number} [options.timeBudget=4] - Max milliseconds of effect work per animation frame.
+ *   Defaults to 4ms — a quarter of a 16.67ms frame — leaving ample time for RAF animations,
+ *   layout, and paint so the UI never stutters.
  * @returns {*} The return value of fn, or a Promise resolving to it if timeSlice is true.
  */
 export function batch(fn, options = {}) {
   const dedupe = !!options.dedupe;
   const timeSlice = !!options.timeSlice;
-  const timeBudget = options.timeBudget || 10;
+  // 4ms default: guarantees >12ms headroom per frame for animations and input
+  const timeBudget = options.timeBudget != null ? options.timeBudget : 4;
 
   if (typeof fn !== 'function') {
     throw new Error('batch() requires a function');
   }
 
-  // Handle nested batches safely (we don't time-slice inner batches)
+  // Handle nested batches safely (inner batches are absorbed by the outer one)
   if (isBatching) {
     return fn();
   }
@@ -51,13 +56,14 @@ export function batch(fn, options = {}) {
   } finally {
     if (dedupe) {
       if (timeSlice) {
-        // --- ASYNCHRONOUS TIME-SLICING MODE ---
-        isBatching = false; // Turn off batching so we don't capture async mutations
-        
+        // --- CONCURRENT MODE (TIME-SLICING) ---
+        // Turn off batching flag so async mutations after yield schedule normally
+        isBatching = false;
+
         return new Promise(resolve => {
           const globalEffects = new Set();
           
-          // Collect all effects immediately before any async gap
+          // Drain the queue synchronously — collect every pending effect into one global Set
           for (const ctx of batchQueue) {
             ctx.runBeforeFlushHooks();
             ctx.notifySubscribers();
@@ -73,10 +79,10 @@ export function batch(fn, options = {}) {
           let currentIndex = 0;
 
           function processChunk() {
-            const start = performance.now();
+            const frameStart = performance.now();
             
-            // Run effects until we run out of effects or run out of time budget
-            while (currentIndex < effectsToRun.length && (performance.now() - start < timeBudget)) {
+            // Execute effects until we exhaust the per-frame time budget
+            while (currentIndex < effectsToRun.length && (performance.now() - frameStart) < timeBudget) {
               try { 
                 effectsToRun[currentIndex](); 
               } catch (err) { 
@@ -86,32 +92,26 @@ export function batch(fn, options = {}) {
             }
 
             if (currentIndex < effectsToRun.length) {
-              // We ran out of time budget, yield to browser to paint/accept input
-              if (typeof requestIdleCallback === 'function') {
-                requestIdleCallback(processChunk);
-              } else {
-                setTimeout(processChunk, 0);
-              }
+              // Yield via requestAnimationFrame — the browser will paint the current frame
+              // (running RAF clock animations, processing input, etc.) BEFORE calling us back.
+              // This is the key difference from setTimeout: RAF syncs to the screen refresh rate.
+              requestAnimationFrame(processChunk);
             } else {
-              // Finished all effects
               resolve(result);
             }
           }
 
-          // Start asynchronously
-          if (typeof requestIdleCallback === 'function') {
-            requestIdleCallback(processChunk);
-          } else {
-            setTimeout(processChunk, 0);
-          }
+          // Kick off on the next animation frame so the browser paints BEFORE we start working
+          requestAnimationFrame(processChunk);
         });
+
       } else {
         // --- SYNCHRONOUS DEDUPLICATION MODE ---
         let iterations = 0;
         const MAX_ITERATIONS = 100;
         const globalEffects = new Set();
 
-        // Loop to handle cascading updates (effects mutating state)
+        // Loop to handle cascading updates (effects that mutate state)
         while (batchQueue.size > 0 && iterations < MAX_ITERATIONS) {
           iterations++;
           
@@ -146,7 +146,8 @@ export function batch(fn, options = {}) {
       }
     } else {
       // --- DEFAULT MODE ---
-      isBatching = false; 
+      // Must be false so cascading updates within ctx.flush() schedule normally
+      isBatching = false;
       for (const ctx of batchQueue) {
         try {
           ctx.flush();
@@ -157,7 +158,7 @@ export function batch(fn, options = {}) {
       batchQueue.clear();
     }
     
-    // Safety fallback
+    // Safety fallback: always clear state even if an exception escaped
     isBatching = false;
     batchQueue.clear();
   }
