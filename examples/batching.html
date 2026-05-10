@@ -230,8 +230,22 @@
     }
   </style>
   <script type="module">
-    import { state, effect } from '../src/index.js?v=6';
-    import { batch } from '../src/addons/index.js?v=6';
+    import { state, effect } from '../src/index.js?v=7';
+    import { batch } from '../src/addons/index.js?v=7';
+
+    // 1. App UI State powered by Lume-JS!
+    const ui = state({
+      strategy: 'none',
+      timeTaken: 0,
+      effectExecutions: 0,
+      totalOperations: 0,
+      history: {
+        'none': { runs: 0, min: Infinity, max: 0, sum: 0 },
+        'dedupe-false': { runs: 0, min: Infinity, max: 0, sum: 0 },
+        'dedupe-true': { runs: 0, min: Infinity, max: 0, sum: 0 },
+        'dedupe-true-slice': { runs: 0, min: Infinity, max: 0, sum: 0 }
+      }
+    });
 
     const hand = document.getElementById('hand');
     const input = document.getElementById('heavy-input');
@@ -239,12 +253,6 @@
     const timeDisplay = document.getElementById('time-display');
     const matrix = document.getElementById('matrix');
     const cellCountDisplay = document.getElementById('cell-count-display');
-
-    let historyStats = {
-      'none': { runs: 0, min: Infinity, max: 0, sum: 0 },
-      'dedupe-false': { runs: 0, min: Infinity, max: 0, sum: 0 },
-      'dedupe-true': { runs: 0, min: Infinity, max: 0, sum: 0 }
-    };
 
     // Spin Clock
     let angle = 0;
@@ -258,43 +266,71 @@
     }
     requestAnimationFrame(animate);
 
+    // 2. Reactive UI Bindings
+    effect(() => {
+      // This automatically updates the DOM when `ui` state changes!
+      timeDisplay.innerHTML = `
+        Strategy: ${ui.strategy}<br>
+        Time taken: ${ui.timeTaken.toFixed(2)} ms<br>
+        Effect Executions: ${ui.effectExecutions}<br>
+        Total Operations: <strong>${ui.totalOperations.toLocaleString()}</strong>
+      `;
+    });
+
+    effect(() => {
+      // This automatically updates the History Table when `ui.history` changes!
+      ['none', 'dedupe-false', 'dedupe-true', 'dedupe-true-slice'].forEach(s => {
+        const stat = ui.history[s];
+        if (stat.runs === 0) {
+          document.getElementById(`hist-${s}-low`).innerText = '-';
+          document.getElementById(`hist-${s}-avg`).innerText = '-';
+          document.getElementById(`hist-${s}-high`).innerText = '-';
+        } else {
+          document.getElementById(`hist-${s}-low`).innerText = stat.min.toFixed(2);
+          document.getElementById(`hist-${s}-avg`).innerText = (stat.sum / stat.runs).toFixed(2);
+          document.getElementById(`hist-${s}-high`).innerText = stat.max.toFixed(2);
+        }
+      });
+    });
+
+    effect(() => {
+      // Keep Radio Button checked state in sync automatically!
+      const radio = document.querySelector(`input[name="strategy"][value="${ui.strategy}"]`);
+      if (radio) radio.checked = true;
+    });
+
+    // 3. Demo Engine
     let storesData = [];
     let globalEffectRuns = 0;
-    let stopCurrentEffect = null;
+    let stopMatrixEffect = null;
     let currentStoreCount = 100;
-    let cumulativeOperations = 0;
-
-    function resetHistory() {
-      historyStats = {
-        'none': { runs: 0, min: Infinity, max: 0, sum: 0 },
-        'dedupe-false': { runs: 0, min: Infinity, max: 0, sum: 0 },
-        'dedupe-true': { runs: 0, min: Infinity, max: 0, sum: 0 }
-      };
-      ['none', 'dedupe-false', 'dedupe-true'].forEach(s => {
-        document.getElementById(`hist-${s}-low`).innerText = '-';
-        document.getElementById(`hist-${s}-avg`).innerText = '-';
-        document.getElementById(`hist-${s}-high`).innerText = '-';
-      });
-      timeDisplay.innerHTML = "Strategy: none<br>Time taken: 0.00 ms<br>Effect Executions: 0<br>Total Operations: 0";
-      input.value = '';
-      cumulativeOperations = 0;
-      
-      const defaultRadio = document.querySelector('input[value="none"]');
-      if (defaultRadio) defaultRadio.checked = true;
-    }
 
     function initDemo(count) {
       currentStoreCount = count;
-      if (stopCurrentEffect) stopCurrentEffect();
+      if (stopMatrixEffect) stopMatrixEffect();
       
       matrix.innerHTML = '';
       globalEffectRuns = 0;
-      resetHistory();
+      
+      // Reset UI state cleanly via Lume-JS Batch
+      batch(() => {
+        ui.history = {
+          'none': { runs: 0, min: Infinity, max: 0, sum: 0 },
+          'dedupe-false': { runs: 0, min: Infinity, max: 0, sum: 0 },
+          'dedupe-true': { runs: 0, min: Infinity, max: 0, sum: 0 },
+          'dedupe-true-slice': { runs: 0, min: Infinity, max: 0, sum: 0 }
+        };
+        ui.strategy = 'none';
+        ui.timeTaken = 0;
+        ui.effectExecutions = 0;
+        ui.totalOperations = 0;
+      });
+      input.value = '';
 
       storesData = Array.from({ length: count }, () => {
         const rKey = 'v' + Math.random().toString(36).substr(2, 4);
         
-        // Add 10 randomized heavy keys per store for the marketing pitch!
+        // Add 10 randomized heavy keys per store
         const obj = { [rKey]: 0 };
         for (let j = 0; j < 10; j++) {
           obj['dummy_' + Math.random().toString(36).substr(2, 4)] = Math.random();
@@ -303,7 +339,6 @@
         return { store: state(obj), key: rKey };
       });
 
-      // Calculate size. Cap max visible cells at ~2000 to prevent DOM memory crash
       const visibleCount = Math.min(count, 2000);
       const cellWidth = Math.max(12, Math.floor(800 / (visibleCount / 5))); 
       for (let i = 0; i < visibleCount; i++) {
@@ -321,16 +356,14 @@
         cellCountDisplay.innerText = `${count.toLocaleString()} Active Cells • ${(count * 11).toLocaleString()} Total Keys`;
       }
 
-      stopCurrentEffect = effect(() => {
+      stopMatrixEffect = effect(() => {
         let sum = 0;
         for (let i = 0; i < count; i++) sum += storesData[i].store[storesData[i].key];
         globalEffectRuns++;
 
         for (let i = 0; i < visibleCount; i++) {
           const cell = document.getElementById(`cell-${i}`);
-          if (cell) {
-            cell.style.background = `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`;
-          }
+          if (cell) cell.style.background = `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`;
         }
       });
     }
@@ -339,7 +372,7 @@
 
     storeCountInput.addEventListener('input', (e) => {
       let val = parseInt(e.target.value);
-      if (isNaN(val) || val < 1) return; // Wait for valid input
+      if (isNaN(val) || val < 1) return;
       if (val > 100000) {
         val = 100000;
         e.target.value = val;
@@ -350,15 +383,18 @@
     document.querySelectorAll('input[name="strategy"]').forEach(radio => {
       radio.addEventListener('change', (e) => {
         input.value = '';
-        timeDisplay.innerHTML = `Strategy: ${e.target.value}<br>Time taken: 0.00 ms<br>Effect Executions: 0<br>Total Operations: 0`;
-        cumulativeOperations = 0;
+        batch(() => {
+          ui.strategy = e.target.value;
+          ui.timeTaken = 0;
+          ui.effectExecutions = 0;
+          ui.totalOperations = 0;
+        });
       });
     });
 
     input.addEventListener('input', async (e) => {
       const strategy = document.querySelector('input[name="strategy"]:checked').value;
       
-      // Safety Cap for Jittery Modes!
       if (strategy !== 'dedupe-true' && currentStoreCount > 10000) {
         timeDisplay.innerHTML = `<span style="color:red">ERROR: Modes capped at 10k stores to prevent your browser from instantly crashing.<br>Lower the Grid Size to test this mode, or switch to dedupe: true!</span>`;
         return;
@@ -367,7 +403,6 @@
       const start = performance.now();
       const startRuns = globalEffectRuns;
 
-      // We only loop a few times so the raw JS execution doesn't artificially block
       const NUM_UPDATES = 5;
       const totalOps = NUM_UPDATES * currentStoreCount;
 
@@ -387,28 +422,44 @@
             for (let s = 0; s < currentStoreCount; s++) storesData[s].store[storesData[s].key]++;
           }
         }, { dedupe: true });
+      } else if (strategy === 'dedupe-true-slice') {
+        // Show immediate feedback that it is processing in background
+        timeDisplay.innerHTML += `<br><span style="color:var(--accent)">Rendering chunks in background... (Clock won't freeze!)</span>`;
+        await batch(() => {
+          for (let i = 0; i < NUM_UPDATES; i++) {
+            for (let s = 0; s < currentStoreCount; s++) storesData[s].store[storesData[s].key]++;
+          }
+        }, { dedupe: true, timeSlice: true, timeBudget: 10 });
       }
 
-      await Promise.resolve();
+      // If we didn't use the async time-slice, just resolve instantly for timing logic
+      if (strategy !== 'dedupe-true-slice') await Promise.resolve();
 
       const end = performance.now();
       const duration = parseFloat((end - start).toFixed(2));
       const runs = globalEffectRuns - startRuns;
 
-      cumulativeOperations += totalOps;
-
-      timeDisplay.innerHTML = `Strategy: ${strategy}<br>Time taken: ${duration} ms<br>Effect Executions: ${runs}<br>Total Operations: <strong>${cumulativeOperations.toLocaleString()}</strong>`;
-
-      const stat = historyStats[strategy];
+      // Clone history object to trigger Lume-JS top-level reactivity
+      const newHistory = {
+        'none': { ...ui.history['none'] },
+        'dedupe-false': { ...ui.history['dedupe-false'] },
+        'dedupe-true': { ...ui.history['dedupe-true'] },
+        'dedupe-true-slice': { ...ui.history['dedupe-true-slice'] }
+      };
+      
+      const stat = newHistory[strategy];
       stat.runs++;
       stat.sum += duration;
       if (duration < stat.min) stat.min = duration;
       if (duration > stat.max) stat.max = duration;
 
-      const avg = (stat.sum / stat.runs).toFixed(2);
-      document.getElementById(`hist-${strategy}-low`).innerText = stat.min.toFixed(2);
-      document.getElementById(`hist-${strategy}-avg`).innerText = avg;
-      document.getElementById(`hist-${strategy}-high`).innerText = stat.max.toFixed(2);
+      // Update all UI state cleanly using Lume-JS batching!
+      batch(() => {
+        ui.timeTaken = duration;
+        ui.effectExecutions = runs;
+        ui.totalOperations += totalOps;
+        ui.history = newHistory;
+      });
     });
   </script>
 </head>
@@ -439,6 +490,7 @@
             <label><input type="radio" name="strategy" value="none" checked> Default (Microtasks) - Jittery!</label>
             <label><input type="radio" name="strategy" value="dedupe-false"> Batch (dedupe: false) - Jittery!</label>
             <label><input type="radio" name="strategy" value="dedupe-true"> Batch (dedupe: true) - <strong style="color:var(--accent);margin-left:4px;">Smooth!</strong></label>
+            <label><input type="radio" name="strategy" value="dedupe-true-slice"> Concurrent (dedupe + timeSlice) - <strong style="color:var(--accent);margin-left:4px;">Zero Jitter 60FPS!</strong></label>
           </div>
         </div>
 
@@ -472,6 +524,7 @@
             <tr><td>Default</td><td id="hist-none-low">-</td><td id="hist-none-avg">-</td><td id="hist-none-high">-</td></tr>
             <tr><td>dedupe: false</td><td id="hist-dedupe-false-low">-</td><td id="hist-dedupe-false-avg">-</td><td id="hist-dedupe-false-high">-</td></tr>
             <tr><td>dedupe: true</td><td id="hist-dedupe-true-low">-</td><td id="hist-dedupe-true-avg">-</td><td id="hist-dedupe-true-high">-</td></tr>
+            <tr><td>dedupe + timeSlice</td><td id="hist-dedupe-true-slice-low">-</td><td id="hist-dedupe-true-slice-avg">-</td><td id="hist-dedupe-true-slice-high">-</td></tr>
           </tbody>
         </table>
       </div>

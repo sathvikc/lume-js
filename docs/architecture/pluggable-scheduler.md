@@ -31,6 +31,26 @@ We provide two strategies via the `options` parameter to give developers absolut
    - Synchronously flushes states, but groups all pending effects from all mutated states into a single global `Set`.
    - **Performance:** True cross-state deduplication. It ensures that an effect reading from multiple mutated stores runs exactly *once* per batch. It incurs slight overhead due to the global `Set` aggregation but guarantees maximum predictability in highly complex reactive trees.
 
+## Concurrent Mode (Time-Slicing)
+
+Even with `dedupe: true` guaranteeing O(1) mathematical complexity, running 100,000 DOM updates synchronously *will* block the browser's Main Thread, resulting in UI "jitter" and frozen animations. 
+
+To solve this physical engine limitation, the `batch` addon supports **Time-Slicing** (inspired by React 18's Concurrent Mode):
+
+```javascript
+// Example: Updates the UI in the background without freezing the screen
+await batch(() => {
+  for (let i = 0; i < 100000; i++) store.data[i] = newData[i];
+}, { dedupe: true, timeSlice: true, timeBudget: 10 });
+```
+
+### How it works
+1. **Async Chunking:** Instead of a blocking `while` loop, the scheduler iterates through the deduplicated `Set` of effects.
+2. **Time Budget:** It executes effects synchronously until the execution time exceeds the `timeBudget` (default: `10ms`).
+3. **Yielding:** Once the budget is exceeded, it immediately yields control back to the browser using `requestIdleCallback` (or `setTimeout(..., 0)`). This allows the browser to paint CSS animations (like 60FPS spinners) and accept user keyboard input!
+4. **Resuming:** The browser calls the scheduler back, and it resumes executing the next chunk of effects.
+5. **Promise Resolution:** Because the execution is asynchronous, `batch` returns a `Promise` that resolves when all chunks finish rendering.
+
 ## Performance Benchmark & Findings
 
 We benchmarked 1,000 rapid updates across **50 distinct stores** to analyze the performance differences. 

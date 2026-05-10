@@ -136,7 +136,7 @@ describe('batch()', () => {
       expect(effectCount).toBe(2); // 1 initial + 1 global deduplicated update
     });
 
-    it('handles cascading updates properly in dedupe mode', () => {
+    it('handles cascading updates properly in dedupe mode', async () => {
       const storeA = state({ val: 0 });
       const storeB = state({ cascaded: 0 });
       let effectRuns = 0;
@@ -149,24 +149,46 @@ describe('batch()', () => {
         effectRuns++;
       });
 
-      // Initial run:
-      // val starts 0 -> effect runs, mutates to 1
-      // microtask 1 -> effect runs, mutates to 2
-      // microtask 2 -> effect runs, mutates to 3
-      // microtask 3 -> effect runs, val=3 (no mutation)
-      // Actually, since we're setting it synchronously right here, let's reset effectRuns
-      
       effectRuns = 0;
       storeA.val = 10;
       storeB.cascaded = 10;
+      await Promise.resolve(); // Wait for microtasks to flush before testing batch
       
       batch(() => {
         storeA.val = 0; // Will trigger cascading up to 3
       }, { dedupe: true });
 
-      // The global batch loop should catch the cascading updates synchronously
       expect(storeA.val).toBe(3);
-      expect(storeB.cascaded).toBeGreaterThan(10); // Proves cascading writes happened
+      expect(storeB.cascaded).toBeGreaterThan(10);
+    });
+  });
+
+  describe('with { timeSlice: true }', () => {
+    it('executes effects asynchronously and returns a Promise', async () => {
+      const storeA = state({ a: 0 });
+      let effectCount = 0;
+      
+      effect(() => {
+        // eslint-disable-next-line no-unused-expressions
+        storeA.a;
+        effectCount++;
+      });
+      
+      expect(effectCount).toBe(1); // initial run
+      
+      const promise = batch(() => {
+        storeA.a++;
+      }, { dedupe: true, timeSlice: true });
+      
+      // Because it's time-sliced, the execution is asynchronous.
+      // The effect should NOT have run immediately after batch() returns.
+      expect(effectCount).toBe(1);
+      
+      // Wait for the background chunks to finish
+      await promise;
+      
+      // Now the effect should have completed
+      expect(effectCount).toBe(2);
     });
   });
 });
