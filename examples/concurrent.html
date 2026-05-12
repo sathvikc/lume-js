@@ -180,9 +180,16 @@
     const yieldF=()=>new Promise(r=>requestAnimationFrame(r));
 
     let stores=[], stopFx=null, count=100, busy=false, initing=false, globalRuns=0;
+    let batchAbort = new AbortController();
+    // chunkHue: -1 = random colors (blocking modes, visually chaotic = flood)
+    //           0-360 = specific hue (time-sliced modes, rainbow bands = concurrent rendering)
+    let chunkHue = -1;
 
     async function initDemo(n){
       if(initing) return; initing=true; count=n;
+      // Cancel any in-flight time-sliced batch from the previous dataset (EDGE-3 fix)
+      batchAbort.abort(); batchAbort = new AbortController();
+      busy = false; // reset so benchmark can run after reinit
       if(stopFx){ stopFx.forEach(f=>f()); stopFx=null; }
       document.getElementById('matrix').innerHTML='';
       batch(()=>{ ui.history=Object.fromEntries(MODES.map(m=>[m,{n:0,min:Infinity,max:0,sum:0}]));
@@ -223,9 +230,14 @@
           let sum=0;
           for(let j=s0;j<s1;j++) sum+=stores[j].store[stores[j].key];
           globalRuns++;
-          // Instant bright color — no RAF, no setTimeout.
-          // The wave of updates sweeping the grid IS the visual proof.
-          if(cell) cell.style.background=`hsl(${(Math.random()*360)|0},80%,52%)`;
+          if(cell){
+            // chunkHue=-1: random color (blocking modes show chaotic simultaneous flood)
+            // chunkHue>=0: hue from current chunk (time-sliced modes show rainbow sweep)
+            const hue = chunkHue >= 0
+              ? (chunkHue + ((Math.random() * 40)|0)) % 360
+              : (Math.random() * 360)|0;
+            cell.style.background = `hsl(${hue},82%,52%)`;
+          }
         }));
         if(performance.now()-t>=FM){await yieldF();t=performance.now();}
       }
@@ -260,30 +272,42 @@
 
       busy=true;
       const t0=performance.now(), r0=globalRuns;
-      const CHUNK=Math.max(500,Math.ceil(count/40)); // ~40 smaller chunks = shorter sync blocks
+      const CHUNK=Math.max(500,Math.ceil(count/40));
 
       if(m==='none'){
+        chunkHue=-1; // random = chaotic flood
         for(let s=0;s<count;s++) stores[s].store[stores[s].key]++;
       } else if(m==='dedupe-false'){
+        chunkHue=-1;
         batch(()=>{for(let s=0;s<count;s++) stores[s].store[stores[s].key]++;},{dedupe:false});
       } else if(m==='dedupe-true'){
+        chunkHue=-1;
         batch(()=>{for(let s=0;s<count;s++) stores[s].store[stores[s].key]++;},{dedupe:true});
       } else if(m==='priority-urgent'){
+        chunkHue=-1;
         batch(()=>{for(let s=0;s<count;s++) stores[s].store[stores[s].key]++;},{priority:'urgent'});
       } else if(m==='priority-normal'){
-        ui.status='Rendering via RAF slices…';
+        ui.status='Rendering via RAF slices — watch the rainbow sweep →';
         await yieldF();
+        const sig=batchAbort.signal;
         for(let s=0;s<count;s+=CHUNK){
+          if(sig.aborted) break;
+          chunkHue = (s / count * 360)|0; // hue sweeps 0→360 as chunks progress
           const e=Math.min(count,s+CHUNK);
-          await batch(()=>{for(let i=s;i<e;i++) stores[i].store[stores[i].key]++;},{priority:'normal',timeBudget:FM});
+          await batch(()=>{for(let i=s;i<e;i++) stores[i].store[stores[i].key]++;},{priority:'normal',timeBudget:FM,signal:sig});
         }
+        chunkHue=-1;
       } else if(m==='priority-background'){
-        ui.status='Rendering via MessageChannel…';
+        ui.status='Rendering via MessageChannel — watch the rainbow sweep →';
         await yieldF();
+        const sig=batchAbort.signal;
         for(let s=0;s<count;s+=CHUNK){
+          if(sig.aborted) break;
+          chunkHue = (s / count * 360)|0;
           const e=Math.min(count,s+CHUNK);
-          await batch(()=>{for(let i=s;i<e;i++) stores[i].store[stores[i].key]++;},{priority:'background',timeBudget:FM});
+          await batch(()=>{for(let i=s;i<e;i++) stores[i].store[stores[i].key]++;},{priority:'background',timeBudget:FM,signal:sig});
         }
+        chunkHue=-1;
       }
 
       if(!m.startsWith('priority-')||m==='priority-urgent') await Promise.resolve();
