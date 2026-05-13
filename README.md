@@ -9,11 +9,11 @@
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
     &nbsp;
-    <a href="package.json"><img src="https://img.shields.io/badge/version-2.2.0-orange.svg" alt="v2.2.0"></a>
+    <a href="package.json"><img src="https://img.shields.io/badge/version-2.2.1-orange.svg" alt="v2.2.1"></a>
     &nbsp;
-    <a href="tests/"><img src="https://img.shields.io/badge/tests-348%20passing-brightgreen.svg" alt="348 tests"></a>
+    <a href="tests/"><img src="https://img.shields.io/badge/tests-355%20passing-brightgreen.svg" alt="355 tests"></a>
     &nbsp;
-    <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core-2.09KB%20gzipped-blue.svg" alt="2.09KB"></a>
+    <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core-2.23KB%20gzipped-blue.svg" alt="2.23KB"></a>
   </p>
   <p><code>npm install lume-js</code></p>
 </div>
@@ -26,7 +26,7 @@
 |---------|---------|-----------|-----|-------|
 | Custom Syntax | ❌ No | ✅ `x-data` | ✅ `v-bind` | ✅ JSX |
 | Build Step | ❌ Optional | ❌ Optional | ⚠️ Recommended | ✅ Required |
-| Bundle Size | ~2.09KB | ~15KB | ~35KB | ~45KB |
+| Bundle Size | ~2.23KB | ~15KB | ~35KB | ~45KB |
 | HTML Validation | ✅ Pass | ⚠️ Warnings | ⚠️ Warnings | ❌ JSX |
 | Extensible Handlers | ✅ | ❌ Built-in only | ❌ Built-in only | N/A |
 
