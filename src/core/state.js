@@ -55,6 +55,12 @@ const readers = new Set();
  *
  * Internal API — used by effect.js for auto-tracking. May be stabilized
  * for third-party addons in a future release.
+ *
+ * @security The observer sees reads from ALL state instances within the same
+ * module instance, including nested scopes. Only pass trusted observer functions.
+ * A future scoped variant (e.g., scopedReadObserver(store, fn)) may limit
+ * observation to a single state instance.
+ *
  * @param {function} onRead - Called on each property access inside fn
  * @param {function} fn - The function to run under observation
  */
