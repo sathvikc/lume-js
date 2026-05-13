@@ -22,7 +22,7 @@
  *   unsub(); // cleanup
  */
 
-import { logError } from '../utils/log.js';
+import { logError, logWarn } from '../utils/log.js';
 
 // Per-state batching – each state object maintains its own microtask flush.
 // This keeps effects simple and aligned with Lume's minimal philosophy.
@@ -191,6 +191,8 @@ export function state(obj) {
     };
   };
 
+  const BLOCKED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
   const proxy = new Proxy(obj, {
     get(target, key) {
       // Skip effect tracking for internal meta methods (e.g. $subscribe)
@@ -211,6 +213,11 @@ export function state(obj) {
     },
 
     set(target, key, value) {
+      if (typeof key === 'string' && BLOCKED_KEYS.has(key)) {
+        logWarn(`[Lume.js state] Blocked write to reserved key "${key}"`);
+        return true;
+      }
+
       const oldValue = target[key];
 
       // Skip update if value unchanged - Object.is() handles NaN and -0 correctly
@@ -256,12 +263,18 @@ export function state(obj) {
     };
   };
 
+  const MAX_SUBSCRIBERS = 1000;
+
   obj.$subscribe = (key, fn) => {
     if (typeof fn !== 'function') {
       throw new Error('Subscriber must be a function');
     }
 
     if (!listeners[key]) listeners[key] = [];
+    if (listeners[key].length >= MAX_SUBSCRIBERS) {
+      logWarn(`[Lume.js state] Subscriber limit (${MAX_SUBSCRIBERS}) reached for key "${key}". New subscriber ignored.`);
+      return () => {};
+    }
     listeners[key].push(fn);
 
     // Call immediately with current value (NOT batched)
