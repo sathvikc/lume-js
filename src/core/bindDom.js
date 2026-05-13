@@ -24,6 +24,11 @@
  * Usage:
  *   import { bindDom } from "lume-js";
  *   const cleanup = bindDom(document.body, store);
+ *
+ * @security `data-bind` attribute values are resolved once at bind time and
+ * trusted as state path expressions. If an attacker can inject `data-bind`
+ * attributes into the DOM, they can subscribe to any reachable reactive state.
+ * Ensure your HTML is trusted or sanitize it before calling bindDom().
  */
 
 import { logWarn } from '../utils/log.js';
