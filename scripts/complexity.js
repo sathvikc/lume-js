@@ -134,6 +134,11 @@ function getFunctions(ast) {
 
 // ── File metrics ──────────────────────────────────────────────────────────────
 
+function round(num, places) {
+  const r = parseFloat(num.toFixed(places));
+  return r === 0 ? 0 : r;
+}
+
 function maintainabilityIndex(avgCC, loc) {
   if (loc < 1) return 100;
   const mi = (171 - 0.23 * avgCC - 16.2 * Math.log(loc)) * 100 / 171;
@@ -199,8 +204,8 @@ async function analyzeFile(filePath) {
     loc,
     funcs: funcs.length,
     maxCC,
-    avgCC: Math.round(avgCC * 10) / 10,
-    mi: Math.round(mi * 10) / 10,
+    avgCC: round(avgCC, 1),
+    mi: round(mi, 1),
     grade,
     overBudget: miViolation || violations.length > 0,
     violations,
@@ -232,10 +237,7 @@ const anyFailed = results.some(r => r.overBudget);
 // ── JSON output ───────────────────────────────────────────────────────────────
 
 function cleanNumbers(obj) {
-  if (typeof obj === 'number') {
-    const r = Math.round(obj * 100) / 100;
-    return r === 0 ? 0 : r;
-  }
+  if (typeof obj === 'number') return round(obj, 2);
   if (Array.isArray(obj)) return obj.map(cleanNumbers);
   if (obj && typeof obj === 'object') {
     const out = {};
