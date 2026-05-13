@@ -346,6 +346,46 @@ describe('handlers module', () => {
 
       cleanup();
     });
+
+    it('removes href when value contains a dangerous URI scheme', async () => {
+      const root = setupDOM(`<div><a data-href="url">Link</a></div>`);
+      const store = state({ url: 'https://example.com' });
+
+      const cleanup = bindDom(root, store, { handlers: [stringAttr('href')] });
+      const link = root.querySelector('a');
+
+      expect(link.getAttribute('href')).toBe('https://example.com');
+
+      store.url = 'javascript:alert(1)';
+      await Promise.resolve();
+      expect(link.hasAttribute('href')).toBe(false);
+
+      store.url = 'vbscript:msgbox(1)';
+      await Promise.resolve();
+      expect(link.hasAttribute('href')).toBe(false);
+
+      store.url = 'data:text/html,<script>alert(1)</script>';
+      await Promise.resolve();
+      expect(link.hasAttribute('href')).toBe(false);
+
+      store.url = 'https://safe.example.com';
+      await Promise.resolve();
+      expect(link.getAttribute('href')).toBe('https://safe.example.com');
+
+      cleanup();
+    });
+
+    it('allows data:image URLs on src attributes', async () => {
+      const root = setupDOM(`<div><img data-src="img" /></div>`);
+      const store = state({ img: 'data:image/png;base64,abc123' });
+
+      const cleanup = bindDom(root, store, { handlers: [stringAttr('src')] });
+      const img = root.querySelector('img');
+
+      expect(img.getAttribute('src')).toBe('data:image/png;base64,abc123');
+
+      cleanup();
+    });
   });
 
   describe('custom handlers', () => {
