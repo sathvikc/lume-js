@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.2.1] - 2026-05-12
+
+### Security
+
+- **`state()` — prototype pollution hardening:** Proxy `set` trap now blocks writes to `__proto__`, `constructor`, and `prototype` keys, with a console warning. This prevents attackers from modifying object prototypes through reactive state mutations.
+- **`state()` — subscriber DoS protection:** Per-key subscriber lists are now capped at 1000 entries. Additional subscribers are silently dropped with a warning, preventing memory exhaustion from unbounded subscription accumulation.
+- **`stringAttr()` — dangerous URI scheme sanitization:** URI-bearing attributes (`href`, `src`, `action`, `srcset`, `poster`, `formaction`) now strip values containing `javascript:`, `vbscript:`, or `data:text/html` schemes. This prevents `javascript:` URI injection via reactive attribute bindings.
+- **`hydrateState()` — DOM clobbering mitigation:** Now validates that the selected element is a `<script type="application/json">` before parsing. Non-script elements or scripts with wrong types are rejected. Also accepts an optional `validate` callback for schema enforcement.
+- **`withPlugins()` — plugin freeze defense-in-depth:** Plugin objects are `Object.freeze()`'d after `onInit` runs, preventing post-registration hook mutation.
+
+### Documentation
+
+- **Security notes added to all affected APIs:** `@security` JSDoc tags added to `withReadObserver`, `computed`, `bindDom`, and `hydrateState` documenting trust models and known limitations.
+
+### Tests
+
+- **355 tests passing** (from 348 in v2.2.0) | 7 new tests
+  - Prototype-polluting key blocking (`state.test.js`)
+  - Subscriber limit enforcement (`state.test.js`)
+  - Dangerous URI scheme stripping (`handlers/index.test.js`)
+  - DOM clobbering rejection + schema validation (`hydrateState.test.js`)
+
+---
+
 ## [2.2.0] - 2026-05-09
 
 ### Added
