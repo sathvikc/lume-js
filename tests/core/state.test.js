@@ -267,6 +267,37 @@ describe('state', () => {
     expect(isReactive(outer.inner)).toBe(true);
   });
 
+  it('blocks writes to prototype-polluting keys', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const store = state({ count: 0 });
+
+    store.__proto__ = { injected: true };
+    store.constructor = function Mal() {};
+    store.prototype = { hacked: true };
+
+    expect(store.count).toBe(0);
+    expect(Object.getPrototypeOf(store)).toBe(Object.prototype);
+
+    expect(warnSpy).toHaveBeenCalledTimes(3);
+    warnSpy.mockRestore();
+  });
+
+  it('enforces a maximum number of subscribers per key', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const store = state({ x: 0 });
+
+    const unsubs = [];
+    for (let i = 0; i < 1002; i++) {
+      unsubs.push(store.$subscribe('x', () => {}));
+    }
+
+    expect(warnSpy).toHaveBeenCalledTimes(2);
+    warnSpy.mockRestore();
+
+    // Cleanup
+    unsubs.forEach(u => u());
+  });
+
   it('reactive brand symbol is present but not enumerable', () => {
     const store = state({ x: 1 });
     const brands = Object.getOwnPropertySymbols(store);
