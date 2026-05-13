@@ -33,6 +33,11 @@ import { logError } from '../utils/log.js';
  * mutates a state property it depends on, the flush triggered by that
  * mutation is skipped to prevent an infinite microtask loop.
  *
+ * @security After each computation, a re-entry guard stays active until the
+ * next microtask. If a dependency changes synchronously during this window,
+ * the computed will not recompute until a subsequent microtask. This is
+ * intentional — it prevents infinite loops from self-mutating computeds.
+ *
  * @param {function} fn - Function that computes the value
  * @returns {object} Object with .value property and methods
  * 
