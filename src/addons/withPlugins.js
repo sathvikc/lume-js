@@ -24,6 +24,10 @@
  *   onNotify(key, value)             — called before subscribers are notified
  *   onSubscribe(key)                 — called when $subscribe is invoked
  *
+ * @security Plugins run with full application privilege. A plugin can read
+ * all state, alter any write, or suppress mutations. Only pass trusted objects.
+ * Plugin objects are frozen after registration to prevent post-init mutation.
+ *
  * @param {object} store - A reactive proxy from state()
  * @param {Array<object>} plugins - Array of plugin objects
  * @returns {Proxy} A new proxy wrapping the store with plugin behavior
@@ -33,13 +37,15 @@ import { logError } from '../utils/log.js';
 export function withPlugins(store, plugins = []) {
   if (!plugins.length) return store;
 
-  // Call onInit hooks once at wrap time
+  // Call onInit hooks once at wrap time, then freeze each plugin to prevent
+  // post-registration mutation of its hooks (defense-in-depth).
   for (const p of plugins) {
     try {
       p.onInit?.();
     } catch (e) {
       logError(`[Lume.js] Plugin "${p.name}" error in onInit:`, e);
     }
+    Object.freeze(p);
   }
 
   // Track pending notifications for onNotify hooks.
