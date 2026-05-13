@@ -231,12 +231,26 @@ const anyFailed = results.some(r => r.overBudget);
 
 // ── JSON output ───────────────────────────────────────────────────────────────
 
+function cleanNumbers(obj) {
+  if (typeof obj === 'number') {
+    const r = Math.round(obj * 100) / 100;
+    return r === 0 ? 0 : r;
+  }
+  if (Array.isArray(obj)) return obj.map(cleanNumbers);
+  if (obj && typeof obj === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(obj)) out[k] = cleanNumbers(v);
+    return out;
+  }
+  return obj;
+}
+
 if (isJson) {
-  console.log(JSON.stringify({
+  console.log(JSON.stringify(cleanNumbers({
     passed: !anyFailed,
     thresholds: { maxCC: MAX_CC, minMI: MIN_MI },
     files: results,
-  }, null, 2));
+  }), null, 2));
   process.exit(anyFailed ? 1 : 0);
 }
 
