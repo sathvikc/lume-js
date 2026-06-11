@@ -22,6 +22,7 @@ entry, and (where it helps) a live example — reviewable in isolation.
 | [11](11-feat-state-entry.md) | `feat(build)` | **`lume-js/state`** — the universal DOM-free entry: state+batch at **1.45 KB gz** with its own CI budget. Additive; `lume-js` unchanged. |
 | 12 | `docs(design)` | design-decisions.md ratification entries for every change on this branch (incl. the batch-optional escape hatch and the `data-on*` amendment); VISION.md brought current. |
 | 13 | `docs` | README universal/DOM positioning (entry picker, badges), new [universal-core guide](../guides/universal-core.md) with runnable Node examples. |
+| 14 | `chore` | **AGENTS.md** — the build-process contract: artifact matrix (when decision entries/examples/tests are required), hard constraints, quality gates, doc-ownership table. |
 
 ## The through-line
 
@@ -44,9 +45,10 @@ Every change serves the same thesis — **web standards are already enough**:
 
 | Metric | main (v2.2.1) | this branch |
 |--------|---------------|-------------|
-| Tests | 355 | **420** (+65) |
+| Tests | 355 | **425** (+70) |
 | Coverage | 100% (statements/branches/functions/lines) | **100%** (unchanged gate) |
 | Core `index.min.mjs` (gzip) | 2.23 KB | **2.66 KB** (+0.43 KB for `batch()` + fixes; budget 3 KB) |
+| Universal kernel `state.min.mjs` (gzip) | — | **1.45 KB** (state+batch, DOM-free; budget 1.75 KB) |
 | Handlers bundle (gzip) | ~1.1 KB | 1.19 KB (`on()` is ~0.1 KB of it) |
 | New opt-in addon weight | — | `persist()` ~0.5 KB, template mode ~0.4 KB — pay only if imported |
 
