@@ -17,6 +17,8 @@ entry, and (where it helps) a live example — reviewable in isolation.
 | [06](06-feat-template-repeat.md) | `feat(addons)` | **Template-driven `repeat()`** — keyed lists from a standard `<template>` element with per-item `data-bind` paths. Kills the imperative-DOM boilerplate VISION.md calls the hardest problem. |
 | [07](07-feat-on-handler.md) | `feat(handlers)` | **`on()`** — declarative event wiring via `data-on*` attributes; functions live in state, wiring lives in HTML. No expressions, no eval. |
 | [08](08-feat-persist-addon.md) | `feat(addons)` | **`persist()`** — localStorage/sessionStorage sync with allowlist hydration, coalesced writes, and contained failures. From the VISION roadmap. |
+| [09](09-refactor-batch-extraction.md) | `refactor(core)` | **Batch machinery extracted to `core/batch.js`** — restores `state.js`'s maintainability budget; one-way dependency, identical behavior. |
+| 10 | `docs` | This index, README refresh (badges, `batch`/template/`on`/`persist` sections), changelog test summary. |
 
 ## The through-line
 
@@ -41,7 +43,7 @@ Every change serves the same thesis — **web standards are already enough**:
 |--------|---------------|-------------|
 | Tests | 355 | **420** (+65) |
 | Coverage | 100% (statements/branches/functions/lines) | **100%** (unchanged gate) |
-| Core `index.min.mjs` (gzip) | 2.23 KB | **2.64 KB** (+0.41 KB for `batch()` + fixes; budget 3 KB) |
+| Core `index.min.mjs` (gzip) | 2.23 KB | **2.66 KB** (+0.43 KB for `batch()` + fixes; budget 3 KB) |
 | Handlers bundle (gzip) | ~1.1 KB | 1.19 KB (`on()` is ~0.1 KB of it) |
 | New opt-in addon weight | — | `persist()` ~0.5 KB, template mode ~0.4 KB — pay only if imported |
 
