@@ -1797,4 +1797,248 @@ describe('repeat', () => {
       cleanup();
     });
   });
+
+  describe('template mode', () => {
+    function setTemplate(html) {
+      container.innerHTML = `<template>${html}</template>`;
+    }
+
+    it('clones the template per item and binds data-bind paths to the item', () => {
+      setTemplate('<li class="person"><strong data-bind="name"></strong><span data-bind="role"></span></li>');
+      const store = state({
+        people: [
+          { id: 1, name: 'Ada', role: 'engineer' },
+          { id: 2, name: 'Grace', role: 'admiral' }
+        ]
+      });
+
+      const cleanup = repeat(container, store, 'people', {
+        key: p => p.id,
+        template: true
+      });
+
+      const lis = container.querySelectorAll('li.person');
+      expect(lis.length).toBe(2);
+      expect(lis[0].querySelector('strong').textContent).toBe('Ada');
+      expect(lis[0].querySelector('span').textContent).toBe('engineer');
+      expect(lis[1].querySelector('strong').textContent).toBe('Grace');
+      cleanup();
+    });
+
+    it('binds nested paths, $item, and $index', () => {
+      setTemplate('<li><span data-bind="user.city"></span><em data-bind="$index"></em></li>');
+      const store = state({
+        rows: [
+          { id: 'a', user: { city: 'Oslo' } },
+          { id: 'b', user: { city: 'Lima' } }
+        ]
+      });
+
+      const cleanup = repeat(container, store, 'rows', { key: r => r.id, template: true });
+
+      const lis = container.querySelectorAll('li');
+      expect(lis[0].querySelector('span').textContent).toBe('Oslo');
+      expect(lis[0].querySelector('em').textContent).toBe('0');
+      expect(lis[1].querySelector('span').textContent).toBe('Lima');
+      expect(lis[1].querySelector('em').textContent).toBe('1');
+      cleanup();
+    });
+
+    it('supports primitive arrays via $item (data-bind on the root element)', () => {
+      setTemplate('<li data-bind="$item"></li>');
+      const store = state({ tags: ['red', 'green', 'blue'] });
+
+      const cleanup = repeat(container, store, 'tags', { key: t => t, template: true });
+
+      const texts = [...container.querySelectorAll('li')].map(li => li.textContent);
+      expect(texts).toEqual(['red', 'green', 'blue']);
+      cleanup();
+    });
+
+    it('binds form inputs by value/checked like bindDom', () => {
+      setTemplate('<li><input class="t" type="text" data-bind="name"><input class="c" type="checkbox" data-bind="done"></li>');
+      const store = state({
+        todos: [{ id: 1, name: 'Ship it', done: true }]
+      });
+
+      const cleanup = repeat(container, store, 'todos', { key: t => t.id, template: true });
+
+      expect(container.querySelector('input.t').value).toBe('Ship it');
+      expect(container.querySelector('input.c').checked).toBe(true);
+      cleanup();
+    });
+
+    it('null/undefined path segments bind as empty text', () => {
+      setTemplate('<li><span data-bind="user.city"></span></li>');
+      const store = state({ rows: [{ id: 1, user: null }] });
+
+      const cleanup = repeat(container, store, 'rows', { key: r => r.id, template: true });
+
+      expect(container.querySelector('span').textContent).toBe('');
+      cleanup();
+    });
+
+    it('re-binds on immutable item updates and reuses the same DOM node', async () => {
+      setTemplate('<li><span data-bind="name"></span></li>');
+      const store = state({ people: [{ id: 1, name: 'Ada' }] });
+
+      const cleanup = repeat(container, store, 'people', { key: p => p.id, template: true });
+      const firstNode = container.querySelector('li');
+      expect(firstNode.querySelector('span').textContent).toBe('Ada');
+
+      store.people = [{ id: 1, name: 'Ada Lovelace' }];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      const secondNode = container.querySelector('li');
+      expect(secondNode).toBe(firstNode); // same node, reused by key
+      expect(secondNode.querySelector('span').textContent).toBe('Ada Lovelace');
+      cleanup();
+    });
+
+    it('skips re-binding when item reference and index are unchanged', async () => {
+      setTemplate('<li><span data-bind="name"></span></li>');
+      const ada = { id: 1, name: 'Ada' };
+      const store = state({ people: [ada] });
+
+      const cleanup = repeat(container, store, 'people', { key: p => p.id, template: true });
+      const span = container.querySelector('span');
+
+      // Manual mutation we can observe: a re-bind would overwrite it
+      span.textContent = 'manually-touched';
+
+      store.people = [ada]; // new array, same item reference, same index
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(container.querySelector('span').textContent).toBe('manually-touched');
+      cleanup();
+    });
+
+    it('re-applies $index when items reorder (same refs, new indexes)', async () => {
+      setTemplate('<li><span data-bind="name"></span><em data-bind="$index"></em></li>');
+      const a = { id: 1, name: 'A' };
+      const b = { id: 2, name: 'B' };
+      const store = state({ people: [a, b] });
+
+      const cleanup = repeat(container, store, 'people', { key: p => p.id, template: true });
+      const nodeA = container.querySelectorAll('li')[0];
+
+      store.people = [b, a];
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      const lis = container.querySelectorAll('li');
+      expect(lis[1]).toBe(nodeA); // node reused, moved
+      expect(lis[0].querySelector('em').textContent).toBe('0');
+      expect(lis[1].querySelector('em').textContent).toBe('1');
+      cleanup();
+    });
+
+    it('accepts a CSS selector and an HTMLTemplateElement', () => {
+      const external = document.createElement('template');
+      external.id = 'ext-tpl';
+      external.innerHTML = '<li data-bind="$item"></li>';
+      document.body.appendChild(external);
+
+      const store = state({ tags: ['x'] });
+
+      const c1 = repeat(container, store, 'tags', { key: t => t, template: '#ext-tpl' });
+      expect(container.querySelector('li').textContent).toBe('x');
+      c1();
+
+      const c2 = repeat(container, store, 'tags', { key: t => t, template: external });
+      expect(container.querySelector('li').textContent).toBe('x');
+      c2();
+
+      document.body.removeChild(external);
+    });
+
+    it('runs create (with cleanup) and update on top of template bindings', async () => {
+      setTemplate('<li><span data-bind="name"></span><button>del</button></li>');
+      const events = [];
+      const store = state({ people: [{ id: 1, name: 'Ada' }] });
+
+      const cleanup = repeat(container, store, 'people', {
+        key: p => p.id,
+        template: true,
+        create: (item, el) => {
+          el.querySelector('button').addEventListener('click', () => events.push(`del:${item.id}`));
+          return () => events.push(`cleanup:${item.id}`);
+        },
+        update: (item, el) => {
+          el.dataset.updated = item.name;
+        }
+      });
+
+      expect(container.querySelector('span').textContent).toBe('Ada');
+      expect(container.querySelector('li').dataset.updated).toBe('Ada');
+
+      container.querySelector('button').click();
+      expect(events).toEqual(['del:1']);
+
+      store.people = [];
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(events).toEqual(['del:1', 'cleanup:1']);
+      cleanup();
+    });
+
+    it('warns and ignores render when template is set (bindings still applied)', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      setTemplate('<li><span data-bind="name"></span></li>');
+      const store = state({ people: [{ id: 1, name: 'Ada' }] });
+
+      const cleanup = repeat(container, store, 'people', {
+        key: p => p.id,
+        template: true,
+        render: (item, el) => { el.textContent = 'RENDER WINS?'; }
+      });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('options.render is ignored when options.template is set')
+      );
+      expect(container.querySelector('span').textContent).toBe('Ada');
+      cleanup();
+      warnSpy.mockRestore();
+    });
+
+    it('throws for a missing or invalid template', () => {
+      const store = state({ items: [] });
+
+      // No <template> inside the container
+      expect(() =>
+        repeat(container, store, 'items', { key: i => i, template: true })
+      ).toThrow('template not found or not a <template> element');
+
+      // Selector resolving to a non-template element
+      const div = document.createElement('div');
+      div.id = 'not-a-template';
+      document.body.appendChild(div);
+      expect(() =>
+        repeat(container, store, 'items', { key: i => i, template: '#not-a-template' })
+      ).toThrow('template not found or not a <template> element');
+      document.body.removeChild(div);
+    });
+
+    it('throws unless the template has exactly one root element', () => {
+      const store = state({ items: [] });
+
+      setTemplate('<li>one</li><li>two</li>');
+      expect(() =>
+        repeat(container, store, 'items', { key: i => i, template: true })
+      ).toThrow('exactly one root element');
+
+      container.innerHTML = '<template>   </template>';
+      expect(() =>
+        repeat(container, store, 'items', { key: i => i, template: true })
+      ).toThrow('exactly one root element');
+    });
+
+    it('template without any data-bind still renders structure', () => {
+      setTemplate('<li class="static">static row</li>');
+      const store = state({ items: [{ id: 1 }, { id: 2 }] });
+
+      const cleanup = repeat(container, store, 'items', { key: i => i.id, template: true });
+
+      expect(container.querySelectorAll('li.static').length).toBe(2);
+      cleanup();
+    });
+  });
 });

@@ -146,7 +146,7 @@ function handleDataBind(el, store, path, bindingMap) {
   if (!result) return null;
 
   const { target, key } = result;
-  const unsub = target.$subscribe(key, val => updateElement(el, val));
+  const unsub = target.$subscribe(key, val => applyBindValue(el, val));
 
   if (isFormInput(el)) {
     bindingMap.set(el, { target, key });
@@ -205,9 +205,13 @@ function resolveProp(store, path) {
 }
 
 /**
- * Update element with value (for data-bind)
+ * Update element with value (for data-bind).
+ *
+ * Exported for internal reuse (e.g. the repeat addon's template bindings)
+ * so addon and core data-bind semantics never drift. Not part of the
+ * public package API.
  */
-function updateElement(el, val) {
+export function applyBindValue(el, val) {
   if (el.tagName === "INPUT") {
     if (el.type === "checkbox") el.checked = Boolean(val);
     else if (el.type === "radio") el.checked = el.value === String(val);
