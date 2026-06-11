@@ -5,6 +5,16 @@
 > Reviewer note: each entry below has a detailed write-up with examples in
 > [`docs/changes/`](docs/changes/README.md), one file per commit.
 
+### Added
+
+- **`batch(fn)` (core):** group state writes across stores and flush them
+  together, synchronously, when the outermost batch returns. Effects that
+  depend on several mutated stores run exactly once per batch (per-store
+  microtask batching runs them once per store). Nested batches are absorbed;
+  errors flush prior writes then propagate; async callbacks warn. No global
+  scheduler, no import side effects. `import { batch } from 'lume-js'`.
+  See [docs/changes/05](docs/changes/05-feat-core-batch.md), [docs/api/core/batch.md](docs/api/core/batch.md), `examples/batch/`.
+
 ### Fixed
 
 - **`state()` / `isReactive()` — reactive brand was dead code:** every store
