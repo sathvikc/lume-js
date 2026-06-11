@@ -341,6 +341,26 @@ describe('state', () => {
     expect(brands.some(s => String(s) === 'Symbol(lume.reactive)')).toBe(true);
     expect(Object.keys(store)).not.toContain('Symbol(lume.reactive)');
   });
+
+  it('all stores share one registry brand symbol', () => {
+    const brand = Symbol.for('lume.reactive');
+    const storeA = state({ a: 1 });
+    const storeB = state({ b: 2 });
+
+    // Same shared symbol on every store — readable by anyone via Symbol.for
+    expect(brand in storeA).toBe(true);
+    expect(brand in storeB).toBe(true);
+
+    // Non-enumerable: a spread copy of a store does not inherit the brand
+    expect(brand in { ...storeA }).toBe(false);
+  });
+
+  it('re-wrapping the same object does not throw on the brand stamp', () => {
+    const obj = { x: 1 };
+    state(obj);
+    // Second wrap re-defines the brand with identical attributes — allowed
+    expect(() => state(obj)).not.toThrow();
+  });
 });
 
 describe('state edge cases', () => {

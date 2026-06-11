@@ -49,6 +49,19 @@ import { logError, logWarn } from '../utils/log.js';
 const readers = new Set();
 
 /**
+ * Brand symbol stamped on every object passed to state().
+ *
+ * Uses the global symbol registry (Symbol.for) so independent copies of
+ * lume-js on the same page (e.g. a CDN build next to a bundled chunk)
+ * agree on the same brand. This is a type tag for reliable detection
+ * (see isReactive in addons), not a security boundary — any code can
+ * stamp it.
+ *
+ * Internal API — exported for addons; not re-exported from the package root.
+ */
+export const REACTIVE_BRAND = Symbol.for('lume.reactive');
+
+/**
  * Run a function with a read observer active.
  * The observer receives (proxy, key, registerEffect) for every property read.
  * Multiple observers can be active simultaneously (nested effects, devtools, etc.)
@@ -172,9 +185,9 @@ export function state(obj) {
     });
   }
 
-  // Brand symbol for type-level reactive identification
-  const REACTIVE_BRAND = Symbol('lume.reactive');
-  obj[REACTIVE_BRAND] = true;
+  // Stamp the shared brand (non-enumerable: spreads/Object.assign copies
+  // of a store do not inherit the brand and won't masquerade as reactive).
+  Object.defineProperty(obj, REACTIVE_BRAND, { value: true });
 
   const MAX_SUBSCRIBERS = 1000;
   const noopUnsubscribe = () => {};
