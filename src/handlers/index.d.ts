@@ -85,6 +85,30 @@ export function classToggle(...names: string[]): Handler[];
  */
 export function stringAttr(name: string): Handler;
 
+/**
+ * Create handlers for declarative event wiring.
+ * Each type creates a handler: data-on{type}="key" wires the function held
+ * at that store key as a DOM event listener.
+ *
+ * Reactive like any binding: assigning a new function to the key re-wires
+ * the listener; assigning null/undefined detaches it. Non-function truthy
+ * values detach with a console warning.
+ *
+ * Returns an array — pass directly to handlers (auto-flattened by bindDom).
+ *
+ * @param types - DOM event types ('click', 'input', 'submit', ...)
+ *
+ * @example
+ * ```typescript
+ * const store = state({
+ *   addTodo: (event: Event) => { ... }
+ * });
+ * bindDom(root, store, { handlers: [on('click')] });
+ * // <button data-onclick="addTodo">Add</button>
+ * ```
+ */
+export function on(...types: string[]): Handler[];
+
 /** Form-related handlers preset (readonly) */
 export const formHandlers: Handler[];
 

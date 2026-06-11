@@ -7,6 +7,12 @@
 
 ### Added
 
+- **`on(...types)` (handlers):** declarative event wiring —
+  `data-onclick="addTodo"` attaches the function held at that store key as a
+  DOM listener, with reactive re-wiring on key reassignment and detach on
+  `null`. Same trust model as `data-bind` (references existing state
+  functions only; no expressions, no eval). ~0.2 KB, opt-in import.
+  See [docs/changes/07](docs/changes/07-feat-on-handler.md), [docs/api/handlers/on.md](docs/api/handlers/on.md).
 - **`repeat({ template })` (addons):** declarative list rendering from a
   standard `<template>` element — `template: true | selector | element`. The
   template is cloned per item and its `data-bind` paths bind against each item

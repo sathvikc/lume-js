@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { state } from 'src/core/state.js';
 import { bindDom } from 'src/core/bindDom.js';
-import { show, className, boolAttr, ariaAttr, classToggle, stringAttr, formHandlers, a11yHandlers, htmlAttrs } from 'src/handlers/index.js';
+import { show, className, boolAttr, ariaAttr, classToggle, stringAttr, on, formHandlers, a11yHandlers, htmlAttrs } from 'src/handlers/index.js';
 
 function setupDOM(html) {
   document.body.innerHTML = html;
@@ -1194,6 +1194,117 @@ describe('handlers module', () => {
       expect(showCount).toBe(1);
       expect(boolCount).toBeGreaterThan(10);
       expect(ariaCount).toBeGreaterThan(30); // bool + string ARIA combined
+    });
+  });
+
+  describe('on factory (declarative events)', () => {
+    it('wires a store function as an event listener', () => {
+      const root = setupDOM(`<div><button data-onclick="add">Add</button></div>`);
+      const clicks = [];
+      const store = state({ add: (e) => clicks.push(e.type) });
+
+      const cleanup = bindDom(root, store, { handlers: [on('click')] });
+
+      root.querySelector('button').click();
+      root.querySelector('button').click();
+      expect(clicks).toEqual(['click', 'click']);
+
+      cleanup();
+    });
+
+    it('re-wires when the store key is assigned a new function', async () => {
+      const root = setupDOM(`<div><button data-onclick="handler">Go</button></div>`);
+      const calls = [];
+      const store = state({ handler: () => calls.push('first') });
+
+      const cleanup = bindDom(root, store, { handlers: [on('click')] });
+      const button = root.querySelector('button');
+
+      button.click();
+      expect(calls).toEqual(['first']);
+
+      store.handler = () => calls.push('second');
+      await Promise.resolve();
+
+      button.click();
+      // Old listener swapped out — not stacked
+      expect(calls).toEqual(['first', 'second']);
+
+      cleanup();
+    });
+
+    it('detaches the listener when the key becomes null', async () => {
+      const root = setupDOM(`<div><button data-onclick="handler">Go</button></div>`);
+      const calls = [];
+      const store = state({ handler: () => calls.push('hit') });
+
+      const cleanup = bindDom(root, store, { handlers: [on('click')] });
+      const button = root.querySelector('button');
+
+      button.click();
+      expect(calls).toEqual(['hit']);
+
+      store.handler = null;
+      await Promise.resolve();
+
+      button.click();
+      expect(calls).toEqual(['hit']); // detached — no new calls
+
+      cleanup();
+    });
+
+    it('warns and detaches for truthy non-function values', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const root = setupDOM(`<div><button data-onclick="handler">Go</button></div>`);
+      const calls = [];
+      const store = state({ handler: () => calls.push('hit') });
+
+      const cleanup = bindDom(root, store, { handlers: [on('click')] });
+      const button = root.querySelector('button');
+
+      store.handler = 'not-a-function';
+      await Promise.resolve();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("on('click'): bound value is not a function")
+      );
+      button.click();
+      expect(calls).toEqual([]); // previous listener removed, nothing attached
+
+      cleanup();
+      warnSpy.mockRestore();
+    });
+
+    it('supports multiple event types from one call', () => {
+      const root = setupDOM(`<div><input data-oninput="onType" data-onfocus="onFocus"></div>`);
+      const events = [];
+      const store = state({
+        onType: () => events.push('input'),
+        onFocus: () => events.push('focus'),
+      });
+
+      const cleanup = bindDom(root, store, { handlers: [on('input', 'focus')] });
+      const input = root.querySelector('input');
+
+      input.dispatchEvent(new Event('focus'));
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(events).toEqual(['focus', 'input']);
+
+      cleanup();
+    });
+
+    it('receives the DOM event object', () => {
+      const root = setupDOM(`<div><button data-onclick="grab">Go</button></div>`);
+      let received = null;
+      const store = state({ grab: (e) => { received = e; } });
+
+      const cleanup = bindDom(root, store, { handlers: [on('click')] });
+      root.querySelector('button').click();
+
+      expect(received).toBeInstanceOf(Event);
+      expect(received.type).toBe('click');
+
+      cleanup();
     });
   });
 });
