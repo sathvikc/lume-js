@@ -20,6 +20,8 @@ entry, and (where it helps) a live example — reviewable in isolation.
 | [09](09-refactor-batch-extraction.md) | `refactor(core)` | **Batch machinery extracted to `core/batch.js`** — restores `state.js`'s maintainability budget; one-way dependency, identical behavior. |
 | 10 | `docs` | This index, README refresh (badges, `batch`/template/`on`/`persist` sections), changelog test summary. |
 | [11](11-feat-state-entry.md) | `feat(build)` | **`lume-js/state`** — the universal DOM-free entry: state+batch at **1.45 KB gz** with its own CI budget. Additive; `lume-js` unchanged. |
+| 12 | `docs(design)` | design-decisions.md ratification entries for every change on this branch (incl. the batch-optional escape hatch and the `data-on*` amendment); VISION.md brought current. |
+| 13 | `docs` | README universal/DOM positioning (entry picker, badges), new [universal-core guide](../guides/universal-core.md) with runnable Node examples. |
 
 ## The through-line
 
