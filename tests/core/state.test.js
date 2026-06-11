@@ -282,8 +282,8 @@ describe('state', () => {
     warnSpy.mockRestore();
   });
 
-  it('enforces a maximum number of subscribers per key', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('enforces a maximum number of subscribers per key with a loud error', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const store = state({ x: 0 });
 
     const unsubs = [];
@@ -291,11 +291,48 @@ describe('state', () => {
       unsubs.push(store.$subscribe('x', () => {}));
     }
 
-    expect(warnSpy).toHaveBeenCalledTimes(2);
-    warnSpy.mockRestore();
+    expect(errorSpy).toHaveBeenCalledTimes(2);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Subscriber limit (1000) reached for key "x"')
+    );
+    errorSpy.mockRestore();
 
-    // Cleanup
+    // Cleanup — including the no-op unsubscribes from capped calls
     unsubs.forEach(u => u());
+  });
+
+  it('applies the same subscriber cap to effect subscriptions', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const store = state({ x: 0 });
+
+    // Fill the key to the cap with plain subscribers…
+    const unsubs = [];
+    for (let i = 0; i < 1000; i++) {
+      unsubs.push(store.$subscribe('x', () => {}));
+    }
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    // …then an effect tracking the same key must hit the same cap
+    // (previously effects bypassed it entirely — inconsistent).
+    let runs = 0;
+    const cleanup = effect(() => {
+      void store.x;
+      runs++;
+    });
+
+    expect(runs).toBe(1); // initial run still happens
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Effect subscription ignored')
+    );
+
+    // The capped effect must not re-run (its subscription was rejected)
+    store.x = 1;
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(runs).toBe(1);
+
+    cleanup(); // covers the no-op unsubscribe path for effects
+    unsubs.forEach(u => u());
+    errorSpy.mockRestore();
   });
 
   it('reactive brand symbol is present but not enumerable', () => {

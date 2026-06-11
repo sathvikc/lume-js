@@ -7,6 +7,11 @@
 
 ### Fixed
 
+- **`state()` — subscriber cap consistency:** the per-key 1000-listener cap
+  (added in 2.2.1) only applied to `$subscribe`; effect subscriptions bypassed
+  it entirely. Both paths now share one capped registration helper, and
+  hitting the cap logs a `console.error` (was a silent-ish warn) stating that
+  the listener will not receive updates. See [docs/changes/03](docs/changes/03-fix-subscriber-cap-consistency.md).
 - **`effect()` — explicit-deps runs coalesced:** with `effect(fn, [[store, 'a', 'b']])`,
   changing N tracked keys in one tick re-ran the effect N times (auto-tracking
   mode already deduplicated). Explicit-deps notifications now coalesce into a
