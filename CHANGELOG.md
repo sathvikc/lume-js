@@ -1,5 +1,20 @@
 # Changelog
 
+## [Unreleased]
+
+> Reviewer note: each entry below has a detailed write-up with examples in
+> [`docs/changes/`](docs/changes/README.md), one file per commit.
+
+### Fixed
+
+- **`effect()` — cross-store dependency tracking:** an effect reading the same
+  property name on two different stores (e.g. `storeA.value` and
+  `storeB.value`) only subscribed to the first store; mutations to the second
+  store silently never re-ran the effect. Tracking is now keyed per store proxy
+  (`WeakMap<proxy, Set<key>>`). See [docs/changes/01](docs/changes/01-fix-effect-cross-store-tracking.md).
+
+---
+
 ## [2.2.1] - 2026-05-12
 
 ### Security
