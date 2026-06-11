@@ -7,6 +7,13 @@
 
 ### Added
 
+- **`persist(store, key, opts)` (addons):** localStorage/sessionStorage sync
+  from the VISION roadmap — hydrates watched keys through the proxy on call,
+  then saves on change with one coalesced write per microtask, skipping
+  unchanged snapshots. Allowlist hydration (stale storage can't inject keys),
+  contained failures (quota/corrupt JSON/circular state warn, never throw),
+  SSR-safe no-op without storage. ~0.5 KB, opt-in.
+  See [docs/changes/08](docs/changes/08-feat-persist-addon.md), [docs/api/addons/persist.md](docs/api/addons/persist.md).
 - **`on(...types)` (handlers):** declarative event wiring —
   `data-onclick="addTodo"` attaches the function held at that store key as a
   DOM listener, with reactive re-wiring on key reassignment and detach on
