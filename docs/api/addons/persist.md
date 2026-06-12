@@ -60,6 +60,8 @@ That replaces the usual hand-rolled pair of `JSON.parse(localStorage.getItem(...
 | Unserializable state (circular refs, etc.) | Console warning, save skipped |
 | Quota exceeded / write failure | Console warning, app keeps running |
 | No storage (SSR, locked-down browsers) | Console warning, persistence disabled, returned dispose is a safe no-op |
+| `keys: []` | Respected — persists and hydrates nothing (only an *absent* option falls back to all keys) |
+| Same `storageKey` managed twice | Console warning on the second `persist()` — instances would overwrite each other's data |
 
 ## Per-tab persistence
 
@@ -69,7 +71,7 @@ persist(store, 'wizard-progress', { storage: sessionStorage });
 
 ## Multiple stores
 
-Each call owns one storage entry — give each store its own key:
+Each call owns one storage entry — give each store its own key (a second `persist()` on an already-managed key logs a warning, since the instances would overwrite each other):
 
 ```js
 persist(settingsStore, 'app:settings');

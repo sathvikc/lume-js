@@ -53,6 +53,12 @@ function serializeKeys(store, watched) {
   return JSON.stringify(out);
 }
 
+// storage object → Set of storage keys currently managed by a persist()
+// instance. Two instances on one entry silently overwrite each other's
+// subsets (each serializes only its own watched keys over the whole blob),
+// so the second registration gets a loud warning.
+const activeEntries = new WeakMap();
+
 /**
  * Default storage resolution. Wrapped because accessing localStorage can
  * THROW (SecurityError) in cookie-blocked iframes and some privacy modes —
@@ -95,9 +101,27 @@ export function persist(store, storageKey, options = {}) {
     return () => {};
   }
 
-  const watched = Array.isArray(options.keys) && options.keys.length > 0
+  // An explicit array is respected as-is — including [] (persist nothing).
+  // Only an absent/non-array option falls back to all own non-$ keys.
+  const watched = Array.isArray(options.keys)
     ? options.keys.slice()
     : Object.keys(store).filter(k => !k.startsWith('$'));
+
+  // Warn when another live persist() already manages this storage entry
+  let entrySet = activeEntries.get(storage);
+  if (!entrySet) {
+    entrySet = new Set();
+    activeEntries.set(storage, entrySet);
+  }
+  const ownsEntry = !entrySet.has(storageKey);
+  if (ownsEntry) {
+    entrySet.add(storageKey);
+  } else {
+    logWarn(
+      `[Lume.js] persist(): "${storageKey}" is already managed by another persist() on this storage — ` +
+      'instances will overwrite each other\'s data. Use a distinct key per store.'
+    );
+  }
 
   // ── Hydrate ────────────────────────────────────────────────────────────
   // Only watched keys are assigned — stale storage can't inject others.
@@ -160,6 +184,7 @@ export function persist(store, storageKey, options = {}) {
 
   return () => {
     disposed = true;
+    if (ownsEntry) entrySet.delete(storageKey);
     while (unsubs.length) unsubs.pop()();
   };
 }
