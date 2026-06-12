@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lume.js - batch()</title>
+  <title>Lume.js - batch() benchmark</title>
   <style>
     :root {
       --bg: #fff;
@@ -13,18 +13,20 @@
       --accent: #2563eb;
       --accent-hover: #1d4ed8;
       --ok: #16a34a;
+      --warn: #d97706;
     }
     * { box-sizing: border-box; }
     body {
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       background: var(--bg);
       color: var(--fg);
-      max-width: 760px;
+      max-width: 860px;
       margin: 40px auto;
       padding: 0 16px;
       line-height: 1.6;
     }
     h1 { font-size: 28px; margin: 0 0 8px; }
+    h2 { font-size: 18px; margin: 0 0 10px; }
     .sub { color: var(--muted); margin-bottom: 16px; }
     .card {
       border: 1px solid var(--border);
@@ -33,19 +35,6 @@
       margin-bottom: 16px;
       background: #fff;
     }
-    .stores { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
-    .store {
-      flex: 1;
-      min-width: 140px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px;
-      text-align: center;
-    }
-    .store .value { font-size: 32px; font-weight: 700; }
-    .store .label { color: var(--muted); font-size: 13px; }
-    .total { font-size: 20px; margin: 8px 0; }
-    .total b[data-bind] { color: var(--accent); }
     button {
       padding: 10px 14px;
       border: 0;
@@ -57,41 +46,121 @@
       margin-right: 8px;
     }
     button:hover { background: var(--accent-hover); }
-    .runs { color: var(--ok); font-weight: 600; }
+    button:disabled { opacity: 0.5; cursor: wait; }
     code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+
+    /* The dashboard being driven */
+    .stats { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+    .stat {
+      flex: 1; min-width: 110px;
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 12px; text-align: center;
+    }
+    .stat .v { font-size: 24px; font-weight: 700; }
+    .stat .l { color: var(--muted); font-size: 12px; }
+
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(20, 1fr);
+      gap: 3px;
+    }
+    #grid .cell {
+      aspect-ratio: 1;
+      border-radius: 3px;
+      background: hsl(var(--h, 120) 70% 55%);
+      color: #fff;
+      font-size: 9px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 120ms linear;
+    }
+
+    /* Results + frame health */
+    .results { display: flex; gap: 14px; flex-wrap: wrap; }
+    .result {
+      flex: 1; min-width: 240px;
+      border: 1px solid var(--border); border-radius: 8px; padding: 14px;
+    }
+    .result h3 { margin: 0 0 8px; font-size: 14px; color: var(--muted); }
+    .result .big { font-size: 26px; font-weight: 700; }
+    .result .runs { color: var(--warn); font-weight: 600; }
+    .result.batch .runs { color: var(--ok); }
+    .meter { display: flex; align-items: center; gap: 12px; }
+    .pulse {
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--ok);
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse { 50% { transform: scale(1.8); opacity: 0.4; } }
+    .footnote { color: var(--muted); font-size: 13px; }
   </style>
 </head>
 <body>
-  <h1>batch()</h1>
+  <h1>batch() — live benchmark</h1>
   <p class="sub">
-    Three independent stores feed one effect. Without <code>batch()</code>, mutating all three
-    runs the effect once per store. Inside <code>batch()</code>, it runs exactly once.
+    A dashboard of <strong>200 independent stores</strong> (one per cell), each with its own
+    fine-grained effect, plus <strong>one aggregate effect</strong> that reads all 200.
+    The benchmark fires <strong>100 write-bursts</strong>; every burst mutates all 200 stores.
+    Per-store batching runs the aggregate once per store flush — <code>batch()</code> runs it
+    <em>once per burst</em>. Numbers are measured live on your machine, not quoted.
   </p>
 
   <div class="card">
-    <div class="stores">
-      <div class="store">
-        <div class="value" data-bind="a"></div>
-        <div class="label">store A</div>
-      </div>
-      <div class="store">
-        <div class="value" data-bind="b"></div>
-        <div class="label">store B</div>
-      </div>
-      <div class="store">
-        <div class="value" data-bind="c"></div>
-        <div class="label">store C</div>
-      </div>
+    <div class="stats">
+      <div class="stat"><div class="v" data-bind="sum"></div><div class="l">sum (by aggregate effect)</div></div>
+      <div class="stat"><div class="v" data-bind="avg"></div><div class="l">avg</div></div>
+      <div class="stat"><div class="v" data-bind="min"></div><div class="l">min</div></div>
+      <div class="stat"><div class="v" data-bind="max"></div><div class="l">max</div></div>
+      <div class="stat"><div class="v" data-bind="worstFrame"></div><div class="l">worst frame (last 1s)</div></div>
     </div>
-
-    <div class="total">Sum (computed by the effect): <b data-bind="sum"></b></div>
-    <div>Effect runs for the last action: <span class="runs" data-bind="lastRuns"></span></div>
-    <div>Effect runs total: <span data-bind="totalRuns"></span></div>
+    <div id="grid"></div>
   </div>
 
   <div class="card">
-    <button id="without">Update all 3 WITHOUT batch</button>
-    <button id="with">Update all 3 WITH batch</button>
+    <button id="run-plain">Run WITHOUT batch</button>
+    <button id="run-batch">Run WITH batch()</button>
+
+    <div class="results" style="margin-top:14px">
+      <div class="result">
+        <h3>WITHOUT batch — per-store flushes</h3>
+        <div class="big" data-bind="plainTime"></div>
+        <div>aggregate effect ran <span class="runs" data-bind="plainAgg"></span> times</div>
+        <div class="footnote">cell effects: <span data-bind="plainCell"></span> runs (same in both modes — granular updates are never sacrificed)</div>
+      </div>
+      <div class="result batch">
+        <h3>WITH batch() — one flush per burst</h3>
+        <div class="big" data-bind="batchTime"></div>
+        <div>aggregate effect ran <span class="runs" data-bind="batchAgg"></span> times</div>
+        <div class="footnote">cell effects: <span data-bind="batchCell"></span> runs</div>
+      </div>
+    </div>
+
+    <p class="meter" style="margin-bottom:0; margin-top:14px">
+      <span class="pulse"></span>
+      <span class="footnote">This pulse and the worst-frame meter run the whole time — if the page were blocking, you'd see it stutter and the frame number spike.</span>
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>The point</h2>
+    <p>
+      Everything on this page — 200 stores, 201 effects, two-way DOM binding, the batcher —
+      is <strong>2.66&nbsp;KB gzipped</strong> of library, no build step, valid HTML.
+      In component frameworks, a multi-store burst like this re-renders every subscribed
+      component unless you hand-tune memoization and selectors; the framework runtime alone
+      ships 15–45&nbsp;KB before your first line. Here the entire optimization is one
+      explicit, standard-JavaScript function call:
+    </p>
+    <pre><code>batch(() => {
+  for (const s of stores) s.value = next(s.value);
+});</code></pre>
+    <p class="footnote">
+      Fair-play notes: both modes await a timeout between bursts (an event-like cadence), so
+      scheduling overhead is identical; the per-cell effects run the same number of times in
+      both modes; only the cross-store aggregate differs — that is exactly what
+      <code>batch()</code> deduplicates. Without batch, Lume's per-store microtask batching
+      is still doing its normal job — this page measures the one case it deliberately does
+      not cover, and what the opt-in escape hatch buys.
+    </p>
   </div>
 
   <script type="module" src="./main.js"></script>
