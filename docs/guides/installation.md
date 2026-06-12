@@ -78,7 +78,7 @@ import { show, classToggle, stringAttr } from 'lume-js/handlers';
 
 ## Browser support
 
-Lume targets evergreen browsers: Chrome 49+, Firefox 18+, Safari 10+, Edge 79+. IE11 is **not** supported. Lume uses `Proxy` for reactivity, and `Proxy` cannot be polyfilled.
+Lume targets evergreen browsers: Chrome 80+, Firefox 74+, Safari 13.1+, Edge 80+ (the source uses ES2020 syntax — optional chaining, nullish coalescing — shipped un-transpiled). IE11 is **not** supported. Lume uses `Proxy` for reactivity, and `Proxy` cannot be polyfilled.
 
 ## TypeScript
 

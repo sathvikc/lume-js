@@ -67,6 +67,14 @@
   store silently never re-ran the effect. Tracking is now keyed per store proxy
   (`WeakMap<proxy, Set<key>>`). See [docs/changes/01](docs/changes/01-fix-effect-cross-store-tracking.md).
 
+### Documentation
+
+- **Browser support table corrected:** the README and installation guide
+  claimed Chrome 49+/Firefox 18+/Safari 10+, but the source has shipped
+  un-transpiled ES2020 (`?.`, `??`) since before v2.2.1 — the real floor is
+  **Chrome 80+, Firefox 74+, Safari 13.1+, Edge 80+**. Found in review; the
+  enforced floor is now written into AGENTS.md so it can't drift again.
+
 ### Tests
 
 - **420 tests passing** (from 355 in v2.2.1) | 65 new tests | 100% coverage maintained
