@@ -4,6 +4,20 @@
 
 ### Fixed
 
+- **`persist()` — explicit `keys: []` respected; duplicate-entry warning:**
+  an explicit empty allowlist fell back to persisting the entire store
+  (review finding) — an explicit array is now honored as-is, including
+  empty. And because two `persist()` instances on one storage entry
+  silently overwrite each other's data, the second registration now logs
+  a warning (per storage object; ownership released on dispose).
+
+- **`repeat()` — cleanup no longer uses `replaceChildren`:** the call is
+  Chrome 86+/Safari 14+, above the documented Chrome 80/Safari 13.1 floor —
+  cleanup would throw a TypeError on claimed-supported browsers (pre-existing
+  on main; surfaced by review against the corrected support table). Manual
+  child removal also stops cleanup from re-parenting a source `<template>`
+  the user moved elsewhere (or resurrecting a deleted one).
+
 - **`state()` — subscriber write-backs to already-notified keys were lost:**
   the flush iterated the live pending-notification Map and cleared it after
   delivery, so a subscriber writing back to a key delivered earlier in the
@@ -13,12 +27,6 @@
   subscriber re-deliver in-flight notifications. Notifications are now
   drained before delivery on both flush paths; write-backs queue for the
   next iteration/wave. Found by adversarial review with executable probes.
-- **`repeat()` — cleanup no longer uses `replaceChildren`:** the call is
-  Chrome 86+/Safari 14+, above the documented Chrome 80/Safari 13.1 floor —
-  cleanup would throw a TypeError on claimed-supported browsers (pre-existing
-  on main; surfaced by review against the corrected support table). Manual
-  child removal also stops cleanup from re-parenting a source `<template>`
-  the user moved elsewhere (or resurrecting a deleted one).
 
 ---
 
@@ -61,16 +69,6 @@
   See [docs/api/core/batch.md](docs/api/core/batch.md), `examples/batch/`.
 
 ### Fixed
-
-- **`state()` — subscriber write-backs to already-notified keys were lost:**
-  the flush iterated the live pending-notification Map and cleared it after
-  delivery, so a subscriber writing back to a key delivered earlier in the
-  same pass updated an in-flight entry that was then destroyed — the new
-  value was never delivered (e.g. self-clamping subscribers diverged from
-  their store). The same mechanism let a `batch()` opened inside a
-  subscriber re-deliver in-flight notifications. Notifications are now
-  drained before delivery on both flush paths; write-backs queue for the
-  next iteration/wave. Found by adversarial review with executable probes.
 
 - **`state()` / `isReactive()` — reactive brand was dead code:** every store
   was stamped with a freshly created `Symbol('lume.reactive')` that nothing
