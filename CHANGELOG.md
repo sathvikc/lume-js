@@ -40,7 +40,7 @@
   microtask batching runs them once per store). Nested batches are absorbed;
   errors flush prior writes then propagate; async callbacks warn. No global
   scheduler, no import side effects. `import { batch } from 'lume-js'`.
-  See [docs/changes/05](docs/changes/05-feat-core-batch.md), [docs/api/core/batch.md](docs/api/core/batch.md), `examples/batch/`.
+  See [docs/changes/05](docs/changes/05-feat-core-batch.md), [docs/api/core/batch.md](docs/api/core/batch.md), `examples/batch/` — a live, measured benchmark (200 stores × 100 bursts, effect-run counters, frame-health meter).
 
 ### Fixed
 
