@@ -135,6 +135,21 @@ function resolveTemplateEl(template, containerEl) {
 }
 
 /**
+ * Resolve the template option to its clone root, plus the container child
+ * that is (or contains) the source <template>. Reconciliation and cleanup
+ * must leave that child alone — it's the user's markup, and removing it
+ * would break re-binding with `template: true` after cleanup. keepEl is
+ * null when there is no template or it lives outside the container.
+ */
+function resolveTemplate(template, containerEl) {
+  if (!template) return { templateRoot: null, keepEl: null };
+  const templateEl = resolveTemplateEl(template, containerEl);
+  let keepEl = templateEl;
+  while (keepEl && keepEl.parentNode !== containerEl) keepEl = keepEl.parentNode;
+  return { templateRoot: templateEl.content.firstElementChild, keepEl };
+}
+
+/**
  * Collect [data-bind] nodes of a cloned item element into a compiled
  * binding list. Paths are resolved against the ITEM (not the store):
  *   data-bind="name"      → item.name
@@ -300,18 +315,7 @@ export function repeat(container, store, arrayKey, options) {
 
   // Template mode: structure and data binding come from the <template>;
   // render/create/update are all optional on top of it.
-  const templateEl = template ? resolveTemplateEl(template, containerEl) : null;
-  const templateRoot = templateEl ? templateEl.content.firstElementChild : null;
-  // When the source <template> lives inside the container, reconciliation
-  // and cleanup must leave it alone — it's the user's markup, and removing
-  // it would break re-binding with `template: true` after cleanup. Keep the
-  // container child that is (or contains) the template.
-  let keepEl = null;
-  if (templateEl) {
-    let node = templateEl;
-    while (node && node.parentNode !== containerEl) node = node.parentNode;
-    keepEl = node;
-  }
+  const { templateRoot, keepEl } = resolveTemplate(template, containerEl);
 
   if (templateRoot && typeof render === 'function') {
     logWarn('[Lume.js] repeat(): options.render is ignored when options.template is set — use create/update instead');
