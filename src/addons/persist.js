@@ -54,6 +54,19 @@ function serializeKeys(store, watched) {
 }
 
 /**
+ * Default storage resolution. Wrapped because accessing localStorage can
+ * THROW (SecurityError) in cookie-blocked iframes and some privacy modes —
+ * persist() must degrade to a warning, never crash the app at setup.
+ */
+function defaultStorage() {
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Sync store keys with a Storage object.
  *
  * @param {object} store - Reactive store created with state()
@@ -75,7 +88,7 @@ export function persist(store, storageKey, options = {}) {
 
   const storage = options.storage !== undefined
     ? options.storage
-    : globalThis.localStorage;
+    : defaultStorage();
 
   if (!storage || typeof storage.getItem !== 'function') {
     logWarn('[Lume.js] persist(): no storage available — persistence disabled');
