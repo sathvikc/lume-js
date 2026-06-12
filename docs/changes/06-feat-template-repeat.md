@@ -108,6 +108,10 @@ two can never drift apart. (Internal export only; not part of the package API.)
   list. No `querySelectorAll` per update.
 - **Exactly one root element** per template, enforced with a clear error —
   keyed reconciliation moves one node per item.
+- **The source `<template>` is preserved.** Reconciliation and cleanup skip
+  the template element (or the wrapper containing it), so the user's markup
+  stays intact and re-binding with `template: true` after cleanup works.
+  (Found in review: the first implementation silently consumed it.)
 
 ## How to verify
 

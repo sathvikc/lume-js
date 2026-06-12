@@ -104,7 +104,7 @@ repeat('#list', store, 'people', {
 });
 ```
 
-The template must contain exactly **one root element**. `render` is ignored (with a warning) in template mode; `element` is ignored.
+The template must contain exactly **one root element**. `render` is ignored (with a warning) in template mode; `element` is ignored. The source `<template>` element is **preserved** — reconciliation and cleanup never remove it from your markup, so unmounting and re-binding with `template: true` works.
 
 ## Pattern 1 — Simple (render only)
 
