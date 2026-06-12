@@ -198,7 +198,8 @@ describe('persist', () => {
       );
       stop();
     } finally {
-      Object.defineProperty(window, 'localStorage', original);
+      if (original) Object.defineProperty(window, 'localStorage', original);
+      else delete window.localStorage;
       warnSpy.mockRestore();
     }
   });
@@ -222,7 +223,8 @@ describe('persist', () => {
       );
       stop();
     } finally {
-      Object.defineProperty(window, 'localStorage', original);
+      if (original) Object.defineProperty(window, 'localStorage', original);
+      else delete window.localStorage;
       warnSpy.mockRestore();
     }
   });
