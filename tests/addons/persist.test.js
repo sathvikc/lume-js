@@ -94,6 +94,52 @@ describe('persist', () => {
     stop();
   });
 
+  it('keys: [] is respected — persists and hydrates nothing', async () => {
+    localStorage.setItem('app', JSON.stringify({ count: 9 }));
+    const store = state({ count: 0 });
+    const setSpy = vi.spyOn(Storage.prototype, 'setItem');
+
+    const stop = persist(store, 'app', { keys: [] });
+
+    expect(store.count).toBe(0); // nothing hydrated
+    store.count = 5;
+    await tick();
+    expect(setSpy).not.toHaveBeenCalled(); // nothing saved
+
+    setSpy.mockRestore();
+    stop();
+  });
+
+  it('warns when a second persist() manages the same storage entry', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const storeA = state({ a: 0 });
+    const storeB = state({ b: 0 });
+
+    const stopA = persist(storeA, 'shared');
+    expect(warnSpy).not.toHaveBeenCalled();
+
+    const stopB = persist(storeB, 'shared');
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('"shared" is already managed by another persist()')
+    );
+
+    // The duplicate's dispose must not free the original's registration:
+    // a third instance still warns while stopA is alive…
+    stopB();
+    warnSpy.mockClear();
+    const stopC = persist(state({ c: 0 }), 'shared');
+    expect(warnSpy).toHaveBeenCalled();
+    stopC();
+
+    // …and after the owner disposes, the key is reusable without warning
+    stopA();
+    warnSpy.mockClear();
+    const stopD = persist(state({ d: 0 }), 'shared');
+    expect(warnSpy).not.toHaveBeenCalled();
+    stopD();
+    warnSpy.mockRestore();
+  });
+
   it('never persists $-prefixed meta keys by default', async () => {
     const store = state({ count: 0 });
     const stop = persist(store, 'app');

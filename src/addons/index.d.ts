@@ -526,6 +526,7 @@ export function hydrateState(selector?: string): object;
 export interface PersistOptions {
   /**
    * Keys to persist. Default: all own non-$ keys of the store at call time.
+   * An explicit empty array is respected: persists and hydrates nothing.
    */
   keys?: string[];
   /**

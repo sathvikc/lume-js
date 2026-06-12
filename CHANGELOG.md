@@ -44,6 +44,13 @@
 
 ### Fixed
 
+- **`persist()` — explicit `keys: []` respected; duplicate-entry warning:**
+  an explicit empty allowlist fell back to persisting the entire store
+  (review finding) — an explicit array is now honored as-is, including
+  empty. And because two `persist()` instances on one storage entry
+  silently overwrite each other's data, the second registration now logs
+  a warning (per storage object; ownership released on dispose).
+
 - **`repeat()` — cleanup no longer uses `replaceChildren`:** the call is
   Chrome 86+/Safari 14+, above the documented Chrome 80/Safari 13.1 floor —
   cleanup would throw a TypeError on claimed-supported browsers (pre-existing
