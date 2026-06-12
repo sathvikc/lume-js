@@ -279,6 +279,41 @@ describe('batch', () => {
     errorSpy.mockRestore();
   });
 
+  it('delivers subscriber write-backs to already-delivered keys within the batch', () => {
+    const store = state({ a: 0, b: 0 });
+    const seenA = [];
+    store.$subscribe('a', v => seenA.push(v));
+    store.$subscribe('b', v => { if (v === 2) store.a = 99; });
+
+    batch(() => {
+      store.a = 1;
+      store.b = 2;
+    });
+
+    expect(store.a).toBe(99);
+    // The write-back lands in the drained-empty queue and wave 2 delivers it
+    expect(seenA).toEqual([0, 1, 99]);
+  });
+
+  it('batch() opened by a subscriber during a microtask flush does not re-deliver', async () => {
+    const store = state({ a: 0, b: 0 });
+    const seenB = [];
+    store.$subscribe('a', () => {});
+    store.$subscribe('b', v => {
+      seenB.push(v);
+      if (v === 1) batch(() => { store.a = 50; });
+    });
+
+    store.a = 1;
+    store.b = 1;
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // Before drain-first, the batch's re-entrant flush re-delivered the
+    // in-flight b:1 entry — seenB was [0, 1, 1].
+    expect(seenB).toEqual([0, 1]);
+    expect(store.a).toBe(50);
+  });
+
   it('effects queued by a batch and by a later microtask both run once', async () => {
     const store = state({ x: 0 });
     let effectRuns = 0;

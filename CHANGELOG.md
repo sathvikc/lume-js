@@ -44,6 +44,16 @@
 
 ### Fixed
 
+- **`state()` — subscriber write-backs to already-notified keys were lost:**
+  the flush iterated the live pending-notification Map and cleared it after
+  delivery, so a subscriber writing back to a key delivered earlier in the
+  same pass updated an in-flight entry that was then destroyed — the new
+  value was never delivered (e.g. self-clamping subscribers diverged from
+  their store). The same mechanism let a `batch()` opened inside a
+  subscriber re-deliver in-flight notifications. Notifications are now
+  drained before delivery on both flush paths; write-backs queue for the
+  next iteration/wave. Found by adversarial review with executable probes.
+
 - **`state()` / `isReactive()` — reactive brand was dead code:** every store
   was stamped with a freshly created `Symbol('lume.reactive')` that nothing
   could ever look up. The brand is now a shared registry symbol
