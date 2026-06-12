@@ -44,6 +44,13 @@
 
 ### Fixed
 
+- **`repeat()` — cleanup no longer uses `replaceChildren`:** the call is
+  Chrome 86+/Safari 14+, above the documented Chrome 80/Safari 13.1 floor —
+  cleanup would throw a TypeError on claimed-supported browsers (pre-existing
+  on main; surfaced by review against the corrected support table). Manual
+  child removal also stops cleanup from re-parenting a source `<template>`
+  the user moved elsewhere (or resurrecting a deleted one).
+
 - **`state()` — subscriber write-backs to already-notified keys were lost:**
   the flush iterated the live pending-notification Map and cleared it after
   delivery, so a subscriber writing back to a key delivered earlier in the
