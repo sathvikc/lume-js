@@ -5,7 +5,7 @@
 | **Type** | Feature (core API) |
 | **Files changed** | `src/core/state.js`, `src/index.js`, `src/index.d.ts` |
 | **Tests** | `tests/core/batch.test.js` (15 tests) |
-| **Example** | `examples/batch/` — live effect-run counter, with/without batch |
+| **Example** | `examples/batch/` — live measured benchmark: 200 stores × 100 bursts, with/without batch, effect-run counters + frame-health meter |
 | **API docs** | `docs/api/core/batch.md` |
 | **Breaking?** | No — pure addition; nothing changes unless you call it |
 
