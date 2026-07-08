@@ -126,6 +126,8 @@ npm run size                # build + per-entry gzip budgets (table below)
 | `README.md` | the pitch + numbers | features, sizes, test counts change |
 | `CHANGELOG.md` | what changed, per release | every user-observable change (under `[Unreleased]`) |
 | `docs/changes/**` | per-branch review write-ups | proposal-branch commits |
+| `AGENT_GUIDE.md` | how *consumers'* agents use Lume (rules, pitfalls, patterns) | public API or best practices change |
+| `llms.txt` / `llms-full.txt` | generated agent doc bundle — **never hand-edit** | run `npm run llms` after touching README, `AGENT_GUIDE.md`, or `docs/**` (CI job `agent-docs` fails on drift) |
 
 When you finish any task, scan this table once: "did I change something a
 row owns?" Stale docs are treated as bugs in this repo.

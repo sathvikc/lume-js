@@ -7,6 +7,13 @@
 
 ### Added
 
+- **Agent-ready documentation shipped in the package:** `AGENT_GUIDE.md`
+  (distilled rules, pitfalls, and patterns for AI coding agents using Lume),
+  plus generated `llms.txt` / `llms-full.txt` ([llmstxt.org](https://llmstxt.org))
+  bundling every guide, tutorial, and API page. Regenerated via
+  `npm run llms` from the docs tree; a CI job (`agent-docs`) fails when they
+  drift, so the bundled docs always match the installed version. Consumers
+  point their agent config at `node_modules/lume-js/AGENT_GUIDE.md`.
 - **`lume-js/state` entry — the universal, DOM-free kernel (1.45 KB gz):**
   `state` + `batch` + `withReadObserver` for Node, Deno, Bun, workers, and
   CLI tools, published as `dist/state.mjs` (npm) and `dist/state.min.mjs`
