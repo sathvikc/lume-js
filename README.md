@@ -286,6 +286,32 @@ watch(store, 'count', (val) => {
 
 ---
 
+## Using Lume.js with AI agents
+
+Lume ships agent-ready documentation **inside the npm package**, regenerated
+from the docs on every change (CI-enforced), so it always matches the
+installed version:
+
+| File | What it is |
+|------|-----------|
+| [`AGENT_GUIDE.md`](AGENT_GUIDE.md) | Distilled rules, pitfalls, and canonical patterns — one read teaches an agent to write correct Lume code |
+| [`llms.txt`](llms.txt) | [llmstxt.org](https://llmstxt.org) index of all docs, for web-browsing agents |
+| [`llms-full.txt`](llms-full.txt) | Every guide, tutorial, and API page in one file |
+
+In a project that uses Lume, add one line to your agent config
+(`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, …):
+
+```markdown
+Before writing any code that uses lume-js, read node_modules/lume-js/AGENT_GUIDE.md.
+For API details beyond the guide, consult node_modules/lume-js/llms-full.txt.
+```
+
+No install? Point the agent at the hosted copies:
+`https://raw.githubusercontent.com/sathvikc/lume-js/main/AGENT_GUIDE.md`
+and `…/llms-full.txt`.
+
+---
+
 ## Documentation
 
 Browse the full docs at **[sathvikc.github.io/lume-js](https://sathvikc.github.io/lume-js/)**, or read the source markdown in the [docs/](docs/) directory:
