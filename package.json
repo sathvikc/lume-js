@@ -43,13 +43,18 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
-    "validate": "npm run build && node scripts/check-size.js && node scripts/complexity.js && npm run lint && npm run typecheck && npm run coverage",
+    "llms": "node scripts/build-llms.js",
+    "llms:check": "node scripts/build-llms.js --check",
+    "validate": "npm run build && node scripts/check-size.js && node scripts/complexity.js && npm run lint && npm run typecheck && npm run coverage && node scripts/build-llms.js --check",
     "prepublishOnly": "npm run validate"
   },
   "files": [
     "dist",
     "src",
     "README.md",
+    "AGENT_GUIDE.md",
+    "llms.txt",
+    "llms-full.txt",
     "LICENSE"
   ],
   "keywords": [

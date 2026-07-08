@@ -202,6 +202,19 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
+  agent-docs:
+    name: Agent Docs Freshness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Check llms.txt / llms-full.txt are regenerated
+        run: node scripts/build-llms.js --check
+
   # ── Unified PR Report ───────────────────────────────────────────────────────
   report:
     name: PR Report
