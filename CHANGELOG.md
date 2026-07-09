@@ -4,6 +4,15 @@
 
 ### Fixed
 
+- **`lume-js/state` types are now genuinely DOM-free:** the universal
+  entry's `.d.ts` re-exported from `index.d.ts`, whose `bindDom`/`Handler`
+  declarations reference `HTMLElement` — Node/worker consumers with
+  `lib: ["ES2020"]` and `skipLibCheck: false` got type errors from the very
+  entry built for them (review finding). The dependency is now inverted:
+  `state.d.ts` is the self-contained kernel source of truth (verified to
+  type-check with no DOM lib) and `index.d.ts` re-exports it, adding the
+  DOM-flavored API on top — mirroring the runtime module graph.
+
 - **`persist()` — explicit `keys: []` respected; duplicate-entry warning:**
   an explicit empty allowlist fell back to persisting the entire store
   (review finding) — an explicit array is now honored as-is, including
