@@ -344,12 +344,19 @@ export function repeat(container, store, arrayKey, options) {
       : document.createElement(element);
   }
 
-  /** Empty the container, preserving the in-container source template. */
+  /**
+   * Empty the container, preserving the in-container source template.
+   * Manual removal (not replaceChildren) for two reasons: replaceChildren
+   * is Chrome 86+/Safari 14+ — above the documented ES2020-era browser
+   * floor — and re-inserting keepEl would re-parent a template the user
+   * has since moved (or resurrect one they deleted).
+   */
   function clearContainer() {
-    if (keepEl) {
-      containerEl.replaceChildren(keepEl);
-    } else {
-      containerEl.replaceChildren();
+    let node = containerEl.firstChild;
+    while (node) {
+      const next = node.nextSibling;
+      if (node !== keepEl) containerEl.removeChild(node);
+      node = next;
     }
   }
 

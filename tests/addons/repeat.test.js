@@ -2070,6 +2070,28 @@ describe('repeat', () => {
       cleanup();
     });
 
+    it('cleanup does not re-parent a template the user moved elsewhere', () => {
+      setTemplate('<li data-bind="$item"></li>');
+      const store = state({ items: ['a'] });
+
+      const cleanup = repeat(container, store, 'items', { key: i => i, template: true });
+      expect(container.querySelectorAll('li').length).toBe(1);
+
+      // User relocates the template after binding
+      const tpl = container.querySelector('template');
+      const newHome = document.createElement('div');
+      document.body.appendChild(newHome);
+      newHome.appendChild(tpl);
+
+      cleanup();
+
+      // Rows cleared; the template stays where the user put it
+      expect(container.querySelectorAll('li').length).toBe(0);
+      expect(container.querySelector('template')).toBeNull();
+      expect(newHome.querySelector('template')).toBe(tpl);
+      document.body.removeChild(newHome);
+    });
+
     it('non-reactive store cleanup also preserves the template', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       setTemplate('<li data-bind="$item"></li>');
