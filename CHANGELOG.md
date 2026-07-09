@@ -13,6 +13,12 @@
   subscriber re-deliver in-flight notifications. Notifications are now
   drained before delivery on both flush paths; write-backs queue for the
   next iteration/wave. Found by adversarial review with executable probes.
+- **`repeat()` — cleanup no longer uses `replaceChildren`:** the call is
+  Chrome 86+/Safari 14+, above the documented Chrome 80/Safari 13.1 floor —
+  cleanup would throw a TypeError on claimed-supported browsers (pre-existing
+  on main; surfaced by review against the corrected support table). Manual
+  child removal also stops cleanup from re-parenting a source `<template>`
+  the user moved elsewhere (or resurrecting a deleted one).
 
 ---
 
