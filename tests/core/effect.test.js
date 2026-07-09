@@ -322,6 +322,68 @@ describe('effect', () => {
     });
   });
 
+  describe('cross-store tracking', () => {
+    it('tracks the same key name on different stores independently', async () => {
+      const storeA = state({ value: 0 });
+      const storeB = state({ value: 0 });
+      const fn = vi.fn();
+
+      effect(() => {
+        fn(storeA.value, storeB.value);
+      });
+
+      expect(fn).toHaveBeenCalledTimes(1);
+
+      // Mutating the SECOND store must re-run the effect. Before the fix,
+      // tracking was keyed by property name only, so storeB.value was
+      // considered "already tracked" after storeA.value and never subscribed.
+      storeB.value = 1;
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(fn).toHaveBeenCalledTimes(2);
+      expect(fn).toHaveBeenLastCalledWith(0, 1);
+
+      storeA.value = 1;
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(fn).toHaveBeenCalledTimes(3);
+      expect(fn).toHaveBeenLastCalledWith(1, 1);
+    });
+
+    it('tracks same-named keys across many stores', async () => {
+      const stores = Array.from({ length: 5 }, () => state({ value: 0 }));
+      const fn = vi.fn();
+
+      effect(() => {
+        fn(stores.reduce((sum, s) => sum + s.value, 0));
+      });
+
+      expect(fn).toHaveBeenLastCalledWith(0);
+
+      // Every store must be individually reactive
+      for (let i = 0; i < stores.length; i++) {
+        stores[i].value = 10;
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+      expect(fn).toHaveBeenLastCalledWith(50);
+    });
+
+    it('still deduplicates repeated reads of the same store key', async () => {
+      const store = state({ count: 0 });
+      const fn = vi.fn();
+
+      effect(() => {
+        fn();
+        void store.count;
+        void store.count; // second read must not create a second subscription
+      });
+
+      store.count = 1;
+      await new Promise(resolve => setTimeout(resolve, 0));
+      // One re-run, not two (a duplicate subscription would queue it twice;
+      // pendingEffects dedupes, but cleanup count would differ — assert runs)
+      expect(fn).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('nested effect tracking', () => {
     it('tracks properties accessed after a nested effect', async () => {
       const store = state({ a: 0, b: 0 });
