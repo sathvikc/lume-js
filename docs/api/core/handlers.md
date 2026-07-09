@@ -156,6 +156,23 @@ bindDom(root, store, { handlers: [stringAttr('href'), stringAttr('src'), stringA
 - Truthy: `el.setAttribute(name, String(val))`
 - `null`/`undefined`: `el.removeAttribute(name)`
 
+### `on(...types)`
+
+Creates handlers for declarative event wiring — `data-on{type}="key"` attaches the function stored at that state key as a DOM event listener. Re-assigning the key re-wires the listener; `null` detaches it.
+
+```javascript
+import { on } from 'lume-js/handlers';
+
+bindDom(root, store, { handlers: [on('click', 'keydown')] });
+```
+
+```html
+<button data-onclick="addTodo">Add</button>
+<input data-onkeydown="maybeSubmit">
+```
+
+> Full reference: [on()](../handlers/on.md)
+
 ## Presets
 
 Pre-configured handler arrays for common use cases.
