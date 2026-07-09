@@ -16,7 +16,7 @@ function isReactive(value: any): boolean;
 
 ## Returns
 
-`true` if the value has a `$subscribe` method (duck-typing), `false` otherwise.
+`true` if the value carries the Lume reactive brand (a registry symbol stamped by `state()`), or — as a compatibility fallback — has a `$subscribe` method. `false` otherwise.
 
 ## Example
 
@@ -34,4 +34,4 @@ This is useful when writing utilities or addons that need to accept either a raw
 
 ## Note
 
-Detection uses duck-typing (`typeof obj.$subscribe === 'function'`). Any object with a `$subscribe` method will pass this check.
+Detection checks the shared brand symbol first (`Symbol.for('lume.reactive')`, checked with the `in` operator so it never registers an effect dependency), then falls back to duck-typing (`typeof obj.$subscribe === 'function'`) for stores created by older lume-js versions. The brand is a type tag, not a security boundary — any code can stamp it.

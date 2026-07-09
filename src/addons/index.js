@@ -1,3 +1,5 @@
+import { REACTIVE_BRAND } from "../core/state.js";
+
 export { computed } from "./computed.js";
 export { watch } from "./watch.js";
 export { repeat, defaultFocusPreservation, defaultScrollPreservation } from "./repeat.js";
@@ -8,10 +10,18 @@ export { hydrateState } from "./hydrateState.js";
 
 /**
  * Returns true if the value is a Lume reactive proxy created by state().
- * Uses duck-typing: checks for the presence of $subscribe.
+ *
+ * Checks the shared reactive brand first (a registry symbol stamped by
+ * state(), reliable across module copies), then falls back to duck-typing
+ * ($subscribe) for proxies from older lume-js versions whose brand was not
+ * shared. The brand check uses the `in` operator, which does not pass
+ * through the proxy `get` trap — calling isReactive inside an effect does
+ * not create a spurious dependency.
+ *
  * @param {any} obj
  * @returns {boolean}
  */
 export function isReactive(obj) {
-  return !!(obj && typeof obj === 'object' && typeof obj.$subscribe === 'function');
+  return !!(obj && typeof obj === 'object' &&
+    (REACTIVE_BRAND in obj || typeof obj.$subscribe === 'function'));
 }
