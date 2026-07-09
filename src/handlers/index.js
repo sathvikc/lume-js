@@ -25,5 +25,6 @@ export { boolAttr }                from './boolAttr.js';
 export { ariaAttr }                from './ariaAttr.js';
 export { classToggle }             from './classToggle.js';
 export { stringAttr }              from './stringAttr.js';
+export { on }                      from './on.js';
 export { htmlAttrs }               from './htmlAttrs.js';
 export { formHandlers, a11yHandlers } from './presets.js';
