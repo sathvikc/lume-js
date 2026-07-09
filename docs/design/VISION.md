@@ -1,7 +1,7 @@
 # Lume.js Vision & Strategic Direction
 
 > **Purpose:** Consolidated reference document synthesizing all architectural ideas, philosophy, and future plans.  
-> **Last Updated:** 2026-01-14  
+> **Last Updated:** 2026-06-11  
 > **Status:** Living document - update as vision evolves
 
 ---
@@ -116,7 +116,7 @@
 ## 🚨 Open Challenge: Code Verbosity
 
 > **Added:** 2026-01-14  
-> **Status:** Unsolved — needs breakthrough ideas
+> **Status (2026-06-11):** Major progress shipped — template mode for `repeat()` (structure stays in HTML via standard `<template>`, zero imperative DOM code per row), the `on()` handler (`data-onclick="key"`, no `addEventListener` soup), and `persist()` (kills hand-rolled localStorage code). The brainstorm seed below — "What if `data-*` did more work?" — is exactly what shipped. Keep open until re-measured against the comparison table below.
 
 ### The Problem
 
@@ -185,6 +185,8 @@ Plugins: state-level hooks (onGet, onSet, onNotify, etc.)
 ```
 
 ### Future State
+
+> **Status (2026-06-11):** Realized as *packaging*, not reorganization: `lume-js/state` ships the DOM-free kernel (state + batch, **1.45 KB gz**, works in Node/Deno/CLI) while `lume-js` keeps the full core (2.66 KB gz). See design-decisions.md → "Packaging Decisions".
 
 ```
 Core: state + plugins only (~1KB)
@@ -430,7 +432,7 @@ Babel/SWC plugin that analyzes reactive reads.
 
 | Library | Size (gzipped) | Build Required |
 |---------|----------------|----------------|
-| **Lume.js** | ~2KB | No |
+| **Lume.js** | 1.45KB (state) / 2.66KB (with DOM) | No |
 | Alpine.js | ~15KB | No |
 | Preact | ~4KB | Yes |
 | Solid | ~7KB | Yes |
@@ -483,7 +485,7 @@ Babel/SWC plugin that analyzes reactive reads.
 |---------|---------|------|
 | `data-attr` | Dynamic attributes (src, href, etc.) | ~100B |
 | `data-style` | Dynamic inline styles | ~100B |
-| `data-on` | Declarative event handlers | ~200B |
+| `data-on` | Declarative event handlers — ✅ shipped as `on()` (v2.3) | ~200B |
 | `data-text` | Safe text content | ~50B |
 | `data-html` | Dangerous innerHTML (⚠️) | ~50B |
 
@@ -562,7 +564,7 @@ fadeIn(el, 300);
 | Addon | Purpose | Est. Size |
 |-------|---------|-----------|
 | Form validation | Declarative validation rules | ~1KB |
-| Persistence | localStorage/sessionStorage sync | ~500B |
+| Persistence | ✅ **SHIPPED** (v2.3) as `persist()` — localStorage/sessionStorage sync | ~0.75KB measured |
 | History/Undo | Undo/redo via state snapshots | ~800B |
 | Debug | Browser console integration | ~1KB |
 
@@ -687,6 +689,11 @@ addon → external npm packages (unless peer dep)
 ## Notes & Ideas Log
 
 *Add dated notes below as ideas evolve.*
+
+### 2026-06-11
+- Shipped v2.3 wave (see CHANGELOG Unreleased + docs/changes/): batch() in kernel, template-mode repeat, on() handler, persist(), lume-js/state universal entry, four core fixes
+- Kernel measured 1.45KB gz (state+batch), full core 2.66KB gz — per-entry CI budgets added
+- Decision process tightened: every behavior change now lands with a design-decisions.md entry in the same change (see AGENTS.md)
 
 ### 2026-01-11
 - Consolidated all archive documents into this vision
@@ -984,6 +991,8 @@ function getSubscribers(store) {
 ```
 
 #### 2. Unified Batching
+
+> **Status (2026-06-11):** ✅ Shipped as opt-in core `batch()` — lexical grouping with cross-store effect dedupe, no central hub needed. See design-decisions.md.
 
 ```js
 // All state changes batch together across stores

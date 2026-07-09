@@ -144,7 +144,41 @@ store.count = 3;
 **Alternatives considered:**
 - ❌ Global scheduler (like Vue/React) → More complex, harder to test, tighter coupling
 
-**Tradeoff:** Effects depending on multiple states may run multiple times (acceptable for Lume's use cases).
+**Tradeoff:** Effects depending on multiple states may run multiple times (acceptable as the *default*; see `batch()` below for the explicit, opt-in way to group writes across stores).
+
+---
+
+### Why `batch()` Is Part of the Kernel (v2.3)
+
+**Decision:** Ship a synchronous, opt-in `batch(fn)` in core (`lume-js` and `lume-js/state`), implemented in `core/batch.js` behind a single seam in `state.js`.
+
+```javascript
+import { state, effect, batch } from 'lume-js';
+
+batch(() => {
+  cart.items = [...cart.items, item];
+  totals.sum += item.price;
+});
+// effects reading both stores ran exactly ONCE, synchronously
+```
+
+**Reasoning:**
+- **The per-state tradeoff stayed, but gained an escape hatch.** Per-state microtask batching remains the default and is unchanged. `batch()` is lexical and opt-in — nothing changes unless you call it.
+- **Scheduling is core semantics, not an extension.** Plugins extend what happens *around* reads/writes; handlers extend what attributes *mean*; `withReadObserver` extends how reads are *observed*. Batching changes *when the engine runs* — it lives inside the write path, which is why it cannot be a plugin (a plugin cannot un-queue a scheduled microtask, flush synchronously, or dedupe private effect queues). Every peer library (Solid, Svelte, Vue, MobX, Preact Signals) reached the same conclusion: `batch` is core, never a plugin.
+- **The universal audience wants it most.** Tests, servers, and CLI code benefit from the synchronous flush (`batch(() => {...}); assert(...)`) even more than browsers do.
+- **Measured cost:** +0.37 KB gz on the kernel (1.08 → 1.45 KB).
+
+**Alternatives considered:**
+- ❌ Global pluggable scheduler (`setScheduler`) → last-writer-wins global, import-order coupling, conflicts with `sideEffects: false`; explored and rejected on `feature/pluggable-scheduler`
+- ❌ Batch as a `withPlugins` plugin → plugins sit outside the write scheduler; cannot deliver synchronous flush or cross-store dedupe
+- ❌ Per-store opt-in (`state(obj, { scheduler })`) → viral: every `state()` call site must participate or batching silently has holes
+- ❌ `globalThis` symbol channel → implicit global coupling; violates "explicit over magic"
+
+**Keeping batch optional later (decided, not built):** `state.js` touches batching through exactly one seam — `enqueueIfBatching(handle)` — and `batch.js` never imports `state.js`. If a batch-free kernel is ever wanted, either a `state-lite` artifact (hook compiled out at build time) or a per-store scheduler option can be added **without breaking changes**. We deliberately did not build this now.
+
+**Tradeoff:** Every `lume-js/state` consumer carries ~0.37 KB of batch even if unused, in exchange for zero configuration and one consistent mental model.
+
+---
 
 ---
 
@@ -225,6 +259,28 @@ document.getElementById('btn').addEventListener('click', () => {
 - ❌ Inline handlers `onclick="..."` → Poor separation, XSS risks
 
 **Tradeoff:** Slightly more verbose, but keeps everything standards-compliant.
+
+#### Amendment (v2.3): the opt-in `on()` handler
+
+**Decision:** The rejection above targets *custom syntax* (`@click`, `on:click`) and *inline code* (`onclick="count++"`). The opt-in `on()` handler is neither, and is now allowed:
+
+```html
+<button data-onclick="addTodo">Add</button>
+```
+
+```javascript
+import { on } from 'lume-js/handlers';
+const store = state({ addTodo() { ... } });
+bindDom(root, store, { handlers: [on('click')] });
+```
+
+**Why this passes the original reasoning:**
+- **Standards-only:** `data-on*` is a valid `data-*` attribute — no custom syntax.
+- **No code in HTML:** the attribute references a *state key holding a function*, exactly as `data-bind` references a state key holding data. No expressions, no eval — an injected attribute can only point at functions already in reachable state (same trust model as `data-bind`).
+- **Separation of concerns preserved:** logic lives in JS (the function in state); HTML only declares the wiring — the same relationship `data-bind` established for data.
+- **Opt-in handler:** zero bytes and zero behavior unless imported and passed to `bindDom` — consistent with the handler-system decision.
+
+`addEventListener()` remains the documented default; `on()` is the declarative option for state-driven apps (and makes handlers runtime-swappable by assignment).
 
 ---
 
@@ -329,8 +385,8 @@ items.forEach(item => {
 });
 ```
 
-**Current Status (v0.5.0):**
-The `repeat` addon is available as an **@experimental** feature.
+**Current Status (v2.3):**
+The `repeat` addon is stable, with keyed reconciliation, `create`/`update` separation, focus/scroll preservation — and a declarative **template mode** (below).
 
 ```javascript
 import { repeat } from 'lume-js/addons';
@@ -356,6 +412,36 @@ repeat(container, store, 'items', {
 - **Predictability:** Explicit updates mean explicit renders.
 
 **Tradeoff:** Users must learn to use spread syntax (`[...items, new]`) instead of `push()`.
+
+### Why `repeat()` Gained a Template Mode (v2.3)
+
+**Decision:** `repeat()` accepts `template: true | selector | HTMLTemplateElement`; the template's single root is cloned per item and its `data-bind` paths bind against **each item** (`"name"`, `"user.city"`, `"$item"`, `"$index"`).
+
+```html
+<ul id="list">
+  <template>
+    <li><strong data-bind="name"></strong></li>
+  </template>
+</ul>
+```
+
+```javascript
+repeat('#list', store, 'people', { key: p => p.id, template: true });
+```
+
+**Reasoning:**
+- **It automates this document's own recommendation.** "Option 3: Template element" above was already the documented user-land pattern — template mode is that exact pattern with the cloning, caching, and re-binding handled.
+- **Standards-only:** `<template>` is the platform's templating primitive; `data-bind` is the attribute users already know. No expressions, no custom syntax — paths only.
+- **Attacks the verbosity problem** (VISION.md's hardest open problem): list rows no longer require imperative `createElement`/`innerHTML` code.
+- **Value semantics shared with core:** template bindings call `bindDom`'s own `applyBindValue`, so item bindings and store bindings can never drift.
+
+**Boundaries (deliberate):**
+- One-way snapshot bindings — items are plain objects, not stores. Two-way per-row binding would require per-item stores, conflicting with "explicit nested states".
+- `render` is ignored (with a warning) in template mode; `create`/`update` compose on top.
+- Exactly one root element per template, enforced with a clear error.
+
+**Tradeoff:** `data-bind` inside a repeat template resolves against the item rather than the store — context-dependent meaning for one attribute, consistent with `data-bind`'s existing context-awareness (input vs span).
+
 
 ### Why `create` + `update` Instead of Just `render`?
 
@@ -708,6 +794,18 @@ effect(() => {
 
 **Tradeoff:** Two ways to do one thing, but serves two distinct mental models (View vs Logic).
 
+### Why Explicit-Deps Effects Coalesce to One Run per Tick (v2.3)
+
+**Decision:** In explicit-deps mode, any number of tracked keys changing in the same tick — across any number of stores — produces exactly one re-run, scheduled on the next microtask.
+
+**Reasoning:**
+- **Bug half:** within one store, running once per changed key contradicted the documented batching promise ("multiple property changes trigger effects once"). Auto-tracking already behaved correctly via the per-state effect queue.
+- **Semantics half:** explicit mode's contract is "run when any listed dependency changed", which naturally coalesces across stores too. This makes explicit mode *stricter* than auto mode (which runs once per store, per the per-state decision) — acceptable because explicit deps are the "Logic" mode where redundant runs are pure waste, and the dependency list is spelled out by the developer.
+- A `disposed` guard ensures a run pending at cleanup time never fires.
+
+**Tradeoff:** Re-runs happen one microtask later than before (after the store's flush rather than during subscriber notification). No observable difference for code awaiting a tick.
+
+
 ---
 
 ### Why `data-{attr}` for Reactive HTML Attributes?
@@ -782,6 +880,49 @@ bindDom(root, store, {
 
 ---
 
+### Why a `persist()` Addon (v2.3)
+
+**Decision:** Ship localStorage/sessionStorage sync as an addon: hydrate watched keys on call, save on change.
+
+**Reasoning:**
+- On the VISION roadmap (~500B estimate; measured 0.75 KB standalone), and every example app was hand-rolling the same `JSON.parse(localStorage.getItem(...))` + scattered `setItem` pattern.
+- **Allowlist hydration:** only watched keys are ever assigned from storage — stale or tampered storage cannot inject state (the core `set` trap independently blocks prototype-polluting keys).
+- **Contained failures:** corrupted JSON starts fresh, circular state skips the save, quota errors warn, missing storage (SSR) disables itself. Persistence is a convenience; it must never take the app down.
+- Saves coalesce to one write per microtask and skip unchanged snapshots.
+
+**Alternatives considered:**
+- ❌ In core → bloats everyone; storage is not a reactivity concern
+- ❌ Cross-tab sync via the `storage` event → deferred; clean additive option later
+
+**Tradeoff:** One JSON blob per `persist()` call; plain-data values only (functions/symbols are skipped by JSON).
+
+---
+
+## Packaging Decisions
+
+### Why a `lume-js/state` Entry Instead of Demoting bindDom/effect (v2.3)
+
+**Decision:** Publish the DOM-free kernel (`state`, `batch`, `withReadObserver`) as an additional entry — `lume-js/state` (1.45 KB gz, own CI budget) — while `lume-js` keeps exporting the full core.
+
+**Reasoning:**
+- The original goal (state-only core for Node/CLI) is a *packaging* question, not a source question: the source was already layered (state imports nothing upward; effect/bindDom sit on its public seams).
+- **No-build users can't tree-shake** — for the library's primary audience the universal core must exist as a downloadable file (`dist/state.min.mjs`), not a theoretical import subset.
+- Demoting `bindDom`/`effect` out of `lume-js` would break every existing user for zero byte savings (bundlers already drop them for state-only importers via `sideEffects: false`).
+- Per-entry CI budgets keep both numbers honest: kernel ≤ 1.75 KB, full core ≤ 3 KB.
+
+**Tradeoff:** Two documented entry points instead of one. Worth it: "1.45 KB universal / 2.66 KB with DOM" is the honest size story.
+
+---
+
+## Hardening Updates (v2.3)
+
+Small behavior changes ratified alongside the features above:
+
+- **Subscriber cap applies to effects too, and fails loudly.** The per-key 1000-listener cap (v2.2.1) only guarded `$subscribe`; effect subscriptions bypassed it. Both paths now share one registration helper, and hitting the cap logs a `console.error` stating the listener will NOT receive updates — a protection that silently breaks the 1001st legitimate listener is indistinguishable from an app bug.
+- **The reactive brand is a real, shared symbol.** `Symbol.for('lume.reactive')` at module level (previously a unique symbol per store that nothing could read), stamped non-enumerably so `{ ...store }` copies are not branded. `isReactive()` checks the brand first via the `in` operator (no proxy `get` trap — calling it inside an effect creates no dependency), with `$subscribe` duck-typing kept as a fallback for older stores. The brand is a type tag, not a security boundary.
+
+---
+
 ## Future Considerations
 
 **Features We Might Add Later:**
@@ -798,7 +939,7 @@ bindDom(root, store, {
 - Build step requirement (breaks no-build-step principle)
 - Virtual DOM (too complex for minimal philosophy)
 - Lifecycle hooks (too framework-y)
-- Event handling syntax (`@click`, `on:click`)
+- Custom event syntax (`@click`, `on:click`) or inline handlers — the opt-in `data-on*` handler (state-key references only) is the allowed form; see the v2.3 amendment above
 - Template directives (`v-if`, `v-for`, `x-if`)
 
 ---
@@ -822,6 +963,14 @@ We're open to change, but will prioritize **simplicity and standards** over feat
 ---
 
 ## Document History
+
+- **2026-06-11:**
+  - Added `batch()` kernel decision (incl. the documented path to making it optional later, additive-only)
+  - Added explicit-deps coalescing, template-mode `repeat()`, `persist()`, and `lume-js/state` packaging decisions
+  - Amended the event-handling decision with the `data-on*` ruling; refined the "Will NOT add" wording
+  - Added v2.3 hardening notes (subscriber-cap parity, shared reactive brand)
+  - Fixed stale `repeat` status (was "@experimental v0.5.0")
+  - Test coverage now 425 tests / 100%
 
 - **2026-02-28:**
   - Updated reactive data-* attributes section: now reflects handler system architecture
