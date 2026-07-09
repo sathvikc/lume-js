@@ -29,9 +29,12 @@ anything:
 - **Dependency directions.** `core/state.js` imports nothing upward (no DOM,
   no effect, no addons). Addons import core only. **No addon → addon
   imports.** Handlers import nothing (or `utils/log.js`).
-- **Browser floor:** Chrome 49+, Firefox 18+, Safari 10+ (Proxy baseline).
-  No `Object.hasOwn`, optional-chaining-only-where-transpiled-isn't — check
-  before using post-2016 APIs in `src/`.
+- **Browser floor:** Chrome 80+, Firefox 74+, Safari 13.1+, Edge 80+
+  (ES2020: the source already uses `?.` and `??`, shipped un-transpiled).
+  Nothing newer than ES2020 in `src/` — no `Object.hasOwn`, `.at()`,
+  `??=`/`||=`/`&&=`, `structuredClone`, `replaceAll`. Check MDN before
+  using any API newer than 2020, and update the README support table if
+  the floor ever moves.
 - **Source is plain JS + handwritten `.d.ts`.** When you change a public
   signature, update the matching `.d.ts` in the same commit.
 - **Never bump the package version** unless explicitly asked.
