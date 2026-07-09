@@ -114,11 +114,11 @@ import { logWarn, logError } from '../utils/log.js';
 import { applyBindValue } from '../core/bindDom.js';
 
 /**
- * Resolve the template option to its single root element.
+ * Resolve the template option to the <template> element.
  * Accepts true (first <template> inside the container), a CSS selector,
  * or an HTMLTemplateElement directly.
  */
-function resolveTemplateRoot(template, containerEl) {
+function resolveTemplateEl(template, containerEl) {
   let templateEl = template;
   if (template === true) {
     templateEl = containerEl.querySelector('template');
@@ -131,7 +131,7 @@ function resolveTemplateRoot(template, containerEl) {
   if (templateEl.content.children.length !== 1) {
     throw new Error('[Lume.js] repeat(): template must contain exactly one root element');
   }
-  return templateEl.content.firstElementChild;
+  return templateEl;
 }
 
 /**
@@ -300,7 +300,18 @@ export function repeat(container, store, arrayKey, options) {
 
   // Template mode: structure and data binding come from the <template>;
   // render/create/update are all optional on top of it.
-  const templateRoot = template ? resolveTemplateRoot(template, containerEl) : null;
+  const templateEl = template ? resolveTemplateEl(template, containerEl) : null;
+  const templateRoot = templateEl ? templateEl.content.firstElementChild : null;
+  // When the source <template> lives inside the container, reconciliation
+  // and cleanup must leave it alone — it's the user's markup, and removing
+  // it would break re-binding with `template: true` after cleanup. Keep the
+  // container child that is (or contains) the template.
+  let keepEl = null;
+  if (templateEl) {
+    let node = templateEl;
+    while (node && node.parentNode !== containerEl) node = node.parentNode;
+    keepEl = node;
+  }
 
   if (templateRoot && typeof render === 'function') {
     logWarn('[Lume.js] repeat(): options.render is ignored when options.template is set — use create/update instead');
@@ -329,10 +340,22 @@ export function repeat(container, store, arrayKey, options) {
       : document.createElement(element);
   }
 
+  /** Empty the container, preserving the in-container source template. */
+  function clearContainer() {
+    if (keepEl) {
+      containerEl.replaceChildren(keepEl);
+    } else {
+      containerEl.replaceChildren();
+    }
+  }
+
   function reconcileDOM(container, nextEls) {
     let ptr = container.firstChild;
 
     for (let i = 0; i < nextEls.length; i++) {
+      // Never treat the source template (or its wrapper) as a list row
+      if (keepEl && ptr === keepEl) ptr = ptr.nextSibling;
+
       const desired = nextEls[i];
 
       if (ptr === desired) {
@@ -343,10 +366,10 @@ export function repeat(container, store, arrayKey, options) {
       container.insertBefore(desired, ptr);
     }
 
-    // Remove leftover children not in nextEls
+    // Remove leftover children not in nextEls (preserving the template)
     while (ptr) {
       const next = ptr.nextSibling;
-      container.removeChild(ptr);
+      if (ptr !== keepEl) container.removeChild(ptr);
       ptr = next;
     }
   }
@@ -510,7 +533,7 @@ export function repeat(container, store, arrayKey, options) {
           remove(prevItem, el);
         }
       }
-      containerEl.replaceChildren();
+      clearContainer();
       elementsByKey.clear();
       prevItemsByKey.clear();
       prevIndexByKey.clear();
@@ -539,8 +562,8 @@ export function repeat(container, store, arrayKey, options) {
         remove(prevItem, el);
       }
     }
-    // Clear DOM elements (replaceChildren is faster than loop)
-    containerEl.replaceChildren();
+    // Clear DOM elements (preserving the source template, if any)
+    clearContainer();
     elementsByKey.clear();
     prevItemsByKey.clear();
     prevIndexByKey.clear();
