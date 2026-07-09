@@ -13,7 +13,7 @@
     &nbsp;
     <a href="tests/"><img src="https://img.shields.io/badge/tests-420%20passing-brightgreen.svg" alt="420 tests"></a>
     &nbsp;
-    <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core-2.64KB%20gzipped-blue.svg" alt="2.64KB"></a>
+    <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core-2.66KB%20gzipped-blue.svg" alt="2.66KB"></a>
   </p>
   <p><code>npm install lume-js</code></p>
 </div>

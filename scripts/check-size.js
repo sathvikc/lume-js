@@ -42,10 +42,11 @@ const isJson = process.argv.includes('--json');
 // ── Budgets (gzipped bytes) ──────────────────────────────────────────────────
 
 const BUDGETS = {
-  'index.min.mjs':    3 * 1024,  // 3 KB  — CDN core, self-contained
-  'addons.min.mjs':   6 * 1024,  // 6 KB  — CDN addons, self-contained
-  'handlers.min.mjs': 2 * 1024,  // 2 KB  — CDN handlers, self-contained
-  'lume.global.js':   8 * 1024,  // 8 KB  — CDN all-in-one
+  'index.min.mjs':    3 * 1024,     // 3 KB    — CDN core, self-contained
+  'state.min.mjs':    1.75 * 1024,  // 1.75 KB — universal kernel (state+batch, DOM-free)
+  'addons.min.mjs':   6 * 1024,     // 6 KB    — CDN addons, self-contained
+  'handlers.min.mjs': 2 * 1024,     // 2 KB    — CDN handlers, self-contained
+  'lume.global.js':   8 * 1024,     // 8 KB    — CDN all-in-one
 };
 
 // Files to skip in the dist report (sourcemaps, shared chunks)

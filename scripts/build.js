@@ -6,11 +6,13 @@
  * Produces production-ready minified bundles:
  *
  *   dist/
- *     index.mjs          — ESM core  (state, bindDom, effect, isReactive)
- *     addons.mjs         — ESM addons (computed, watch, repeat, debug, …)
- *     handlers.mjs       — ESM handlers (show, classToggle, boolAttr, …)
+ *     index.mjs          — ESM core  (state, batch, bindDom, effect)
+ *     state.mjs          — ESM universal kernel (state, batch — DOM-free)
+ *     addons.mjs         — ESM addons (computed, watch, repeat, persist, …)
+ *     handlers.mjs       — ESM handlers (show, classToggle, on, boolAttr, …)
  *     shared-*.mjs       — shared code extracted by Rollup (automatic)
  *     lume.global.js     — IIFE all-in-one for <script> / CDN
+ *     *.min.mjs          — self-contained minified CDN builds per entry
  *     *.map              — sourcemaps
  *
  * Usage:
@@ -56,6 +58,7 @@ await build({
     lib: {
       entry: {
         index: resolve(root, 'src/index.js'),
+        state: resolve(root, 'src/state.js'),
         addons: resolve(root, 'src/addons/index.js'),
         handlers: resolve(root, 'src/handlers/index.js'),
       },
@@ -106,6 +109,7 @@ console.log('\n📦 Building minified ESM bundles for CDN…\n');
 
 const cdnEntries = {
   index: resolve(root, 'src/index.js'),
+  state: resolve(root, 'src/state.js'),
   addons: resolve(root, 'src/addons/index.js'),
   handlers: resolve(root, 'src/handlers/index.js'),
 };
