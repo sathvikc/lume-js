@@ -396,7 +396,8 @@ export const debug: Debug;
 
 /**
  * Returns true if the value is a Lume reactive proxy created by state().
- * Uses duck-typing: checks for the presence of $subscribe.
+ * Checks the shared reactive brand symbol first (Symbol.for('lume.reactive')),
+ * then falls back to duck-typing ($subscribe) for older stores.
  * This is a type guard that narrows the type to ReactiveState.
  * 
  * @param obj - Value to check

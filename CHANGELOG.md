@@ -7,6 +7,13 @@
 
 ### Fixed
 
+- **`state()` / `isReactive()` — reactive brand was dead code:** every store
+  was stamped with a freshly created `Symbol('lume.reactive')` that nothing
+  could ever look up. The brand is now a shared registry symbol
+  (`Symbol.for('lume.reactive')`), stamped non-enumerably (spread copies are
+  not branded), and `isReactive()` checks it first — via the `in` operator, so
+  the check never registers an effect dependency. Duck-typing remains as a
+  fallback for stores from older versions.
 - **`state()` — subscriber cap consistency:** the per-key 1000-listener cap
   (added in 2.2.1) only applied to `$subscribe`; effect subscriptions bypassed
   it entirely. Both paths now share one capped registration helper, and

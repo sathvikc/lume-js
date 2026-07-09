@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as addons from 'src/addons/index.js';
+import { state, effect } from 'src/index.js';
 
 describe('addons public API', () => {
   it('exposes computed and watch', () => {
@@ -43,5 +44,41 @@ describe('addons public API', () => {
   it('exposes hydrateState', () => {
     expect(addons).toHaveProperty('hydrateState');
     expect(typeof addons.hydrateState).toBe('function');
+  });
+});
+
+describe('isReactive', () => {
+  it('detects stores via the shared brand', () => {
+    const store = state({ count: 0 });
+    expect(addons.isReactive(store)).toBe(true);
+  });
+
+  it('rejects non-reactive values', () => {
+    expect(addons.isReactive({})).toBe(false);
+    expect(addons.isReactive(null)).toBe(false);
+    expect(addons.isReactive(undefined)).toBe(false);
+    expect(addons.isReactive(42)).toBe(false);
+    expect(addons.isReactive('store')).toBe(false);
+  });
+
+  it('falls back to duck-typing for unbranded store-likes (older versions)', () => {
+    const storeLike = { $subscribe: () => () => {} };
+    expect(addons.isReactive(storeLike)).toBe(true);
+  });
+
+  it('does not create a dependency when called inside an effect', async () => {
+    const store = state({ count: 0 });
+    const fn = vi.fn();
+
+    effect(() => {
+      fn();
+      addons.isReactive(store); // brand check must not track anything
+    });
+
+    expect(fn).toHaveBeenCalledTimes(1);
+
+    store.count = 1; // not read by the effect → must not re-run
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(fn).toHaveBeenCalledTimes(1);
   });
 });
