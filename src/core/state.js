@@ -121,7 +121,16 @@ export function state(obj) {
   }
 
   function notifySubscribers() {
-    for (const [key, value] of pendingNotifications) {
+    // Drain BEFORE delivering. Iterating the live Map is wrong twice over:
+    // a subscriber writing back to an already-delivered key would update
+    // the in-flight entry (never revisited) and the trailing clear() would
+    // destroy it — a silently lost update; and a subscriber opening a
+    // batch() would re-deliver every in-flight entry through the wave's
+    // re-entrant call. Draining first means write-backs land in the now-
+    // empty live Map and are delivered by the next flush iteration/wave.
+    const entries = Array.from(pendingNotifications);
+    pendingNotifications.clear();
+    for (const [key, value] of entries) {
       if (listeners[key]) {
         const subs = listeners[key];
         let i = 0;
@@ -137,7 +146,6 @@ export function state(obj) {
         }
       }
     }
-    pendingNotifications.clear();
   }
 
   /** Drain queued effects (Set deduplicates) into an array. */
