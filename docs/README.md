@@ -104,6 +104,7 @@ console.log(total.value);  // cached until items changes
 | Import | Contents |
 |--------|----------|
 | `lume-js` | `state`, `bindDom`, `effect`, `batch` |
+| `lume-js/state` | `state`, `batch`, `withReadObserver` — DOM-free universal kernel (1.45 KB) |
 | `lume-js/addons` | `watch`, `computed`, `repeat`, `persist`, `withPlugins`, `createDebugPlugin`, `debug`, `isReactive`, `createCleanupGroup`, `hydrateState`, `defaultFocusPreservation`, `defaultScrollPreservation` |
 | `lume-js/handlers` | `show`, `boolAttr`, `ariaAttr`, `classToggle`, `stringAttr`, `on`, `formHandlers`, `a11yHandlers`, `htmlAttrs` |
 
@@ -116,6 +117,7 @@ console.log(total.value);  // cached until items changes
 
 ### Guides
 - [How reactivity works](guides/reactivity.md)
+- [Universal core (Node, CLI, workers)](guides/universal-core.md)
 - [Handlers](guides/handlers.md)
 - [Two-way binding](guides/two-way-binding.md)
 - [Lists & repeat](guides/lists.md)
