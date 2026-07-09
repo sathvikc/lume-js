@@ -29,6 +29,8 @@ import { logError } from '../utils/log.js';
  * Features:
  * - Automatic dependency collection via withReadObserver scope (default)
  * - Explicit dependencies for side-effects
+ * - Explicit-deps notifications are coalesced: one run per microtask,
+ *   no matter how many tracked keys (or stores) changed in the same tick
  * - Returns cleanup function
  * - Compatible with per-state batching
  */
@@ -87,6 +89,27 @@ export function effect(fn, deps) {
 
   // EXPLICIT DEPS MODE: deps array provided
   if (Array.isArray(deps)) {
+    // Coalesce notifications: when several tracked keys change in the same
+    // flush (or several stores flush in the same tick), run the effect once
+    // per microtask instead of once per changed key. This matches the
+    // dedupe guarantee auto-tracking mode gets from the per-state effect queue.
+    let scheduled = false;
+    let disposed = false;
+    cleanups.push(() => { disposed = true; });
+
+    const scheduleExecute = () => {
+      if (scheduled) return;
+      scheduled = true;
+      queueMicrotask(() => {
+        scheduled = false;
+        if (disposed) return;
+        // execute() logs and re-throws; swallow here so a throwing effect
+        // doesn't become an uncaught error inside the microtask (same
+        // containment the state flush loop provides for subscribers).
+        try { execute(); } catch { /* already logged by execute() */ }
+      });
+    };
+
     // Subscribe to each [store, key1, key2, ...] tuple explicitly
     for (const dep of deps) {
       if (Array.isArray(dep) && dep.length >= 2) {
@@ -102,7 +125,7 @@ export function effect(fn, deps) {
                 isFirst = false;
                 return; // Skip first call, we'll run execute() below
               }
-              execute();
+              scheduleExecute();
             });
             cleanups.push(unsub);
           }
