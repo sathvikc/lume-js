@@ -123,12 +123,13 @@ export function effect(fn, deps) {
       // them so the effect stays reactive.
       const oldCleanups = cleanups.splice(0);
 
-      // Create effect context for tracking
+      // Tracking is keyed per store proxy (WeakMap<proxy, Set<key>>) so the
+      // same key name on two different stores creates two subscriptions.
       const myContext = {
         fn,
         cleanups,
         execute: executeWithTracking,
-        tracking: {}
+        tracking: new WeakMap()
       };
 
       // Set as current effect (for state.js to detect)
@@ -141,8 +142,13 @@ export function effect(fn, deps) {
         const onRead = (proxy, key, registerEffect) => {
           // Only the currently active effect (not a nested one) creates subscriptions
           if (currentEffect !== myContext) return;
-          if (myContext.tracking[key]) return;
-          myContext.tracking[key] = true;
+          let keys = myContext.tracking.get(proxy);
+          if (!keys) {
+            keys = new Set();
+            myContext.tracking.set(proxy, keys);
+          }
+          if (keys.has(key)) return;
+          keys.add(key);
           myContext.cleanups.push(registerEffect(key, myContext.execute));
         };
         withReadObserver(onRead, fn);
