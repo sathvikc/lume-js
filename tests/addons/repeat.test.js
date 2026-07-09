@@ -2031,6 +2031,58 @@ describe('repeat', () => {
       ).toThrow('exactly one root element');
     });
 
+    it('preserves the source <template> through renders, updates, and cleanup', async () => {
+      setTemplate('<li data-bind="$item"></li>');
+      const store = state({ items: ['a', 'b'] });
+
+      const cleanup = repeat(container, store, 'items', { key: i => i, template: true });
+      expect(container.querySelectorAll('li').length).toBe(2);
+      expect(container.querySelector('template')).not.toBeNull(); // survived initial render
+
+      store.items = ['b']; // removal pass must not sweep the template
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(container.querySelectorAll('li').length).toBe(1);
+      expect(container.querySelector('template')).not.toBeNull();
+
+      cleanup(); // cleanup clears rows but keeps the user's markup
+      expect(container.querySelectorAll('li').length).toBe(0);
+      expect(container.querySelector('template')).not.toBeNull();
+
+      // Re-binding with template: true works after cleanup
+      const cleanup2 = repeat(container, store, 'items', { key: i => i, template: true });
+      expect(container.querySelectorAll('li').length).toBe(1);
+      cleanup2();
+    });
+
+    it('preserves a template nested inside a wrapper element', async () => {
+      container.innerHTML = '<div class="tools"><template><li data-bind="$item"></li></template></div>';
+      const store = state({ items: ['x', 'y'] });
+
+      const cleanup = repeat(container, store, 'items', { key: i => i, template: true });
+
+      expect(container.querySelectorAll('li').length).toBe(2);
+      // The wrapper that owns the template must not be removed as a stale row
+      expect(container.querySelector('.tools template')).not.toBeNull();
+
+      store.items = [];
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(container.querySelector('.tools template')).not.toBeNull();
+      cleanup();
+    });
+
+    it('non-reactive store cleanup also preserves the template', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      setTemplate('<li data-bind="$item"></li>');
+      const plain = { items: ['a'] }; // not reactive
+
+      const cleanup = repeat(container, plain, 'items', { key: i => i, template: true });
+      expect(container.querySelectorAll('li').length).toBe(1);
+
+      cleanup();
+      expect(container.querySelector('template')).not.toBeNull();
+      warnSpy.mockRestore();
+    });
+
     it('template without any data-bind still renders structure', () => {
       setTemplate('<li class="static">static row</li>');
       const store = state({ items: [{ id: 1 }, { id: 2 }] });
