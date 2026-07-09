@@ -83,13 +83,13 @@ import { state, batch } from 'lume-js/state';    // Node/CLI/workers: 1.45 KB ke
 
 | Browser | Minimum version |
 |---------|-----------------|
-| Chrome  | 49+             |
-| Firefox | 18+             |
-| Safari  | 10+             |
-| Edge    | 79+             |
+| Chrome  | 80+             |
+| Firefox | 74+             |
+| Safari  | 13.1+           |
+| Edge    | 80+             |
 | IE11    | ❌ Not supported |
 
-IE11 cannot be polyfilled — Lume uses `Proxy`.
+The floor comes from optional chaining / nullish coalescing (ES2020) used in the source — shipped un-transpiled, true to no-build. IE11 cannot be polyfilled regardless: Lume uses `Proxy`.
 
 ---
 
