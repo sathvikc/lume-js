@@ -12,7 +12,7 @@
     &nbsp;
     <a href="package.json"><img src="https://img.shields.io/badge/version-2.3.0-orange.svg" alt="v2.3.0"></a>
     &nbsp;
-    <a href="tests/"><img src="https://img.shields.io/badge/tests-425%20passing-brightgreen.svg" alt="425 tests"></a>
+    <a href="tests/"><img src="https://img.shields.io/badge/tests-437%20passing-brightgreen.svg" alt="437 tests"></a>
     &nbsp;
     <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/universal%20core-1.45KB-blue.svg" alt="universal core 1.45KB"></a>
     &nbsp;
