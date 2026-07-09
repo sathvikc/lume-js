@@ -139,6 +139,48 @@ describe('persist', () => {
     warnSpy.mockRestore();
   });
 
+  it('disables itself when localStorage does not exist at all (Node-like)', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const original = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: undefined });
+
+    try {
+      const store = state({ count: 0 });
+      const stop = persist(store, 'app');
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('no storage available')
+      );
+      stop();
+    } finally {
+      Object.defineProperty(window, 'localStorage', original);
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('survives environments where touching localStorage throws (blocked iframes)', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // Simulate Chrome's SecurityError on localStorage access when
+    // third-party cookies/storage are blocked.
+    const original = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() { throw new Error('SecurityError: access denied'); },
+    });
+
+    try {
+      const store = state({ count: 0 });
+      let stop;
+      expect(() => { stop = persist(store, 'app'); }).not.toThrow();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('no storage available')
+      );
+      stop();
+    } finally {
+      Object.defineProperty(window, 'localStorage', original);
+      warnSpy.mockRestore();
+    }
+  });
+
   it('starts fresh on corrupted JSON with a warning', async () => {
     localStorage.setItem('app', '{not valid json');
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
