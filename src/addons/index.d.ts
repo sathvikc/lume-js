@@ -163,7 +163,25 @@ export interface RepeatOptions<T> {
    */
   update?: (item: T, element: HTMLElement, index: number, context: UpdateContext) => void;
 
-  /** Element tag name or factory function (default: 'div') */
+  /**
+   * Declarative item structure from a standard <template> element.
+   * - true: use the first <template> inside the container
+   * - string: CSS selector resolving to a <template>
+   * - HTMLTemplateElement: use directly
+   *
+   * The template must contain exactly one root element. It is cloned per
+   * item, and its [data-bind] paths are bound against the ITEM on every
+   * update: "name" → item.name, "user.city" → item.user.city,
+   * "$item" → the item itself, "$index" → current index.
+   * Inputs receive .value/.checked; other elements receive textContent
+   * (same semantics as bindDom's data-bind). One-way snapshot bindings.
+   *
+   * When set: options.element is ignored, options.render is ignored (with
+   * a console warning); create/update still run on top of the bindings.
+   */
+  template?: true | string | HTMLTemplateElement;
+
+  /** Element tag name or factory function (default: 'div'; ignored when template is set) */
   element?: string | (() => HTMLElement);
 
   /** 

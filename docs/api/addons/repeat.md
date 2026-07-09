@@ -14,6 +14,7 @@ function repeat(
     render?: (item: any, el: HTMLElement, index: number) => void;
     create?: (item: any, el: HTMLElement, index: number) => void;
     update?: (item: any, el: HTMLElement, index: number, ctx: { isFirstRender: boolean }) => void;
+    template?: true | string | HTMLTemplateElement;
     element?: string | (() => HTMLElement);
     preserveFocus?: Function | null;
     preserveScroll?: Function | null;
@@ -32,7 +33,8 @@ Imported from `lume-js/addons`.
 - `options.render` — Mutates the element directly. (Return value is ignored). Called for new and updated items.
 - `options.create` — Called once when a new DOM element is created. Use for DOM structure and event listeners.
 - `options.update` — Called for data binding. Receives `{ isFirstRender }` so you can animate only on updates. **Skipped when the item reference and index are both unchanged from the previous render** (optimization). Use `render` instead if you always need to re-apply data regardless of reference equality.
-- `options.element` — Tag name or factory for the wrapper element. Default: `'div'`.
+- `options.template` — Declarative item structure from a standard `<template>` element: `true` (first `<template>` inside the container), a CSS selector, or the element itself. See [Pattern 0](#pattern-0--template-recommended-for-declarative-html).
+- `options.element` — Tag name or factory for the wrapper element. Default: `'div'`. Ignored when `template` is set.
 - `options.preserveFocus` — Optional strategy for preserving focus during re-renders. Default: `defaultFocusPreservation`.
 - `options.preserveScroll` — Optional strategy for preserving scroll position during re-renders. Default: `defaultScrollPreservation`.
 
@@ -43,6 +45,66 @@ Use `render` alone for simple read-only lists. Use `create + update` for lists w
 ## Returns
 
 A cleanup function.
+
+## Pattern 0 — Template (recommended for declarative HTML)
+
+The item's structure lives in your HTML as a standard `<template>` element — valid HTML, inert until cloned, no custom syntax. `data-bind` paths inside the template resolve against **each item**.
+
+```html
+<ul id="list">
+  <template>
+    <li>
+      <strong data-bind="name"></strong>
+      <span data-bind="user.city"></span>
+      <em data-bind="$index"></em>
+    </li>
+  </template>
+</ul>
+```
+
+```js
+import { state } from 'lume-js';
+import { repeat } from 'lume-js/addons';
+
+const store = state({
+  people: [
+    { id: 1, name: 'Ada',   user: { city: 'London' } },
+    { id: 2, name: 'Grace', user: { city: 'New York' } },
+  ]
+});
+
+repeat('#list', store, 'people', {
+  key: p => p.id,
+  template: true   // the <template> inside #list
+});
+```
+
+That's the whole list — no `createElement`, no `innerHTML`, no manual `textContent`.
+
+**Binding paths** (identical value semantics to `bindDom`'s `data-bind` — inputs get `.value`/`.checked`, everything else gets `textContent`):
+
+| Path | Resolves to |
+|------|-------------|
+| `data-bind="name"` | `item.name` |
+| `data-bind="user.city"` | `item.user.city` |
+| `data-bind="$item"` | the item itself (primitive arrays) |
+| `data-bind="$index"` | the item's current index |
+
+Bindings are **one-way snapshots**, re-applied on each list update (items are plain objects, not stores — update arrays immutably as usual). For event listeners or extra binding, add `create`/`update` on top:
+
+```js
+repeat('#list', store, 'people', {
+  key: p => p.id,
+  template: true,
+  create: (p, el) => {
+    el.querySelector('button.delete').onclick = () => {
+      store.people = store.people.filter(x => x.id !== p.id);
+    };
+  }
+});
+```
+
+The template must contain exactly **one root element**. `render` is ignored (with a warning) in template mode; `element` is ignored.
 
 ## Pattern 1 — Simple (render only)
 

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lume.js - Template Lists</title>
+  <style>
+    :root {
+      --bg: #fff;
+      --fg: #222;
+      --muted: #666;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      max-width: 760px;
+      margin: 40px auto;
+      padding: 0 16px;
+      line-height: 1.6;
+    }
+    h1 { font-size: 28px; margin: 0 0 8px; }
+    .sub { color: var(--muted); margin-bottom: 16px; }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 16px;
+      background: #fff;
+    }
+    .row { display: flex; gap: 8px; margin-bottom: 12px; }
+    input[type="text"] {
+      flex: 1;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    button {
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: var(--accent-hover); }
+    ul#people { list-style: none; padding: 0; margin: 0; }
+    ul#people li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    ul#people li:last-child { border-bottom: 0; }
+    .idx {
+      color: var(--muted);
+      font-style: normal;
+      font-size: 12px;
+      min-width: 20px;
+    }
+    .name { font-weight: 600; }
+    .city { color: var(--muted); flex: 1; }
+    li button.remove {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      font-size: 13px;
+    }
+    li button.remove:hover { background: #fef2f2; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>Template Lists</h1>
+  <p class="sub">
+    The row structure is a standard <code>&lt;template&gt;</code> in the HTML.
+    <code>data-bind</code> paths bind into each item — no <code>createElement</code>,
+    no <code>innerHTML</code>, no manual <code>textContent</code> in JS.
+  </p>
+
+  <div class="card">
+    <div class="row">
+      <input type="text" data-bind="newName" placeholder="Name (try: Marie)">
+      <input type="text" data-bind="newCity" placeholder="City (try: Paris)">
+      <button id="add">Add</button>
+      <button id="shuffle">Shuffle</button>
+    </div>
+
+    <ul id="people">
+      <!-- The row template: valid, inert, standard HTML -->
+      <template>
+        <li>
+          <em class="idx" data-bind="$index"></em>
+          <span class="name" data-bind="name"></span>
+          <span class="city" data-bind="address.city"></span>
+          <button class="remove">remove</button>
+        </li>
+      </template>
+    </ul>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

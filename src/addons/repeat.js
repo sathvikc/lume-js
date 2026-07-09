@@ -22,6 +22,38 @@
  * store.items = [...items] // ✅ Triggers update
  * 
  * ═══════════════════════════════════════════════════════════════════════
+ * PATTERN 0: Template-based (recommended) — declarative, zero DOM code
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ *   HTML — a standard <template> element, valid HTML, no custom syntax:
+ *
+ *   <ul id="list">
+ *     <template>
+ *       <li>
+ *         <strong data-bind="name"></strong>
+ *         <span data-bind="role"></span>
+ *         <em data-bind="$index"></em>
+ *       </li>
+ *     </template>
+ *   </ul>
+ *
+ *   JS:
+ *
+ *   repeat('#list', store, 'people', {
+ *     key: p => p.id,
+ *     template: true   // use the <template> inside the container
+ *   });
+ *
+ *   data-bind paths resolve against EACH ITEM: "name" → item.name,
+ *   "user.city" → item.user.city, "$item" → the item itself (primitive
+ *   arrays), "$index" → current index. Inputs get .value/.checked, other
+ *   elements get textContent — identical semantics to bindDom's data-bind.
+ *   These are one-way snapshot bindings re-applied per list update (items
+ *   are plain objects, not stores). Combine with create/update for event
+ *   listeners or extra binding. template also accepts a CSS selector or an
+ *   HTMLTemplateElement.
+ *
+ * ═══════════════════════════════════════════════════════════════════════
  * PATTERN 1: Simple (render only) - for simple cases or backward compat
  * ═══════════════════════════════════════════════════════════════════════
  * 
@@ -79,6 +111,64 @@
  *   });
  */
 import { logWarn, logError } from '../utils/log.js';
+import { applyBindValue } from '../core/bindDom.js';
+
+/**
+ * Resolve the template option to its single root element.
+ * Accepts true (first <template> inside the container), a CSS selector,
+ * or an HTMLTemplateElement directly.
+ */
+function resolveTemplateRoot(template, containerEl) {
+  let templateEl = template;
+  if (template === true) {
+    templateEl = containerEl.querySelector('template');
+  } else if (typeof template === 'string') {
+    templateEl = document.querySelector(template);
+  }
+  if (!templateEl || templateEl.tagName !== 'TEMPLATE') {
+    throw new Error('[Lume.js] repeat(): template not found or not a <template> element');
+  }
+  if (templateEl.content.children.length !== 1) {
+    throw new Error('[Lume.js] repeat(): template must contain exactly one root element');
+  }
+  return templateEl.content.firstElementChild;
+}
+
+/**
+ * Collect [data-bind] nodes of a cloned item element into a compiled
+ * binding list. Paths are resolved against the ITEM (not the store):
+ *   data-bind="name"      → item.name
+ *   data-bind="user.city" → item.user.city
+ *   data-bind="$item"     → the item itself (for primitive arrays)
+ *   data-bind="$index"    → the item's current index
+ */
+function collectItemBindings(el) {
+  const bindings = [];
+  const add = (node) => {
+    const path = node.getAttribute('data-bind');
+    bindings.push({ node, path, keys: path === '$item' || path === '$index' ? null : path.split('.') });
+  };
+  if (el.hasAttribute('data-bind')) add(el);
+  for (const node of el.querySelectorAll('[data-bind]')) add(node);
+  return bindings;
+}
+
+function applyItemBindings(bindings, item, index) {
+  for (const b of bindings) {
+    let val;
+    if (b.path === '$index') {
+      val = index;
+    } else if (b.path === '$item') {
+      val = item;
+    } else {
+      val = item;
+      for (let i = 0; i < b.keys.length && val != null; i++) {
+        val = val[b.keys[i]];
+      }
+    }
+    applyBindValue(b.node, val);
+  }
+}
 
 /**
  * Default focus preservation strategy
@@ -173,7 +263,8 @@ export function defaultScrollPreservation(container, context = {}) {
  * @param {Function} [options.create] - Function for new elements only: (item, element, index) => void | Function. If a function is returned, it is registered as the element's cleanup and called automatically when the element is removed (by list update or full cleanup).
  * @param {Function} [options.update] - Function for data binding: (item, element, index, { isFirstRender }) => void. Skipped if same item reference AND same index.
  * @param {Function} [options.remove] - Additional cleanup when element is removed: (item, element) => void. Called after any cleanup function returned by create(). Optional — prefer returning a cleanup from create() for automatic lifecycle management.
- * @param {string|Function} [options.element='div'] - Element tag name or factory function
+ * @param {true|string|HTMLTemplateElement} [options.template] - Declarative item structure from a <template> element: true = first <template> inside the container, string = CSS selector, or the element itself. The template must have exactly one root element; it is cloned per item and its [data-bind] paths are bound to the item on every update ("name", "user.city", "$item", "$index"). When set, options.element is ignored and options.render is ignored (with a warning); create/update remain available on top.
+ * @param {string|Function} [options.element='div'] - Element tag name or factory function (ignored when options.template is set)
  * @param {Function|null} [options.preserveFocus=defaultFocusPreservation] - Focus preservation strategy (null to disable)
  * @param {Function|null} [options.preserveScroll=defaultScrollPreservation] - Scroll preservation strategy (null to disable)
  * @returns {Function} Cleanup function
@@ -186,6 +277,7 @@ export function repeat(container, store, arrayKey, options) {
     create,
     update,
     remove,
+    template = null,
     element = 'div',
     preserveFocus = defaultFocusPreservation,
     preserveScroll = defaultScrollPreservation
@@ -206,7 +298,15 @@ export function repeat(container, store, arrayKey, options) {
     throw new Error('[Lume.js] repeat(): options.key must be a function');
   }
 
-  if (typeof render !== 'function' && typeof create !== 'function') {
+  // Template mode: structure and data binding come from the <template>;
+  // render/create/update are all optional on top of it.
+  const templateRoot = template ? resolveTemplateRoot(template, containerEl) : null;
+
+  if (templateRoot && typeof render === 'function') {
+    logWarn('[Lume.js] repeat(): options.render is ignored when options.template is set — use create/update instead');
+  }
+
+  if (!templateRoot && typeof render !== 'function' && typeof create !== 'function') {
     throw new Error('[Lume.js] repeat(): options.render or options.create must be a function');
   }
 
@@ -218,9 +318,12 @@ export function repeat(container, store, arrayKey, options) {
   const prevIndexByKey = new Map();
   // key -> cleanup function returned by create()
   const cleanupByKey = new Map();
+  // key -> compiled [data-bind] nodes of the clone (template mode only)
+  const bindingsByKey = new Map();
   const seenKeys = new Set();
 
   function createElement() {
+    if (templateRoot) return templateRoot.cloneNode(true);
     return typeof element === 'function'
       ? element()
       : document.createElement(element);
@@ -298,10 +401,13 @@ export function repeat(container, store, arrayKey, options) {
       if (isFirstRender) {
         el = createElement();
         elementsByKey.set(k, el);
+        if (templateRoot) {
+          bindingsByKey.set(k, collectItemBindings(el));
+        }
       }
 
       try {
-        // Call create for new elements (DOM structure)
+        // Call create for new elements (DOM structure / event listeners)
         if (isFirstRender && create) {
           const cleanup = create(item, el, i);
           if (typeof cleanup === 'function') {
@@ -309,11 +415,17 @@ export function repeat(container, store, arrayKey, options) {
           }
         }
 
-        // Call update for data binding (new and existing elements)
+        // Data binding (new and existing elements)
         // Skip if same item reference AND same index (optimization)
         const prevItem = prevItemsByKey.get(k);
         const prevIndex = prevIndexByKey.get(k);
-        if (update) {
+        if (templateRoot) {
+          if (prevItem !== item || prevIndex !== i) {
+            applyItemBindings(bindingsByKey.get(k), item, i);
+            // update is optional extra binding on top of the template
+            if (update) update(item, el, i, { isFirstRender });
+          }
+        } else if (update) {
           if (prevItem !== item || prevIndex !== i) {
             update(item, el, i, { isFirstRender });
           }
@@ -359,6 +471,7 @@ export function repeat(container, store, arrayKey, options) {
             prevItemsByKey.delete(k);
             prevIndexByKey.delete(k);
             cleanupByKey.delete(k);
+            bindingsByKey.delete(k);
           }
         }
       }
@@ -402,6 +515,7 @@ export function repeat(container, store, arrayKey, options) {
       prevItemsByKey.clear();
       prevIndexByKey.clear();
       cleanupByKey.clear();
+      bindingsByKey.clear();
       seenKeys.clear();
     };
   }
@@ -431,6 +545,7 @@ export function repeat(container, store, arrayKey, options) {
     prevItemsByKey.clear();
     prevIndexByKey.clear();
     cleanupByKey.clear();
+    bindingsByKey.clear();
     seenKeys.clear();
   };
 }
