@@ -520,3 +520,52 @@ export function createCleanupGroup(): CleanupGroup;
  */
 export function hydrateState(selector?: string): object;
 
+/**
+ * Options for persist()
+ */
+export interface PersistOptions {
+  /**
+   * Keys to persist. Default: all own non-$ keys of the store at call time.
+   */
+  keys?: string[];
+  /**
+   * Storage object (localStorage, sessionStorage, or any Storage-like
+   * object with getItem/setItem). Default: localStorage.
+   */
+  storage?: Pick<Storage, 'getItem' | 'setItem'> | null;
+}
+
+/**
+ * Keep selected store keys in sync with localStorage/sessionStorage:
+ * hydrates them on call, then saves on change.
+ *
+ * - Hydration assigns stored values through the proxy (subscribers fire).
+ * - Saves coalesce to one storage write per microtask and are skipped when
+ *   the serialized snapshot is unchanged.
+ * - Storage failures (quota, corrupted JSON, unserializable values) warn
+ *   on the console — never throw.
+ * - With no storage available (SSR), persistence is disabled with a warning.
+ *
+ * @param store - Reactive store created with state()
+ * @param storageKey - The storage entry name to read/write
+ * @param options - Persist options
+ * @returns Dispose function — stops watching and saving
+ * @throws {Error} If store is not reactive or storageKey is empty
+ *
+ * @example
+ * ```typescript
+ * import { state } from 'lume-js';
+ * import { persist } from 'lume-js/addons';
+ *
+ * const store = state({ todos: [], filter: 'all', draft: '' });
+ *
+ * // Hydrate + auto-save todos/filter; draft stays in-memory only
+ * const stop = persist(store, 'my-app', { keys: ['todos', 'filter'] });
+ * ```
+ */
+export function persist(
+  store: ReactiveState<any>,
+  storageKey: string,
+  options?: PersistOptions
+): Unsubscribe;
+

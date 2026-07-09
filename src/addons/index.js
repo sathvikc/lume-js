@@ -7,6 +7,7 @@ export { createDebugPlugin, debug } from "./debug.js";
 export { withPlugins } from "./withPlugins.js";
 export { createCleanupGroup } from "./cleanupGroup.js";
 export { hydrateState } from "./hydrateState.js";
+export { persist } from "./persist.js";
 
 /**
  * Returns true if the value is a Lume reactive proxy created by state().
