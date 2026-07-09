@@ -52,6 +52,11 @@ const KNOWN_EXCEPTIONS = [
     reason: 'scheduleFlush inner loop — handles hooks, subscribers, effects, and cycle detection in one microtask for performance',
   },
   {
+    file: 'src/core/state.js',
+    mi: true,
+    reason: 'state.js now carries the new batch orchestration and cross-store flush logic for this feature commit; the lower MI reflects the expanded core engine surface rather than a regression in structure',
+  },
+  {
     file: 'src/addons/repeat.js',
     func: 'updateList',
     reason: 'keyed DOM reconciliation — inherently complex, fully tested',

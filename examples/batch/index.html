@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lume.js - batch()</title>
+  <style>
+    :root {
+      --bg: #fff;
+      --fg: #222;
+      --muted: #666;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --ok: #16a34a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      max-width: 760px;
+      margin: 40px auto;
+      padding: 0 16px;
+      line-height: 1.6;
+    }
+    h1 { font-size: 28px; margin: 0 0 8px; }
+    .sub { color: var(--muted); margin-bottom: 16px; }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 16px;
+      background: #fff;
+    }
+    .stores { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+    .store {
+      flex: 1;
+      min-width: 140px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+    .store .value { font-size: 32px; font-weight: 700; }
+    .store .label { color: var(--muted); font-size: 13px; }
+    .total { font-size: 20px; margin: 8px 0; }
+    .total b[data-bind] { color: var(--accent); }
+    button {
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+    button:hover { background: var(--accent-hover); }
+    .runs { color: var(--ok); font-weight: 600; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>batch()</h1>
+  <p class="sub">
+    Three independent stores feed one effect. Without <code>batch()</code>, mutating all three
+    runs the effect once per store. Inside <code>batch()</code>, it runs exactly once.
+  </p>
+
+  <div class="card">
+    <div class="stores">
+      <div class="store">
+        <div class="value" data-bind="a"></div>
+        <div class="label">store A</div>
+      </div>
+      <div class="store">
+        <div class="value" data-bind="b"></div>
+        <div class="label">store B</div>
+      </div>
+      <div class="store">
+        <div class="value" data-bind="c"></div>
+        <div class="label">store C</div>
+      </div>
+    </div>
+
+    <div class="total">Sum (computed by the effect): <b data-bind="sum"></b></div>
+    <div>Effect runs for the last action: <span class="runs" data-bind="lastRuns"></span></div>
+    <div>Effect runs total: <span data-bind="totalRuns"></span></div>
+  </div>
+
+  <div class="card">
+    <button id="without">Update all 3 WITHOUT batch</button>
+    <button id="with">Update all 3 WITH batch</button>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
