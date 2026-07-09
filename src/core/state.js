@@ -176,25 +176,43 @@ export function state(obj) {
   const REACTIVE_BRAND = Symbol('lume.reactive');
   obj[REACTIVE_BRAND] = true;
 
-  // Defined once per state instance — not per property read — to avoid per-read closure allocation.
-  const registerEffect = (key, executeFn) => {
+  const MAX_SUBSCRIBERS = 1000;
+  const noopUnsubscribe = () => {};
+
+  /**
+   * Shared listener registration with a per-key cap (subscriber DoS
+   * protection). Applied identically to $subscribe callbacks and effect
+   * subscriptions so both paths degrade the same way: a loud console
+   * error and a no-op unsubscribe.
+   */
+  function addListener(key, fn, kind) {
     if (!listeners[key]) listeners[key] = [];
-
-    const callback = () => {
-      pendingEffects.add(executeFn);
-    };
-
-    listeners[key].push(callback);
-
+    if (listeners[key].length >= MAX_SUBSCRIBERS) {
+      logError(
+        `[Lume.js state] Subscriber limit (${MAX_SUBSCRIBERS}) reached for key "${String(key)}". ` +
+        `${kind} ignored — it will NOT receive updates. ` +
+        'This usually means subscriptions are created in a loop without cleanup.'
+      );
+      return noopUnsubscribe;
+    }
+    listeners[key].push(fn);
     return () => {
       if (listeners[key]) {
-        const idx = listeners[key].indexOf(callback);
+        const idx = listeners[key].indexOf(fn);
         if (idx !== -1) {
           listeners[key].splice(idx, 1);
           if (listeners[key].length === 0) delete listeners[key];
         }
       }
     };
+  }
+
+  // Defined once per state instance — not per property read — to avoid per-read closure allocation.
+  const registerEffect = (key, executeFn) => {
+    const callback = () => {
+      pendingEffects.add(executeFn);
+    };
+    return addListener(key, callback, 'Effect subscription');
   };
 
   const BLOCKED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -269,33 +287,20 @@ export function state(obj) {
     };
   };
 
-  const MAX_SUBSCRIBERS = 1000;
-
   obj.$subscribe = (key, fn) => {
     if (typeof fn !== 'function') {
       throw new Error('Subscriber must be a function');
     }
 
-    if (!listeners[key]) listeners[key] = [];
-    if (listeners[key].length >= MAX_SUBSCRIBERS) {
-      logWarn(`[Lume.js state] Subscriber limit (${MAX_SUBSCRIBERS}) reached for key "${key}". New subscriber ignored.`);
-      return () => {};
-    }
-    listeners[key].push(fn);
+    const unsubscribe = addListener(key, fn, 'New subscriber');
+
+    // Over the cap: listener was not added, skip the immediate call too
+    if (unsubscribe === noopUnsubscribe) return unsubscribe;
 
     // Call immediately with current value (NOT batched)
     fn(proxy[key]);
 
-    // Return unsubscribe function
-    return () => {
-      if (listeners[key]) {
-        const idx = listeners[key].indexOf(fn);
-        if (idx !== -1) {
-          listeners[key].splice(idx, 1);
-          if (listeners[key].length === 0) delete listeners[key];
-        }
-      }
-    };
+    return unsubscribe;
   };
 
   return proxy;

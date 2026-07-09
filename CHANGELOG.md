@@ -7,16 +7,21 @@
 
 ### Fixed
 
+- **`state()` — subscriber cap consistency:** the per-key 1000-listener cap
+  (added in 2.2.1) only applied to `$subscribe`; effect subscriptions bypassed
+  it entirely. Both paths now share one capped registration helper, and
+  hitting the cap logs a `console.error` (was a silent-ish warn) stating that
+  the listener will not receive updates.
 - **`effect()` — explicit-deps runs coalesced:** with `effect(fn, [[store, 'a', 'b']])`,
   changing N tracked keys in one tick re-ran the effect N times (auto-tracking
   mode already deduplicated). Explicit-deps notifications now coalesce into a
   single run per microtask, across keys and across stores, with a disposal
-  guard for runs pending at cleanup time. See [docs/changes/02](docs/changes/02-fix-explicit-deps-coalescing.md).
+  guard for runs pending at cleanup time.
 - **`effect()` — cross-store dependency tracking:** an effect reading the same
   property name on two different stores (e.g. `storeA.value` and
   `storeB.value`) only subscribed to the first store; mutations to the second
   store silently never re-ran the effect. Tracking is now keyed per store proxy
-  (`WeakMap<proxy, Set<key>>`). See [docs/changes/01](docs/changes/01-fix-effect-cross-store-tracking.md).
+  (`WeakMap<proxy, Set<key>>`).
 
 ---
 
