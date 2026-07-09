@@ -37,6 +37,16 @@
   drained before delivery on both flush paths; write-backs queue for the
   next iteration/wave. Found by adversarial review with executable probes.
 
+### Tests
+
+- **437 tests passing** (from 425 in v2.3.0) | 12 new tests | 100% coverage maintained
+  - Cross-store tracking, explicit-deps coalescing, subscriber-cap parity, brand/`isReactive` (`effect.test.js`, `state.test.js`, `addons/index.test.js`)
+  - `batch()` suite incl. write-back delivery and re-entrancy — 18 tests (`core/batch.test.js`)
+  - `lume-js/state` universal entry, run in plain Node — 5 tests (`state-entry.test.js`)
+  - Template mode incl. source-template preservation — 18 tests (`addons/repeat.test.js`)
+  - `on()` handler — 6 tests (`handlers/index.test.js`)
+  - `persist()` suite incl. blocked/absent storage, `keys: []`, duplicate-entry warning — 19 tests (`addons/persist.test.js`)
+
 ---
 
 ## [2.3.0] - 2026-07-08
@@ -112,12 +122,13 @@
 
 ### Tests
 
-- **420 tests passing** (from 355 in v2.2.1) | 65 new tests | 100% coverage maintained
+- **437 tests passing** (from 355 in v2.2.1) | 82 new tests | 100% coverage maintained
   - Cross-store tracking, explicit-deps coalescing, subscriber-cap parity, brand/`isReactive` (`effect.test.js`, `state.test.js`, `addons/index.test.js`)
-  - `batch()` suite — 16 tests (`core/batch.test.js`)
-  - Template mode — 14 tests (`addons/repeat.test.js`)
+  - `batch()` suite incl. write-back delivery and re-entrancy — 18 tests (`core/batch.test.js`)
+  - `lume-js/state` universal entry, run in plain Node — 5 tests (`state-entry.test.js`)
+  - Template mode incl. source-template preservation — 18 tests (`addons/repeat.test.js`)
   - `on()` handler — 6 tests (`handlers/index.test.js`)
-  - `persist()` suite — 15 tests (`addons/persist.test.js`)
+  - `persist()` suite incl. blocked/absent storage, `keys: []`, duplicate-entry warning — 19 tests (`addons/persist.test.js`)
 
 ---
 
