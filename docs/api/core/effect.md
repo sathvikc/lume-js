@@ -96,4 +96,4 @@ stop(); // unsubscribes and stops re-running
 
 ---
 
-**← Previous: [bindDom()](bindDom.md)** | **Next: [Handlers API](handlers.md) →**
+**← Previous: [bindDom()](bindDom.md)** | **Next: [batch()](batch.md) →**

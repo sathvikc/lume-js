@@ -99,4 +99,4 @@ watch(store, 'count', (val) => {
 
 ---
 
-**← Previous: [withPlugins()](../core/plugins.md)** | **Next: [computed()](computed.md) →**
+**← Previous: [batch()](../core/batch.md)** | **Next: [computed()](computed.md) →**

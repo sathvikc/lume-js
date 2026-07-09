@@ -78,4 +78,4 @@ bindDom(root, store, {
 
 ---
 
-**← Previous: [classToggle](classToggle.md)** | **Next: [createDebugPlugin](../addons/debug.md) →**
+**← Previous: [classToggle](classToggle.md)** | **Next: [on](on.md) →**

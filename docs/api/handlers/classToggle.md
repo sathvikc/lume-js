@@ -84,4 +84,4 @@ bindDom(root, store, { handlers: [classToggle('is-open')] });
 
 ---
 
-**← Previous: [show](show.md)** | **Next: [stringAttr](stringAttr.md) →**
+**← Previous: [ariaAttr](ariaAttr.md)** | **Next: [stringAttr](stringAttr.md) →**

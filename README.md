@@ -10,7 +10,7 @@
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
     &nbsp;
-    <a href="package.json"><img src="https://img.shields.io/badge/version-2.2.1-orange.svg" alt="v2.2.1"></a>
+    <a href="package.json"><img src="https://img.shields.io/badge/version-2.3.0-orange.svg" alt="v2.3.0"></a>
     &nbsp;
     <a href="tests/"><img src="https://img.shields.io/badge/tests-425%20passing-brightgreen.svg" alt="425 tests"></a>
     &nbsp;
@@ -19,6 +19,7 @@
     <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core%20%2B%20DOM-2.66KB-blue.svg" alt="core + DOM 2.66KB"></a>
   </p>
   <p><code>npm install lume-js</code></p>
+  <p><a href="https://sathvikc.github.io/lume-js/"><strong>Docs & live examples →</strong></a></p>
 </div>
 
 ---
@@ -287,7 +288,7 @@ watch(store, 'count', (val) => {
 
 ## Documentation
 
-Full documentation is available in the [docs/](docs/) directory:
+Browse the full docs at **[sathvikc.github.io/lume-js](https://sathvikc.github.io/lume-js/)**, or read the source markdown in the [docs/](docs/) directory:
 
 - **Tutorials**
     - [Build a Todo App](docs/tutorials/build-todo-app.md)
@@ -299,7 +300,7 @@ Full documentation is available in the [docs/](docs/) directory:
     - [effect()](docs/api/core/effect.md) — Reactive effects
     - [batch()](docs/api/core/batch.md) — Cross-store write batching
     - [Handlers](docs/api/core/handlers.md) — Extensible attribute handlers
-    - [Plugins](docs/api/core/plugins.md) — State extension system
+    - [Plugins](docs/api/addons/withPlugins.md) — State extension system
     - [Addons](docs/api/addons/computed.md) — computed, watch, repeat, persist, createCleanupGroup, hydrateState
 - **Guides**
     - [Universal core (Node, CLI, workers)](docs/guides/universal-core.md) — using `lume-js/state` without a DOM

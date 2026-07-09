@@ -116,4 +116,4 @@ cleanup(); // removes ALL bindings inside root
 
 ---
 
-**← Previous: [Core concepts](core-concepts.md)** | **Next: [Choosing reactive primitives](choosing-reactive-primitives.md) →**
+**← Previous: [Core concepts](core-concepts.md)** | **Next: [Universal core (Node, CLI, workers)](universal-core.md) →**

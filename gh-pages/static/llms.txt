@@ -1,26 +1,35 @@
 # Lume.js
 
-Lume.js is a minimal (~2.4 KB gzip) reactive DOM library for vanilla HTML. It wires JavaScript state to the DOM using standard `data-*` attributes — no custom syntax, no virtual DOM, no build step required.
+Lume.js is a minimal reactive state library using only standard JavaScript and HTML. It wires JavaScript state to the DOM using standard `data-*` attributes — no custom syntax, no virtual DOM, no build step required. Universal DOM-free core (`lume-js/state`): 1.45 KB gzipped. Full core with DOM binding (`lume-js`): 2.66 KB gzipped.
 
 ## Documentation
 
-- [Getting started](https://lume-js.com/docs/getting-started)
-- [Core API — state, bindDom, effects](https://lume-js.com/docs/api)
-- [Handlers](https://lume-js.com/docs/handlers)
-- [Addons — repeat, form, router](https://lume-js.com/docs/addons)
-- [TypeScript usage](https://lume-js.com/docs/typescript)
+- [Introduction](https://sathvikc.github.io/lume-js/docs/introduction)
+- [Quick start](https://sathvikc.github.io/lume-js/docs/quick-start)
+- [Core concepts](https://sathvikc.github.io/lume-js/docs/core-concepts)
+- [Universal core (Node, CLI, workers)](https://sathvikc.github.io/lume-js/docs/universal-core)
+- [state()](https://sathvikc.github.io/lume-js/docs/api-state)
+- [bindDom()](https://sathvikc.github.io/lume-js/docs/api-bindDom)
+- [effect()](https://sathvikc.github.io/lume-js/docs/api-effect)
+- [batch()](https://sathvikc.github.io/lume-js/docs/api-batch)
+- [Handlers API](https://sathvikc.github.io/lume-js/docs/api-handlers)
+- [Addons — watch, computed, repeat, persist](https://sathvikc.github.io/lume-js/docs/api-watch)
 
 ## Examples
 
-- [Comprehensive demo](https://lume-js.com/examples/comprehensive/index.html)
-- [Todo app](https://lume-js.com/examples/todo/index.html)
-- [Tic-Tac-Toe](https://lume-js.com/examples/tic-tac-toe/index.html)
-- [Form handling](https://lume-js.com/examples/form-heavy/index.html)
-- [List rendering](https://lume-js.com/examples/repeat-test/index.html)
-- [Handler system](https://lume-js.com/examples/handler-demo/index.html)
+- [Comprehensive demo](https://sathvikc.github.io/lume-js/examples/comprehensive/index.html)
+- [Batch updates](https://sathvikc.github.io/lume-js/examples/batch/index.html)
+- [Todo app](https://sathvikc.github.io/lume-js/examples/todo/index.html)
+- [Tic-Tac-Toe](https://sathvikc.github.io/lume-js/examples/tic-tac-toe/index.html)
+- [Form handling](https://sathvikc.github.io/lume-js/examples/form-heavy/index.html)
+- [List rendering](https://sathvikc.github.io/lume-js/examples/repeat-test/index.html)
+- [Template-driven lists](https://sathvikc.github.io/lume-js/examples/template-list/index.html)
+- [Handler system](https://sathvikc.github.io/lume-js/examples/handler-demo/index.html)
+- [Plugin system](https://sathvikc.github.io/lume-js/examples/plugin-demo/index.html)
+- [Debug addon](https://sathvikc.github.io/lume-js/examples/debug-demo/index.html)
 
 ## Links
 
-- [GitHub repository](https://github.com/sthwkchinnua/lume-js)
+- [GitHub repository](https://github.com/sathvikc/lume-js)
 - [npm package](https://www.npmjs.com/package/lume-js)
-- [Changelog](https://github.com/sthwkchinnua/lume-js/blob/main/CHANGELOG.md)
+- [Changelog](https://github.com/sathvikc/lume-js/blob/main/CHANGELOG.md)

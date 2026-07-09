@@ -403,4 +403,4 @@ effect(() => {
 
 ---
 
-**← Previous: [Build a Todo app](build-todo-app.md)** | **Next: [Migrating from 1.x](../guides/migration.md) →**
+**← Previous: [Build a Todo app](build-todo-app.md)** | **Next: [Working with Arrays](working-with-arrays.md) →**

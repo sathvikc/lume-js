@@ -63,4 +63,4 @@ Use `data-show` when the condition is already in "visible" form (`isLoggedIn`, `
 
 ---
 
-**← Previous: [repeat()](../addons/repeat.md)** | **Next: [classToggle](classToggle.md) →**
+**← Previous: [Handlers API](../core/handlers.md)** | **Next: [className](className.md) →**

@@ -79,5 +79,5 @@ const store = state(
 
 ## See Also
 
-- [Plugin API Documentation](../../docs/api/core/plugins.md)
+- [Plugin API Documentation](../../docs/api/addons/withPlugins.md)
 - [Design Decisions](../../docs/design/design-decisions.md)

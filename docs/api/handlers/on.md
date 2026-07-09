@@ -62,3 +62,7 @@ Same trust model as `data-bind`: an injected `data-on*` attribute can only refer
 
 - [Handlers API](../core/handlers.md)
 - [bindDom()](../core/bindDom.md)
+
+---
+
+**← Previous: [stringAttr](stringAttr.md)** | **Next: [htmlAttrs](htmlAttrs.md) →**
