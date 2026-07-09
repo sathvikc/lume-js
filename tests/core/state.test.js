@@ -335,6 +335,38 @@ describe('state', () => {
     errorSpy.mockRestore();
   });
 
+  it('delivers a subscriber write-back to an already-notified key', async () => {
+    const store = state({ a: 0, b: 0 });
+    const seenA = [];
+    store.$subscribe('a', v => seenA.push(v));
+    // b's subscriber writes BACK to a, which was already delivered this pass
+    store.$subscribe('b', v => { if (v === 2) store.a = 99; });
+
+    store.a = 1;
+    store.b = 2;
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(store.a).toBe(99);
+    // Before the drain-first fix the write-back updated the in-flight Map
+    // entry and clear() destroyed it — 99 was never delivered.
+    expect(seenA).toEqual([0, 1, 99]);
+  });
+
+  it('self-clamping subscriber converges and delivers the clamped value', async () => {
+    const store = state({ x: 0 });
+    const seen = [];
+    store.$subscribe('x', v => {
+      seen.push(v);
+      if (v > 10) store.x = 10;
+    });
+
+    store.x = 50;
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(store.x).toBe(10);
+    expect(seen).toEqual([0, 50, 10]);
+  });
+
   it('reactive brand symbol is present but not enumerable', () => {
     const store = state({ x: 1 });
     const brands = Object.getOwnPropertySymbols(store);
