@@ -12,6 +12,7 @@
  * - $subscribe for listening to key changes
  * - Cleanup with unsubscribe
  * - Per-state microtask batching for writes
+ * - batch() for grouping writes across states with cross-store effect dedupe
  * - Scope-based read tracking via withReadObserver (multi-observer safe)
  *
  * Usage:
@@ -61,6 +62,120 @@ const readers = new Set();
  */
 export const REACTIVE_BRAND = Symbol.for('lume.reactive');
 
+// Cap for cascading flush waves (effects mutating state that re-triggers
+// effects). Shared by the per-state microtask flush and batch().
+const MAX_FLUSH_ITERATIONS = 100;
+
+// ── batch() ──────────────────────────────────────────────────────────────
+// While batchDepth > 0, states skip their microtask flush and enqueue
+// themselves here instead; batch() drains the set synchronously when the
+// outermost batch ends. Effects collected from all enqueued states are run
+// from one Set per wave, so an effect depending on several mutated stores
+// runs exactly once per batch instead of once per store.
+let batchDepth = 0;
+const batchedStates = new Set();
+
+function flushBatchedStates() {
+  let iterations = 0;
+  while (batchedStates.size > 0 && iterations < MAX_FLUSH_ITERATIONS) {
+    iterations++;
+    const wave = Array.from(batchedStates);
+    batchedStates.clear();
+
+    // Notify each state's subscribers, collecting effects into one
+    // deduplicated set (the same effect queued by N stores runs once).
+    const effects = new Set();
+    for (const s of wave) {
+      s.runBeforeFlushHooks();
+      s.notifySubscribers();
+      for (const fx of s.takeEffects()) effects.add(fx);
+    }
+
+    // Effects run after all subscribers of the wave. Writes they make
+    // re-enter batchedStates (depth is still held) → next iteration.
+    for (const fx of effects) {
+      try { fx(); }
+      catch (err) { logError('[Lume.js state] Error in effect:', err); }
+    }
+  }
+  if (iterations >= MAX_FLUSH_ITERATIONS) {
+    // Drop the runaway wave so a future, unrelated batch doesn't inherit
+    // it. Nothing is lost permanently: the states keep their queued work
+    // and flush it on their next write via the normal microtask path.
+    batchedStates.clear();
+    logError(
+      '[Lume.js state] Maximum batch flush iterations reached (100). ' +
+      'This usually indicates an infinite loop caused by an effect or computed mutating state it depends on.'
+    );
+  }
+}
+
+/**
+ * Group multiple state writes and flush them together, synchronously,
+ * when the outermost batch() returns.
+ *
+ * Guarantees:
+ * - Subscribers see only the final value of each key (intermediate writes
+ *   within the batch are coalesced, as with microtask batching).
+ * - An effect that depends on several stores mutated in the batch runs
+ *   exactly ONCE — unlike microtask batching, which is per-state and runs
+ *   such effects once per store.
+ * - Nested batch() calls are absorbed: everything flushes when the
+ *   outermost batch ends.
+ * - If fn throws, writes made before the throw still flush, then the
+ *   error propagates. State scheduling is left clean either way.
+ *
+ * `fn` must be synchronous — writes after an `await` happen outside the
+ * batch and fall back to normal per-state microtask flushing (a console
+ * warning is logged if fn returns a Promise).
+ *
+ * @param {function} fn - Function performing state writes
+ * @returns {*} The return value of fn
+ *
+ * @example
+ * import { state, effect, batch } from 'lume-js';
+ *
+ * const a = state({ value: 1 });
+ * const b = state({ value: 2 });
+ * effect(() => render(a.value + b.value));
+ *
+ * batch(() => {
+ *   a.value = 10;
+ *   b.value = 20;
+ * }); // render() ran exactly once, seeing 30
+ */
+export function batch(fn) {
+  if (typeof fn !== 'function') {
+    throw new Error('batch() requires a function');
+  }
+
+  // Nested batch: let the outermost batch flush everything
+  if (batchDepth > 0) return fn();
+
+  batchDepth++;
+  let result;
+  try {
+    result = fn();
+    if (result && typeof result.then === 'function') {
+      logWarn(
+        '[Lume.js batch] batch() received an async function. Only writes before the first await are batched; ' +
+        'later writes flush via normal microtasks.'
+      );
+    }
+    return result;
+  } finally {
+    // Flush while depth is still held so cascading writes from
+    // subscribers/effects keep collecting into batchedStates (deduped),
+    // then release. Runs on success AND when fn throws (writes made
+    // before the throw are committed, then the error propagates).
+    try {
+      flushBatchedStates();
+    } finally {
+      batchDepth--;
+    }
+  }
+}
+
 /**
  * Run a function with a read observer active.
  * The observer receives (proxy, key, registerEffect) for every property read.
@@ -102,6 +217,49 @@ export function state(obj) {
   const beforeFlushHooks = [];
   let flushScheduled = false;
 
+  // ── Flush steps ──────────────────────────────────────────────────────
+  // Named pieces shared by the per-state microtask flush and batch().
+
+  function runBeforeFlushHooks() {
+    for (let i = 0; i < beforeFlushHooks.length; i++) {
+      try {
+        beforeFlushHooks[i]();
+      } catch (err) {
+        logError('[Lume.js state] Error in beforeFlush hook:', err);
+      }
+    }
+  }
+
+  function notifySubscribers() {
+    for (const [key, value] of pendingNotifications) {
+      if (listeners[key]) {
+        const subs = listeners[key];
+        let i = 0;
+        while (i < subs.length) {
+          const fn = subs[i];
+          try {
+            fn(value);
+          } catch (err) {
+            logError(`[Lume.js state] Error notifying subscriber for key "${String(key)}":`, err);
+          }
+          // Only advance if fn wasn't removed (something shifted into its place)
+          if (subs[i] === fn) i++;
+        }
+      }
+    }
+    pendingNotifications.clear();
+  }
+
+  /** Drain queued effects (Set deduplicates) into an array. */
+  function takeEffects() {
+    const effects = Array.from(pendingEffects);
+    pendingEffects.clear();
+    return effects;
+  }
+
+  // Handle this state gives batch() — flush steps only, no live queues.
+  const batchHandle = { runBeforeFlushHooks, notifySubscribers, takeEffects };
+
   /**
    * Schedule a single microtask flush for this state object.
    *
@@ -113,57 +271,29 @@ export function state(obj) {
    *
    * Notes:
    * - Batching is per state; effects that depend on multiple states
-   *   may run once per state that changed (by design).
+   *   may run once per state that changed (by design). Use batch() to
+   *   group writes across states and run such effects once.
+   * - Inside batch(), the microtask is skipped: the state enqueues
+   *   itself for the synchronous flush at the end of the batch.
    */
   function scheduleFlush() {
+    if (batchDepth > 0) {
+      batchedStates.add(batchHandle);
+      return;
+    }
+
     if (flushScheduled) return;
 
     flushScheduled = true;
-    // eslint-disable-next-line sonarjs/cognitive-complexity -- single-pass flush loop: hooks → subscribers → effects → cycle detection; must stay atomic
     queueMicrotask(() => {
       let iterations = 0;
-      const MAX_ITERATIONS = 100;
 
       try {
-        while ((pendingNotifications.size > 0 || pendingEffects.size > 0) && iterations < MAX_ITERATIONS) {
+        while ((pendingNotifications.size > 0 || pendingEffects.size > 0) && iterations < MAX_FLUSH_ITERATIONS) {
           iterations++;
-
-          // Run registered before-flush hooks (e.g. plugin onNotify)
-          for (let i = 0; i < beforeFlushHooks.length; i++) {
-            try {
-              beforeFlushHooks[i]();
-            } catch (err) {
-              logError('[Lume.js state] Error in beforeFlush hook:', err);
-            }
-          }
-
-          // Notify all subscribers of changed keys
-          for (const [key, value] of pendingNotifications) {
-            if (listeners[key]) {
-              const subs = listeners[key];
-              let i = 0;
-              while (i < subs.length) {
-                const fn = subs[i];
-                try {
-                  fn(value);
-                } catch (err) {
-                  logError(`[Lume.js state] Error notifying subscriber for key "${String(key)}":`, err);
-                }
-                // Only advance if fn wasn't removed (something shifted into its place)
-                if (subs[i] === fn) i++;
-              }
-            }
-          }
-
-          pendingNotifications.clear();
-
-          // Run each effect exactly once (Set deduplicates)
-          const effects = new Array(pendingEffects.size);
-          let idx = 0;
-          for (const effect of pendingEffects) {
-            effects[idx++] = effect;
-          }
-          pendingEffects.clear();
+          runBeforeFlushHooks();
+          notifySubscribers();
+          const effects = takeEffects();
           for (let i = 0; i < effects.length; i++) {
             try {
               effects[i]();
@@ -176,7 +306,7 @@ export function state(obj) {
         flushScheduled = false;
       }
 
-      if (iterations >= MAX_ITERATIONS) {
+      if (iterations >= MAX_FLUSH_ITERATIONS) {
         logError(
           '[Lume.js state] Maximum flush iterations reached (100). ' +
           'This usually indicates an infinite loop caused by an effect or computed mutating state it depends on.'

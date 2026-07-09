@@ -354,6 +354,46 @@ export function effect(fn: () => void): Unsubscribe;
 export function effect(fn: () => void, deps: EffectDependency[]): Unsubscribe;
 
 /**
+ * Group multiple state writes and flush them together, synchronously,
+ * when the outermost batch() returns.
+ *
+ * Guarantees:
+ * - Subscribers see only the final value of each key written in the batch.
+ * - An effect depending on several stores mutated in the batch runs exactly
+ *   ONCE (normal microtask batching is per-state: such effects run once per
+ *   mutated store).
+ * - Nested batch() calls are absorbed into the outermost batch.
+ * - If fn throws, writes made before the throw still flush, then the error
+ *   propagates.
+ *
+ * fn must be synchronous. Writes after an `await` fall back to normal
+ * per-state microtask flushing (a console warning is logged if fn returns
+ * a Promise).
+ *
+ * @param fn - Function performing state writes
+ * @returns The return value of fn
+ * @throws {Error} If fn is not a function
+ *
+ * @example
+ * ```typescript
+ * import { state, effect, batch } from 'lume-js';
+ *
+ * const a = state({ value: 1 });
+ * const b = state({ value: 2 });
+ *
+ * effect(() => {
+ *   render(a.value + b.value);
+ * });
+ *
+ * batch(() => {
+ *   a.value = 10;
+ *   b.value = 20;
+ * }); // render() ran exactly once, seeing 30
+ * ```
+ */
+export function batch<T>(fn: () => T): T;
+
+/**
  * Run a function with a read observer active.
  *
  * The observer receives `(proxy, key, registerEffect)` for every property read
