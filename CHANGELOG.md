@@ -7,6 +7,11 @@
 
 ### Added
 
+- **`lume-js/state` entry — the universal, DOM-free kernel (1.45 KB gz):**
+  `state` + `batch` + `withReadObserver` for Node, Deno, Bun, workers, and
+  CLI tools, published as `dist/state.mjs` (npm) and `dist/state.min.mjs`
+  (self-contained CDN build) with its own CI size budget (≤ 1.75 KB). The
+  full `lume-js` entry is unchanged — this is purely additive.
 - **`persist(store, key, opts)` (addons):** localStorage/sessionStorage sync
   from the VISION roadmap — hydrates watched keys through the proxy on call,
   then saves on change with one coalesced write per microtask, skipping
