@@ -1,19 +1,22 @@
 import { state, effect, bindDom, batch } from 'lume-js';
 
-const STORES = 200;
+const STORES = 500;
 const BURSTS = 100;
 
-// 200 independent stores — one per dashboard cell, as separate widgets/modules would have
+// 500 independent stores — one per dashboard cell, as separate widgets/modules would have
 const stores = Array.from({ length: STORES }, () => state({ value: 50 }));
 
 // UI store for the readouts (data-bind targets)
 const ui = state({
   sum: 0, avg: '0.0', min: 0, max: 0,
   worstFrame: '…',
-  plainTime: '—', plainAgg: '—', plainCell: '—',
-  batchTime: '—', batchAgg: '—', batchCell: '—',
+  plainTime: '—', plainWall: '—', plainAgg: '—', plainCell: '—', plainOps: '—',
+  batchTime: '—', batchWall: '—', batchAgg: '—', batchCell: '—', batchOps: '—',
+  ratio: '',
 });
 bindDom(document.body, ui);
+
+const fmt = n => n.toLocaleString('en-US');
 
 // ── Fine-grained layer: one effect per store, driving its own cell ────────
 // These run once per changed store in BOTH modes — batch() never makes
@@ -28,11 +31,10 @@ for (const s of stores) {
     const v = s.value;
     cellRuns++;
     cell.style.setProperty('--h', String(Math.round(v * 1.2 + 60)));
-    cell.textContent = Math.round(v);
   });
 }
 
-// ── Cross-store layer: ONE aggregate effect reading all 200 stores ────────
+// ── Cross-store layer: ONE aggregate effect reading all 500 stores ────────
 // This is the dashboard summary — and the thing per-store batching runs
 // once per mutated store, but batch() runs once per burst.
 let aggRuns = 0;
@@ -69,6 +71,8 @@ const nextTick = () => new Promise(resolve => setTimeout(resolve));
 
 const buttons = [...document.querySelectorAll('button')];
 let running = false;
+let plainOpsTotal = 0;
+let batchOpsTotal = 0;
 
 async function run(useBatch) {
   if (running) return;
@@ -77,26 +81,51 @@ async function run(useBatch) {
 
   const agg0 = aggRuns;
   const cell0 = cellRuns;
-  const t0 = performance.now();
+  const wall0 = performance.now();
+  let work = 0;
 
   for (let b = 0; b < BURSTS; b++) {
+    const t0 = performance.now();
     if (useBatch) {
       batch(burst);    // one synchronous flush: aggregate runs ONCE
     } else {
       burst();         // per-store flushes: aggregate runs once per store
     }
+    // Without batch, each store flushes in its own microtask queued during
+    // burst(); awaiting a resolved promise queues this continuation AFTER
+    // those flushes, so `work` captures the effect work in both modes.
+    await Promise.resolve();
+    work += performance.now() - t0;
     await nextTick();
   }
 
-  const elapsed = `${(performance.now() - t0).toFixed(0)} ms`;
+  const wall = performance.now() - wall0;
+  const aggDelta = aggRuns - agg0;
+  const cellDelta = cellRuns - cell0;
+  // writes + reads performed by effects (aggregate reads all stores per run,
+  // each cell effect reads its one store) + effect executions
+  const totalOps =
+    STORES * BURSTS +
+    aggDelta * STORES + cellDelta +
+    aggDelta + cellDelta;
+
   if (useBatch) {
-    ui.batchTime = elapsed;
-    ui.batchAgg = aggRuns - agg0;
-    ui.batchCell = cellRuns - cell0;
+    ui.batchTime = `${work.toFixed(0)} ms`;
+    ui.batchWall = `${wall.toFixed(0)} ms`;
+    ui.batchAgg = fmt(aggDelta);
+    ui.batchCell = fmt(cellDelta);
+    ui.batchOps = fmt(totalOps);
+    batchOpsTotal = totalOps;
   } else {
-    ui.plainTime = elapsed;
-    ui.plainAgg = aggRuns - agg0;
-    ui.plainCell = cellRuns - cell0;
+    ui.plainTime = `${work.toFixed(0)} ms`;
+    ui.plainWall = `${wall.toFixed(0)} ms`;
+    ui.plainAgg = fmt(aggDelta);
+    ui.plainCell = fmt(cellDelta);
+    ui.plainOps = fmt(totalOps);
+    plainOpsTotal = totalOps;
+  }
+  if (plainOpsTotal && batchOpsTotal) {
+    ui.ratio = `${Math.round(plainOpsTotal / batchOpsTotal)}× fewer operations with batch()`;
   }
 
   buttons.forEach(b => { b.disabled = false; });
