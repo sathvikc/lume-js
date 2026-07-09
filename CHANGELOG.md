@@ -61,6 +61,15 @@
   store silently never re-ran the effect. Tracking is now keyed per store proxy
   (`WeakMap<proxy, Set<key>>`).
 
+### Tests
+
+- **420 tests passing** (from 355 in v2.2.1) | 65 new tests | 100% coverage maintained
+  - Cross-store tracking, explicit-deps coalescing, subscriber-cap parity, brand/`isReactive` (`effect.test.js`, `state.test.js`, `addons/index.test.js`)
+  - `batch()` suite — 16 tests (`core/batch.test.js`)
+  - Template mode — 14 tests (`addons/repeat.test.js`)
+  - `on()` handler — 6 tests (`handlers/index.test.js`)
+  - `persist()` suite — 15 tests (`addons/persist.test.js`)
+
 ---
 
 ## [2.2.1] - 2026-05-12

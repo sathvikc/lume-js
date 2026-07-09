@@ -103,9 +103,9 @@ console.log(total.value);  // cached until items changes
 
 | Import | Contents |
 |--------|----------|
-| `lume-js` | `state`, `bindDom`, `effect` |
-| `lume-js/addons` | `watch`, `computed`, `repeat`, `withPlugins`, `createDebugPlugin`, `debug`, `isReactive`, `defaultFocusPreservation`, `defaultScrollPreservation` |
-| `lume-js/handlers` | `show`, `boolAttr`, `ariaAttr`, `classToggle`, `stringAttr`, `formHandlers`, `a11yHandlers`, `htmlAttrs` |
+| `lume-js` | `state`, `bindDom`, `effect`, `batch` |
+| `lume-js/addons` | `watch`, `computed`, `repeat`, `persist`, `withPlugins`, `createDebugPlugin`, `debug`, `isReactive`, `createCleanupGroup`, `hydrateState`, `defaultFocusPreservation`, `defaultScrollPreservation` |
+| `lume-js/handlers` | `show`, `boolAttr`, `ariaAttr`, `classToggle`, `stringAttr`, `on`, `formHandlers`, `a11yHandlers`, `htmlAttrs` |
 
 ## Documentation
 
@@ -125,16 +125,19 @@ console.log(total.value);  // cached until items changes
 - [state()](api/core/state.md)
 - [bindDom()](api/core/bindDom.md)
 - [effect()](api/core/effect.md)
+- [batch()](api/core/batch.md)
 
 ### API — Addons
 - [watch()](api/addons/watch.md)
 - [computed()](api/addons/computed.md)
-- [repeat()](api/addons/repeat.md)
+- [repeat()](api/addons/repeat.md) — incl. template mode
+- [persist()](api/addons/persist.md)
 
 ### API — Handlers
 - [show](api/handlers/show.md)
 - [classToggle](api/handlers/classToggle.md)
 - [stringAttr](api/handlers/stringAttr.md)
+- [on](api/handlers/on.md)
 
 ### Tutorials
 - [Build a Todo app](tutorials/build-todo-app.md)
