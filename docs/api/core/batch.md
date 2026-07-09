@@ -89,4 +89,4 @@ Single-store updates are already batched by the microtask scheduler — `batch()
 
 ---
 
-**← Previous: [effect()](effect.md)** | **Next: [Handlers API](handlers.md) →**
+**← Previous: [effect()](effect.md)** | **Next: [watch()](../addons/watch.md) →**

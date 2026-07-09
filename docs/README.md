@@ -2,7 +2,7 @@
 
 **Lume.js** is a lightweight reactive state library built on standard JavaScript and HTML. Drop it into any page via a CDN `<script>` tag and get reactive bindings in minutes — no build tool, no custom syntax, no framework required.
 
-> **Version:** 2.0.0-beta.2 · **Core:** ~2.15 KB gzipped · **Tests:** 294 · **Dependencies:** 0
+> **Version:** 2.3.0 · **Core:** 1.45 KB gzipped (universal) / 2.66 KB gzipped (+ DOM) · **Tests:** 425 · **Dependencies:** 0
 
 ## Why Lume.js?
 
@@ -10,7 +10,7 @@
 |--|---------|----------------------|
 | Build step | None required | Required |
 | Custom syntax | None — plain `data-*` attrs | Templates / JSX / `.svelte` |
-| Bundle size | ~2.15 KB gzipped | 40 KB+ |
+| Bundle size | 1.45–2.66 KB gzipped | 40 KB+ |
 | Learning curve | ~15 min | Days |
 | Virtual DOM | No — direct DOM | Yes |
 
@@ -118,10 +118,17 @@ console.log(total.value);  // cached until items changes
 ### Guides
 - [How reactivity works](guides/reactivity.md)
 - [Universal core (Node, CLI, workers)](guides/universal-core.md)
+- [Choosing reactive primitives](guides/choosing-reactive-primitives.md)
 - [Handlers](guides/handlers.md)
 - [Two-way binding](guides/two-way-binding.md)
 - [Lists & repeat](guides/lists.md)
+- [Forms](guides/forms.md)
+- [Routing](guides/routing.md)
+- [Animations](guides/animations.md)
+- [Testing](guides/testing.md)
 - [Performance](guides/performance.md)
+- [Cleanup & Disposal](guides/cleanup-and-dispose.md)
+- [SSR & Hydration](guides/ssr-hydration.md)
 
 ### API — Core
 - [state()](api/core/state.md)
@@ -134,16 +141,30 @@ console.log(total.value);  // cached until items changes
 - [computed()](api/addons/computed.md)
 - [repeat()](api/addons/repeat.md) — incl. template mode
 - [persist()](api/addons/persist.md)
+- [createCleanupGroup()](api/addons/createCleanupGroup.md)
+- [hydrateState()](api/addons/hydrateState.md)
+- [createDebugPlugin() / debug](api/addons/debug.md)
+- [withPlugins()](api/addons/withPlugins.md)
+- [isReactive()](api/addons/isReactive.md)
 
 ### API — Handlers
+- [Handlers API](api/core/handlers.md) — the `{ attr, apply }` extension contract
 - [show](api/handlers/show.md)
+- [className](api/handlers/className.md)
+- [boolAttr](api/handlers/boolAttr.md)
+- [ariaAttr](api/handlers/ariaAttr.md)
 - [classToggle](api/handlers/classToggle.md)
 - [stringAttr](api/handlers/stringAttr.md)
 - [on](api/handlers/on.md)
+- [htmlAttrs](api/handlers/htmlAttrs.md)
 
 ### Tutorials
 - [Build a Todo app](tutorials/build-todo-app.md)
 - [Build Tic-Tac-Toe](tutorials/build-tic-tac-toe.md)
+- [Working with Arrays](tutorials/working-with-arrays.md)
+
+### Design
+- [Design decisions](design/design-decisions.md)
 
 ### Reference
 - [FAQ](guides/faq.md)

@@ -86,3 +86,7 @@ persist(cartStore, 'app:cart', { keys: ['items'] });
 
 - [hydrateState()](hydrateState.md) — initial state from server-rendered JSON
 - [watch()](watch.md) — the manual building block this replaces
+
+---
+
+**← Previous: [repeat()](repeat.md)** | **Next: [createCleanupGroup()](createCleanupGroup.md) →**

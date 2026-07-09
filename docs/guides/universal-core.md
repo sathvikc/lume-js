@@ -140,3 +140,7 @@ can't silently drift.
 - [state()](../api/core/state.md) · [batch()](../api/core/batch.md)
 - [SSR & Hydration](ssr-hydration.md) — server-rendered HTML with reactive hydration
 - Design rationale: [Why a `lume-js/state` entry](../design/design-decisions.md#why-a-lume-jsstate-entry-instead-of-demoting-binddomeffect-v23)
+
+---
+
+**← Previous: [How reactivity works](reactivity.md)** | **Next: [Choosing reactive primitives](choosing-reactive-primitives.md) →**

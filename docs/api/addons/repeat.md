@@ -206,4 +206,4 @@ repeat(listEl, filtered, 'value', {
 
 ---
 
-**← Previous: [computed()](computed.md)** | **Next: [show](../handlers/show.md) →**
+**← Previous: [computed()](computed.md)** | **Next: [persist()](persist.md) →**

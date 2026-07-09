@@ -84,4 +84,4 @@ bindDom(root, store, {
 
 ---
 
-**← Previous: [ariaAttr](ariaAttr.md)** | **Next: [show](show.md) →**
+**← Previous: [on](on.md)** | **Next: [Build a Todo app](../../tutorials/build-todo-app.md) →**

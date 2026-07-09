@@ -128,5 +128,4 @@ Debug logs use colored output:
 
 ---
 
-**← Previous: [stringAttr](../handlers/stringAttr.md)** | **Next: [Build a Todo app](../../tutorials/build-todo-app.md) →**
-
+**← Previous: [hydrateState()](hydrateState.md)** | **Next: [withPlugins()](withPlugins.md) →**

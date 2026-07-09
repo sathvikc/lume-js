@@ -57,4 +57,4 @@ Use `className` when the entire class string is computed. Use `classToggle` to f
 
 ---
 
-**← Previous: [show](show.md)** | **Next: [classToggle](classToggle.md) →**
+**← Previous: [show](show.md)** | **Next: [boolAttr](boolAttr.md) →**

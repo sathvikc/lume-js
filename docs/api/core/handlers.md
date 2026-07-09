@@ -1,20 +1,13 @@
 # Handlers API
 
-> **Version:** 2.0.0-beta.2+
-> **Import:** `import { ... } from 'lume-js/handlers'`
-> **Size:** 0.33 KB gzipped
-
-Handlers extend `bindDom()` with additional reactive `data-*` attributes. Each handler is a plain object — no framework API, no registration system.
+`bindDom()` accepts a `handlers` option — plain objects that teach it how to interpret additional `data-*` attributes. This page documents that extension contract. For the ready-to-use handlers themselves (`show`, `boolAttr`, `ariaAttr`, `classToggle`, `stringAttr`, `on`, `htmlAttrs`, presets), see the [API — Handlers](../handlers/show.md) reference pages.
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
 - [Handler Contract](#handler-contract)
-- [Ready-to-use Handlers](#ready-to-use-handlers)
-- [Factory Functions](#factory-functions)
-- [Presets](#presets)
-- [Custom Handlers](#custom-handlers)
 - [Handler Override](#handler-override)
+- [Custom Handlers](#custom-handlers)
 - [Usage Patterns](#usage-patterns)
 
 ## Quick Start
@@ -50,215 +43,29 @@ interface Handler {
 - `attr` — The `data-*` attribute name that triggers this handler.
 - `apply` — Called immediately with the current value, then again whenever the state changes.
 
-## Ready-to-use Handlers
+Handlers passed to `bindDom(root, store, { handlers: [...] })` can also be **arrays** of handler objects — `bindDom` auto-flattens one level, which is how factory functions like `classToggle(...names)` return multiple handlers from a single call.
 
-### `show`
+## Handler Override
 
-Shows an element when the state value is truthy (inverse of the built-in `data-hidden`).
-
-```javascript
-import { show } from 'lume-js/handlers';
-
-bindDom(root, store, { handlers: [show] });
-```
-
-```html
-<span data-show="isVisible">Shown when truthy, hidden when falsy</span>
-```
-
-**Behavior:** `el.hidden = !Boolean(val)`
-
-## Factory Functions
-
-### `boolAttr(name)`
-
-Creates a handler for any HTML boolean attribute. Uses `toggleAttribute()` for broad compatibility.
+User-supplied handlers override built-in handlers with the same `attr`. This lets you customize default behavior:
 
 ```javascript
-import { boolAttr } from 'lume-js/handlers';
+// Override data-hidden to use display:none instead of the hidden property
+const customHidden = {
+  attr: 'data-hidden',
+  apply(el, val) {
+    el.style.display = val ? 'none' : '';
+  }
+};
 
-bindDom(root, store, { handlers: [boolAttr('readonly'), boolAttr('open')] });
+bindDom(root, store, { handlers: [customHidden] });
 ```
 
-```html
-<input data-readonly="isReadonly">
-<details data-open="isExpanded">...</details>
-```
-
-**Behavior:** `el.toggleAttribute(name, Boolean(val))`
-
-> **Note:** The built-in handlers for `hidden`, `disabled`, `checked`, and `required` use direct property assignment (`el.hidden = true`). The `boolAttr()` factory uses `toggleAttribute()`, which works correctly with any attribute name regardless of camelCase property mapping.
-
----
-
-### `ariaAttr(name)`
-
-Creates a handler for a **boolean** ARIA attribute. Coerces values to `"true"` or `"false"` strings. Accepts the name with or without the `aria-` prefix.
-
-For string-valued ARIA attributes like `aria-label`, use `stringAttr('aria-label')` instead.
-
-```javascript
-import { ariaAttr } from 'lume-js/handlers';
-
-bindDom(root, store, { handlers: [ariaAttr('pressed'), ariaAttr('selected')] });
-```
-
-```html
-<button data-aria-pressed="isPressed">Toggle</button>
-<div data-aria-selected="isSelected">Item</div>
-```
-
-**Behavior:** `el.setAttribute('aria-pressed', val ? 'true' : 'false')`
-
-> **Note:** Built-in handlers cover `aria-expanded` and `aria-hidden`. Use `ariaAttr()` for any others.
-
----
-
-### `classToggle(...names)`
-
-Creates handlers for CSS class toggling. Each name creates a separate handler. Returns an **array** (auto-flattened by `bindDom`).
-
-```javascript
-import { classToggle } from 'lume-js/handlers';
-
-bindDom(root, store, { handlers: [classToggle('active', 'loading', 'error')] });
-```
-
-```html
-<div data-class-active="isActive" data-class-loading="isLoading">
-  Toggles 'active' and 'loading' classes independently
-</div>
-```
-
-**Behavior:** `el.classList.toggle(name, Boolean(val))`
-
-Does **not** affect other classes on the element — only the specified class is toggled.
-
----
-
-### `stringAttr(name)`
-
-Creates a handler for any string attribute. Removes the attribute when the value is `null` or `undefined`.
-
-```javascript
-import { stringAttr } from 'lume-js/handlers';
-
-bindDom(root, store, { handlers: [stringAttr('href'), stringAttr('src'), stringAttr('title')] });
-```
-
-```html
-<a data-href="profileUrl">Profile</a>
-<img data-src="imageUrl">
-<span data-title="tooltipText">Hover me</span>
-```
-
-**Behavior:**
-- Truthy: `el.setAttribute(name, String(val))`
-- `null`/`undefined`: `el.removeAttribute(name)`
-
-### `on(...types)`
-
-Creates handlers for declarative event wiring — `data-on{type}="key"` attaches the function stored at that state key as a DOM event listener. Re-assigning the key re-wires the listener; `null` detaches it.
-
-```javascript
-import { on } from 'lume-js/handlers';
-
-bindDom(root, store, { handlers: [on('click', 'keydown')] });
-```
-
-```html
-<button data-onclick="addTodo">Add</button>
-<input data-onkeydown="maybeSubmit">
-```
-
-> Full reference: [on()](../handlers/on.md)
-
-## Presets
-
-Pre-configured handler arrays for common use cases.
-
-### `formHandlers`
-
-Form-related handlers beyond the built-in `disabled`/`checked`/`required`:
-
-```javascript
-import { formHandlers } from 'lume-js/handlers';
-
-bindDom(root, store, { handlers: formHandlers });
-// Includes: boolAttr('readonly')
-```
-
-### `a11yHandlers`
-
-Additional ARIA handlers beyond the built-in `aria-expanded`/`aria-hidden`:
-
-```javascript
-import { a11yHandlers } from 'lume-js/handlers';
-
-bindDom(root, store, { handlers: a11yHandlers });
-// Includes: ariaAttr('pressed'), ariaAttr('selected'), ariaAttr('disabled')
-```
-
-### Combining Presets
-
-```javascript
-import { formHandlers, a11yHandlers, show, classToggle } from 'lume-js/handlers';
-
-bindDom(root, store, {
-  handlers: [...formHandlers, ...a11yHandlers, show, classToggle('active')]
-});
-```
-
-### `htmlAttrs()`
-
-A single-import preset that enables **all standard HTML attributes** as reactive handlers — boolean attrs, string attrs, ARIA attrs, and the `show` handler.
-
-```javascript
-import { htmlAttrs } from 'lume-js/handlers';
-
-bindDom(document.body, store, { handlers: [htmlAttrs()] });
-```
-
-Now use any `data-*` attribute without additional imports:
-
-```html
-<!-- Boolean attributes -->
-<input data-readonly="isLocked" />
-<details data-open="isExpanded">...</details>
-<video data-autoplay="shouldPlay" data-controls="showControls" data-muted="isMuted" />
-
-<!-- String attributes -->
-<a data-href="url" data-title="tooltip">Link</a>
-<img data-src="imageUrl" data-alt="imageDesc" />
-<input data-placeholder="hintText" data-pattern="validationRegex" />
-<div data-role="widgetRole" data-tabindex="tabOrder" />
-
-<!-- ARIA attributes -->
-<button data-aria-pressed="isPressed" data-aria-label="btnLabel">Toggle</button>
-<div data-aria-describedby="descId" data-aria-live="liveRegion" />
-<input data-aria-invalid="hasError" data-aria-required="isRequired" />
-
-<!-- Show handler -->
-<div data-show="isVisible">Shown when truthy</div>
-```
-
-**Included attributes:**
-
-| Category | Attributes |
-|----------|-----------|
-| **Boolean** | `readonly`, `open`, `novalidate`, `multiple`, `autofocus`, `autoplay`, `controls`, `loop`, `muted`, `defer`, `async`, `reversed`, `selected`, `inert`, `allowfullscreen` |
-| **String** | `href`, `src`, `alt`, `title`, `placeholder`, `action`, `method`, `target`, `rel`, `type`, `name`, `role`, `lang`, `tabindex`, `pattern`, `min`, `max`, `step`, `minlength`, `maxlength`, `width`, `height`, `for`, `form`, `accept`, `autocomplete`, `loading`, `decoding`, `inputmode`, `enterkeyhint`, `draggable`, `contenteditable`, `spellcheck`, `translate`, `dir`, `id`, `poster`, `preload`, `download`, `media`, `sizes`, `srcset`, `colspan`, `rowspan`, `scope`, `headers`, `wrap`, `sandbox` |
-| **ARIA (boolean)** | `pressed`, `selected`, `disabled`, `checked`, `invalid`, `required`, `busy`, `modal`, `multiselectable`, `multiline`, `readonly`, `atomic` |
-| **ARIA (string)** | `label`, `describedby`, `labelledby`, `controls`, `owns`, `activedescendant`, `errormessage`, `current`, `live`, `relevant`, `haspopup`, `sort`, `autocomplete`, `orientation`, `valuenow`, `valuemin`, `valuemax`, `valuetext`, `details`, `flowto`, `colcount`, `colindex`, `colspan`, `rowcount`, `rowindex`, `rowspan`, `level`, `setsize`, `posinset`, `placeholder`, `roledescription`, `keyshortcuts`, `braillelabel`, `brailleroledescription` |
-| **Other** | `show` |
-
-> **ARIA boolean vs string:** Boolean ARIA attrs (like `aria-pressed`) are coerced to `"true"`/`"false"`. String ARIA attrs (like `aria-label`) pass through the actual value and are removed when set to `null`/`undefined`.
->
-> **When to use `htmlAttrs()`:** Great for prototyping and apps that use many different attributes. For production bundles where you want minimal overhead, cherry-pick individual handlers instead.
+Built-in handlers that can be overridden: `data-hidden`, `data-disabled`, `data-checked`, `data-required`, `data-aria-expanded`, `data-aria-hidden`.
 
 ## Custom Handlers
 
-Any plain object matching `{ attr, apply }` works as a handler:
+Any plain object matching `{ attr, apply }` works as a handler — no registration system, no framework API:
 
 ```javascript
 // Tooltip handler
@@ -281,24 +88,6 @@ bindDom(root, store, { handlers: [tooltip, bgColor] });
 <div data-bg="themeColor">Styled</div>
 ```
 
-## Handler Override
-
-User-supplied handlers override built-in handlers with the same `attr`. This lets you customize default behavior:
-
-```javascript
-// Override data-hidden to use display:none instead of the hidden property
-const customHidden = {
-  attr: 'data-hidden',
-  apply(el, val) {
-    el.style.display = val ? 'none' : '';
-  }
-};
-
-bindDom(root, store, { handlers: [customHidden] });
-```
-
-Built-in handlers that can be overridden: `data-hidden`, `data-disabled`, `data-checked`, `data-required`, `data-aria-expanded`, `data-aria-hidden`.
-
 ## Usage Patterns
 
 ### Minimal (built-ins only)
@@ -315,24 +104,6 @@ import { show, classToggle } from 'lume-js/handlers';
 bindDom(root, store, { handlers: [show, classToggle('active')] });
 ```
 
-### Full form + accessibility
-
-```javascript
-import { formHandlers, a11yHandlers, show, classToggle, stringAttr } from 'lume-js/handlers';
-
-bindDom(root, store, {
-  handlers: [
-    ...formHandlers,
-    ...a11yHandlers,
-    show,
-    classToggle('active', 'loading', 'error', 'selected'),
-    stringAttr('href'),
-    stringAttr('src'),
-    stringAttr('title')
-  ]
-});
-```
-
 ### Everything at once
 
 ```javascript
@@ -340,6 +111,8 @@ import { htmlAttrs } from 'lume-js/handlers';
 
 bindDom(root, store, { handlers: [htmlAttrs()] });
 ```
+
+See [htmlAttrs](../handlers/htmlAttrs.md) for what's included, and when to prefer cherry-picking instead.
 
 ### Multiple `bindDom` calls with different handlers
 
@@ -355,6 +128,12 @@ bindDom(document.getElementById('nav'), navStore, {
 });
 ```
 
+## See also
+
+- [Ready-to-use handlers](../handlers/show.md) — `show`, `className`, `boolAttr`, `ariaAttr`, `classToggle`, `stringAttr`, `on`, `htmlAttrs`
+- [Handlers guide](../../guides/handlers.md)
+- [bindDom()](bindDom.md)
+
 ---
 
-**← Previous: [effect()](effect.md)** | **Next: [Plugins](plugins.md) →**
+**← Previous: [isReactive()](../addons/isReactive.md)** | **Next: [show](../handlers/show.md) →**

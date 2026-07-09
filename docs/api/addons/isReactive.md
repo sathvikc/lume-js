@@ -35,3 +35,7 @@ This is useful when writing utilities or addons that need to accept either a raw
 ## Note
 
 Detection checks the shared brand symbol first (`Symbol.for('lume.reactive')`, checked with the `in` operator so it never registers an effect dependency), then falls back to duck-typing (`typeof obj.$subscribe === 'function'`) for stores created by older lume-js versions. The brand is a type tag, not a security boundary — any code can stamp it.
+
+---
+
+**← Previous: [withPlugins()](withPlugins.md)** | **Next: [Handlers API](../core/handlers.md) →**

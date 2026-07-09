@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+
+---
+
+## [2.3.0] - 2026-07-08
+
 > Reviewer note: each entry below has a detailed write-up with examples in
 > [`docs/changes/`](docs/changes/README.md), one file per commit.
 

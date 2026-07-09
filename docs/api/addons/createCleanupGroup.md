@@ -70,4 +70,4 @@ Errors thrown by individual cleanup functions are caught and swallowed so that o
 
 ---
 
-**← Previous: [computed()](computed.md)** | **Next: [hydrateState()](hydrateState.md) →**
+**← Previous: [persist()](persist.md)** | **Next: [hydrateState()](hydrateState.md) →**

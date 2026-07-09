@@ -131,4 +131,4 @@ By default `watch` fires immediately with the current value (same as `$subscribe
 
 ---
 
-**← Previous: [Reactivity](reactivity.md)** | **Next: [Handlers](handlers.md) →**
+**← Previous: [Universal core (Node, CLI, workers)](universal-core.md)** | **Next: [Handlers](handlers.md) →**

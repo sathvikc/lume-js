@@ -44,4 +44,4 @@ Everything else continues to work without modification.
 
 ---
 
-**← Previous: [Build Tic-Tac-Toe](../tutorials/build-tic-tac-toe.md)** | **Next: [FAQ](faq.md) →**
+**← Previous: [Working with Arrays](../tutorials/working-with-arrays.md)** | **Next: [FAQ](faq.md) →**

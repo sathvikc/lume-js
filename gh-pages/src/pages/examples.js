@@ -1,10 +1,14 @@
 const EXAMPLES = [
   { id: 'comprehensive', title: 'Comprehensive demo', desc: 'Every feature of Lume in one page — state, effects, two-way binding, subscriptions.', tag: 'core' },
+  { id: 'batch',         title: 'Batch updates',       desc: 'Three stores feed one effect. Without batch(), it fires three times — wrapped in batch(), exactly once.', tag: 'core' },
   { id: 'todo',          title: 'Todo app',            desc: 'Classic to-do list with add, complete, remove, and a computed remaining-count.', tag: 'tutorial' },
   { id: 'tic-tac-toe',   title: 'Tic-Tac-Toe',         desc: 'Turn logic, win detection, and a keyed repeat over the board.', tag: 'tutorial' },
   { id: 'form-heavy',    title: 'Form handling',       desc: 'Checkboxes, radios, textareas, selects — two-way bound with zero boilerplate.', tag: 'forms' },
   { id: 'repeat-test',   title: 'List rendering',      desc: 'Benchmark-friendly demo of the repeat addon.', tag: 'addon' },
+  { id: 'template-list', title: 'Template-driven lists', desc: 'Keyed rows straight from a standard template tag — no createElement, no innerHTML, no manual DOM code.', tag: 'addon' },
   { id: 'handler-demo',  title: 'Handler system',      desc: 'Build a custom data-tooltip handler in five lines.', tag: 'handlers' },
+  { id: 'plugin-demo',   title: 'Plugin system',       desc: 'Logging, validation, and undo/redo — three real plugins built on withPlugins() hooks.', tag: 'addon' },
+  { id: 'debug-demo',    title: 'Debug addon',         desc: 'Watch every get, set, and notification in real time — a plugin-powered inspector for reactive state.', tag: 'addon' },
 ];
 
 export function renderExamples() {
@@ -14,7 +18,7 @@ export function renderExamples() {
         <div class="mb-12 max-w-2xl">
           <div class="font-mono text-[11.5px] font-medium text-accent-fg uppercase tracking-[0.12em] mb-3">Examples</div>
           <h2 class="font-serif font-normal leading-[1.1] tracking-[-0.02em] text-fg m-0 mb-3 text-balance" style="font-size:clamp(28px,4vw,44px)">See it running.</h2>
-          <p class="text-[17px] text-fg-muted m-0 text-pretty">Six worked examples — from a three-line counter to a full Tic-Tac-Toe with computed turn logic. Click a card to open the source.</p>
+          <p class="text-[17px] text-fg-muted m-0 text-pretty">${EXAMPLES.length} worked examples — from a three-line counter to a full Tic-Tac-Toe with computed turn logic. Click a card to open the source.</p>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           ${EXAMPLES.map(e => `

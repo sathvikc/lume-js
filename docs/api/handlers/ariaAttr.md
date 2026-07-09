@@ -99,4 +99,4 @@ import { a11yHandlers } from 'lume-js/handlers';
 
 ---
 
-**← Previous: [boolAttr](boolAttr.md)** | **Next: [stringAttr](stringAttr.md) →**
+**← Previous: [boolAttr](boolAttr.md)** | **Next: [classToggle](classToggle.md) →**
