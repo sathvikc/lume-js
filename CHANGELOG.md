@@ -7,6 +7,11 @@
 
 ### Fixed
 
+- **`effect()` — explicit-deps runs coalesced:** with `effect(fn, [[store, 'a', 'b']])`,
+  changing N tracked keys in one tick re-ran the effect N times (auto-tracking
+  mode already deduplicated). Explicit-deps notifications now coalesce into a
+  single run per microtask, across keys and across stores, with a disposal
+  guard for runs pending at cleanup time. See [docs/changes/02](docs/changes/02-fix-explicit-deps-coalescing.md).
 - **`effect()` — cross-store dependency tracking:** an effect reading the same
   property name on two different stores (e.g. `storeA.value` and
   `storeB.value`) only subscribed to the first store; mutations to the second

@@ -303,6 +303,93 @@ describe('effect', () => {
       expect(fn).toHaveBeenCalledTimes(3);
     });
 
+    it('coalesces multiple key changes into a single run', async () => {
+      const store = state({ a: 0, b: 0, c: 0 });
+      const fn = vi.fn();
+
+      effect(() => {
+        fn(store.a, store.b, store.c);
+      }, [[store, 'a', 'b', 'c']]);
+
+      expect(fn).toHaveBeenCalledTimes(1);
+
+      // Three tracked keys change in the same tick → exactly ONE re-run
+      store.a = 1;
+      store.b = 2;
+      store.c = 3;
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(fn).toHaveBeenCalledTimes(2);
+      expect(fn).toHaveBeenLastCalledWith(1, 2, 3);
+    });
+
+    it('coalesces changes across multiple stores into a single run', async () => {
+      const storeA = state({ x: 0 });
+      const storeB = state({ y: 0 });
+      const fn = vi.fn();
+
+      effect(() => {
+        fn(storeA.x, storeB.y);
+      }, [[storeA, 'x'], [storeB, 'y']]);
+
+      expect(fn).toHaveBeenCalledTimes(1);
+
+      storeA.x = 1;
+      storeB.y = 2;
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(fn).toHaveBeenCalledTimes(2);
+      expect(fn).toHaveBeenLastCalledWith(1, 2);
+    });
+
+    it('does not run a pending coalesced execution after cleanup', async () => {
+      const store = state({ count: 0 });
+      const fn = vi.fn();
+
+      const cleanup = effect(() => {
+        fn(store.count);
+      }, [[store, 'count']]);
+
+      expect(fn).toHaveBeenCalledTimes(1);
+
+      // Mutate, let the store flush notify the subscriber (queuing the
+      // coalesced run), THEN dispose before that microtask executes.
+      store.count = 1;
+      await Promise.resolve(); // store's flush microtask runs, schedules execute
+      cleanup();
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // The pending run must have been cancelled by disposal
+      expect(fn).toHaveBeenCalledTimes(1);
+    });
+
+    it('logs and contains errors thrown on coalesced re-runs', async () => {
+      const store = state({ count: 0 });
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      let runs = 0;
+
+      effect(() => {
+        void store.count;
+        runs++;
+        if (runs > 1) throw new Error('Re-run error');
+      }, [[store, 'count']]);
+
+      store.count = 1;
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(runs).toBe(2);
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[Lume.js effect] Error in effect:',
+        expect.any(Error)
+      );
+
+      // Effect must stay alive after a throwing run
+      store.count = 2;
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(runs).toBe(3);
+      errorSpy.mockRestore();
+    });
+
     it('should handle errors in explicit deps mode', () => {
       const store = state({ count: 0 });
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
