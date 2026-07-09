@@ -7,6 +7,14 @@
 
 ### Added
 
+- **`repeat({ template })` (addons):** declarative list rendering from a
+  standard `<template>` element — `template: true | selector | element`. The
+  template is cloned per item and its `data-bind` paths bind against each item
+  (`"name"`, `"user.city"`, `"$item"`, `"$index"`) with the exact value
+  semantics of core `data-bind`. Composes with `create`/`update`; `render` and
+  `element` are ignored in template mode. Kills the imperative-DOM boilerplate
+  that VISION.md calls the library's hardest problem.
+  See `examples/template-list/`.
 - **`batch(fn)` (core):** group state writes across stores and flush them
   together, synchronously, when the outermost batch returns. Effects that
   depend on several mutated stores run exactly once per batch (per-store
