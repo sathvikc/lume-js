@@ -12,6 +12,7 @@
  *   import { state, bindDom, effect, batch } from "lume-js";
  */
 
-export { state, batch, withReadObserver } from "./core/state.js";
+export { state, withReadObserver } from "./core/state.js";
+export { batch } from "./core/batch.js";
 export { bindDom } from "./core/bindDom.js";
 export { effect } from "./core/effect.js";

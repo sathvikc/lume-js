@@ -11,9 +11,9 @@
     &nbsp;
     <a href="package.json"><img src="https://img.shields.io/badge/version-2.2.1-orange.svg" alt="v2.2.1"></a>
     &nbsp;
-    <a href="tests/"><img src="https://img.shields.io/badge/tests-355%20passing-brightgreen.svg" alt="355 tests"></a>
+    <a href="tests/"><img src="https://img.shields.io/badge/tests-420%20passing-brightgreen.svg" alt="420 tests"></a>
     &nbsp;
-    <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core-2.23KB%20gzipped-blue.svg" alt="2.23KB"></a>
+    <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core-2.64KB%20gzipped-blue.svg" alt="2.64KB"></a>
   </p>
   <p><code>npm install lume-js</code></p>
 </div>
@@ -26,7 +26,7 @@
 |---------|---------|-----------|-----|-------|
 | Custom Syntax | ❌ No | ✅ `x-data` | ✅ `v-bind` | ✅ JSX |
 | Build Step | ❌ Optional | ❌ Optional | ⚠️ Recommended | ✅ Required |
-| Bundle Size | ~2.23KB | ~15KB | ~35KB | ~45KB |
+| Bundle Size | ~2.6KB | ~15KB | ~35KB | ~45KB |
 | HTML Validation | ✅ Pass | ⚠️ Warnings | ⚠️ Warnings | ❌ JSX |
 | Extensible Handlers | ✅ | ❌ Built-in only | ❌ Built-in only | N/A |
 
@@ -87,6 +87,37 @@ bindDom(document.body, store);
 ```
 
 That's it — two-way binding, no build step, valid HTML.
+
+### Lists? Also just HTML.
+
+```html
+<ul id="todos">
+  <template>
+    <li><span data-bind="title"></span> <em data-bind="$index"></em></li>
+  </template>
+</ul>
+```
+
+```javascript
+import { repeat } from 'lume-js/addons';
+
+repeat('#todos', store, 'todos', { key: t => t.id, template: true });
+```
+
+The row structure is a standard `<template>` element — no `createElement`, no JSX, no custom syntax.
+
+### Multiple stores? Batch them.
+
+```javascript
+import { batch } from 'lume-js';
+
+batch(() => {
+  cart.items = [...cart.items, item];
+  totals.sum += item.price;
+  ui.message = 'Added!';
+});
+// effects depending on several stores ran exactly ONCE, synchronously
+```
 
 ---
 
@@ -149,6 +180,7 @@ bindDom(document.body, store, {
 | `ariaAttr(name)` | `data-aria-pressed="key"` | Sets ARIA attribute to "true"/"false" |
 | `classToggle(...names)` | `data-class-active="key"` | Toggles individual CSS classes |
 | `stringAttr(name)` | `data-href="key"` | Sets string attributes (removes on null) |
+| `on(...types)` | `data-onclick="key"` | Wires the function at that state key as an event listener |
 | `htmlAttrs()` | *(all of the above)* | One-import preset — all standard HTML + ARIA attrs |
 
 ### Presets
@@ -188,7 +220,8 @@ import { computed, watch, repeat } from 'lume-js/addons';
 | `effect(fn)` *(core)* | Write derived values back into the store, or trigger side effects on state change |
 | `computed(fn)` | Derive a read-only value from state to consume *outside* the store (templates, display logic) |
 | `watch(store, key, fn)` | React to a *specific* key changing — DOM updates, analytics, syncing external state |
-| `repeat(container, store, key, opts)` | Render a keyed list with element reuse (no full re-render on change) |
+| `repeat(container, store, key, opts)` | Render a keyed list with element reuse — incl. declarative `template:` mode bound straight from a `<template>` element |
+| `persist(store, key, opts)` | Sync selected keys with localStorage/sessionStorage — hydrate on call, auto-save on change |
 | `createCleanupGroup()` | Collect multiple cleanup/unsubscribe functions and dispose them all at once |
 | `hydrateState(selector?)` | Read initial state from a `<script type="application/json">` tag (SSR hydration) |
 
@@ -240,9 +273,10 @@ Full documentation is available in the [docs/](docs/) directory:
     - [state()](docs/api/core/state.md) — Reactive state
     - [bindDom()](docs/api/core/bindDom.md) — DOM binding
     - [effect()](docs/api/core/effect.md) — Reactive effects
+    - [batch()](docs/api/core/batch.md) — Cross-store write batching
     - [Handlers](docs/api/core/handlers.md) — Extensible attribute handlers
     - [Plugins](docs/api/core/plugins.md) — State extension system
-    - [Addons](docs/api/addons/computed.md) — computed, watch, repeat, createCleanupGroup, hydrateState
+    - [Addons](docs/api/addons/computed.md) — computed, watch, repeat, persist, createCleanupGroup, hydrateState
 - **Guides**
     - [Choosing reactive primitives](docs/guides/choosing-reactive-primitives.md) — when to use effect vs computed vs watch
     - [Cleanup & Disposal](docs/guides/cleanup-and-dispose.md) — tearing down effects, bindings, and subscriptions
