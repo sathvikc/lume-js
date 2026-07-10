@@ -385,8 +385,7 @@ items.forEach(item => {
 });
 ```
 
-**Current Status (v2.3):**
-The `repeat` addon is stable, with keyed reconciliation, `create`/`update` separation, focus/scroll preservation — and a declarative **template mode** (below).
+**Current Status (v2.3):** The `repeat` addon is stable, with keyed reconciliation, `create`/`update` separation, focus/scroll preservation — and a declarative **template mode** (below).
 
 ```javascript
 import { repeat } from 'lume-js/addons';

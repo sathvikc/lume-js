@@ -48,64 +48,18 @@
 
 ### Added
 
-- **`lume-js/state` entry — the universal, DOM-free kernel (1.45 KB gz):**
-  `state` + `batch` + `withReadObserver` for Node, Deno, Bun, workers, and
-  CLI tools, published as `dist/state.mjs` (npm) and `dist/state.min.mjs`
-  (self-contained CDN build) with its own CI size budget (≤ 1.75 KB). The
-  full `lume-js` entry is unchanged — this is purely additive.
-- **`persist(store, key, opts)` (addons):** localStorage/sessionStorage sync
-  from the VISION roadmap — hydrates watched keys through the proxy on call,
-  then saves on change with one coalesced write per microtask, skipping
-  unchanged snapshots. Allowlist hydration (stale storage can't inject keys),
-  contained failures (quota/corrupt JSON/circular state warn, never throw),
-  SSR-safe no-op without storage. ~0.5 KB, opt-in.
-  See [docs/api/addons/persist.md](docs/api/addons/persist.md).
-- **`on(...types)` (handlers):** declarative event wiring —
-  `data-onclick="addTodo"` attaches the function held at that store key as a
-  DOM listener, with reactive re-wiring on key reassignment and detach on
-  `null`. Same trust model as `data-bind` (references existing state
-  functions only; no expressions, no eval). ~0.2 KB, opt-in import.
-  See [docs/api/handlers/on.md](docs/api/handlers/on.md).
-- **`repeat({ template })` (addons):** declarative list rendering from a
-  standard `<template>` element — `template: true | selector | element`. The
-  template is cloned per item and its `data-bind` paths bind against each item
-  (`"name"`, `"user.city"`, `"$item"`, `"$index"`) with the exact value
-  semantics of core `data-bind`. Composes with `create`/`update`; `render` and
-  `element` are ignored in template mode. Kills the imperative-DOM boilerplate
-  that VISION.md calls the library's hardest problem.
-  See `examples/template-list/`.
-- **`batch(fn)` (core):** group state writes across stores and flush them
-  together, synchronously, when the outermost batch returns. Effects that
-  depend on several mutated stores run exactly once per batch (per-store
-  microtask batching runs them once per store). Nested batches are absorbed;
-  errors flush prior writes then propagate; async callbacks warn. No global
-  scheduler, no import side effects. `import { batch } from 'lume-js'`.
-  See [docs/api/core/batch.md](docs/api/core/batch.md), `examples/batch/`.
+- **`lume-js/state` entry — the universal, DOM-free kernel (1.45 KB gz):** `state` + `batch` + `withReadObserver` for Node, Deno, Bun, workers, and CLI tools, published as `dist/state.mjs` (npm) and `dist/state.min.mjs` (self-contained CDN build) with its own CI size budget (≤ 1.75 KB). The full `lume-js` entry is unchanged — this is purely additive.
+- **`persist(store, key, opts)` (addons):** localStorage/sessionStorage sync from the VISION roadmap — hydrates watched keys through the proxy on call, then saves on change with one coalesced write per microtask, skipping unchanged snapshots. Allowlist hydration (stale storage can't inject keys), contained failures (quota/corrupt JSON/circular state warn, never throw), SSR-safe no-op without storage. ~0.5 KB, opt-in. See [docs/api/addons/persist.md](docs/api/addons/persist.md).
+- **`on(...types)` (handlers):** declarative event wiring — `data-onclick="addTodo"` attaches the function held at that store key as a DOM listener, with reactive re-wiring on key reassignment and detach on `null`. Same trust model as `data-bind` (references existing state functions only; no expressions, no eval). ~0.2 KB, opt-in import. See [docs/api/handlers/on.md](docs/api/handlers/on.md).
+- **`repeat({ template })` (addons):** declarative list rendering from a standard `<template>` element — `template: true | selector | element`. The template is cloned per item and its `data-bind` paths bind against each item (`"name"`, `"user.city"`, `"$item"`, `"$index"`) with the exact value semantics of core `data-bind`. Composes with `create`/`update`; `render` and `element` are ignored in template mode. Kills the imperative-DOM boilerplate that VISION.md calls the library's hardest problem. See `examples/template-list/`.
+- **`batch(fn)` (core):** group state writes across stores and flush them together, synchronously, when the outermost batch returns. Effects that depend on several mutated stores run exactly once per batch (per-store microtask batching runs them once per store). Nested batches are absorbed; errors flush prior writes then propagate; async callbacks warn. No global scheduler, no import side effects. `import { batch } from 'lume-js'`. See [docs/api/core/batch.md](docs/api/core/batch.md), `examples/batch/`.
 
 ### Fixed
 
-- **`state()` / `isReactive()` — reactive brand was dead code:** every store
-  was stamped with a freshly created `Symbol('lume.reactive')` that nothing
-  could ever look up. The brand is now a shared registry symbol
-  (`Symbol.for('lume.reactive')`), stamped non-enumerably (spread copies are
-  not branded), and `isReactive()` checks it first — via the `in` operator, so
-  the check never registers an effect dependency. Duck-typing remains as a
-  fallback for stores from older versions.
-- **`state()` — subscriber cap consistency:** the per-key 1000-listener cap
-  (added in 2.2.1) only applied to `$subscribe`; effect subscriptions bypassed
-  it entirely. Both paths now share one capped registration helper, and
-  hitting the cap logs a `console.error` (was a silent-ish warn) stating that
-  the listener will not receive updates.
-- **`effect()` — explicit-deps runs coalesced:** with `effect(fn, [[store, 'a', 'b']])`,
-  changing N tracked keys in one tick re-ran the effect N times (auto-tracking
-  mode already deduplicated). Explicit-deps notifications now coalesce into a
-  single run per microtask, across keys and across stores, with a disposal
-  guard for runs pending at cleanup time.
-- **`effect()` — cross-store dependency tracking:** an effect reading the same
-  property name on two different stores (e.g. `storeA.value` and
-  `storeB.value`) only subscribed to the first store; mutations to the second
-  store silently never re-ran the effect. Tracking is now keyed per store proxy
-  (`WeakMap<proxy, Set<key>>`).
+- **`state()` / `isReactive()` — reactive brand was dead code:** every store was stamped with a freshly created `Symbol('lume.reactive')` that nothing could ever look up. The brand is now a shared registry symbol (`Symbol.for('lume.reactive')`), stamped non-enumerably (spread copies are not branded), and `isReactive()` checks it first — via the `in` operator, so the check never registers an effect dependency. Duck-typing remains as a fallback for stores from older versions.
+- **`state()` — subscriber cap consistency:** the per-key 1000-listener cap (added in 2.2.1) only applied to `$subscribe`; effect subscriptions bypassed it entirely. Both paths now share one capped registration helper, and hitting the cap logs a `console.error` (was a silent-ish warn) stating that the listener will not receive updates.
+- **`effect()` — explicit-deps runs coalesced:** with `effect(fn, [[store, 'a', 'b']])`, changing N tracked keys in one tick re-ran the effect N times (auto-tracking mode already deduplicated). Explicit-deps notifications now coalesce into a single run per microtask, across keys and across stores, with a disposal guard for runs pending at cleanup time.
+- **`effect()` — cross-store dependency tracking:** an effect reading the same property name on two different stores (e.g. `storeA.value` and `storeB.value`) only subscribed to the first store; mutations to the second store silently never re-ran the effect. Tracking is now keyed per store proxy (`WeakMap<proxy, Set<key>>`).
 
 ### Tests
 
@@ -452,8 +406,7 @@ This release incorporates all beta hardening work: scope-based read tracking via
 
 All notable changes to Lume.js will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 

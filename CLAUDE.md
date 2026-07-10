@@ -6,12 +6,11 @@
 
 ## What this is
 
-Lume.js is a reactive state-management library whose entire pitch is **standards-only**:
-plain JavaScript `Proxy` state + `data-*` attributes in valid HTML. No custom syntax, no
-build step, no virtual DOM. The product is *trust in a tiny core*: a 1.46 KB gz universal
-kernel (`lume-js/state` — works in Node/Deno/Bun/workers), 2.66 KB with DOM binding
-(`lume-js`), everything else opt-in via `lume-js/addons` and `lume-js/handlers`.
-Published on npm as `lume-js` (v2.3.0), MIT, docs site at https://sathvikc.github.io/lume-js/.
+Lume.js is a reactive state-management library whose entire pitch is **standards-only**: plain JavaScript `Proxy` state + `data-*` attributes in valid HTML. No custom syntax, no build step, no virtual DOM. The product is *trust in a tiny core*: a 1.46 KB gz universal kernel (`lume-js/state` — works in Node/Deno/Bun/workers), 2.66 KB with DOM binding (`lume-js`), everything else opt-in via `lume-js/addons` and `lume-js/handlers`. Published on npm as `lume-js` (v2.3.0), MIT, docs site at https://sathvikc.github.io/lume-js/.
+
+## Formatting rule — never hard-wrap prose (STRICT)
+
+Never hard-wrap prose at a fixed column — not in markdown files, not in commit message bodies, not in PR descriptions. One paragraph = one line; one list item = one line, however long. Editors soft-wrap; manual line breaks create ragged gaps and make diffs noisy. Line breaks in prose are reserved for real structure only: new paragraph, new list item, headings, tables, and code blocks (code keeps its normal line breaks).
 
 ## Source-of-truth documents (read in this order)
 
@@ -64,47 +63,26 @@ npm run bench         # core micro-benchmarks
 
 ## Architecture in one paragraph
 
-`state(obj)` wraps a plain object in a `Proxy`. Writes go through a `set` trap
-(`Object.is` change check → `pendingNotifications` map → schedule a per-state microtask
-flush). Reads go through a `get` trap that notifies module-level read observers — only
-populated while `effect()` runs its body under `withReadObserver`, which is how
-auto-tracking works with **zero permanent coupling** between state.js and effect.js.
-`batch(fn)` suppresses per-state microtasks and flushes all touched stores synchronously
-at the end, deduping effects across stores. `bindDom(root, store)` compiles one CSS
-selector from `[data-bind]` + all handler attrs, resolves each attribute's state path
-**once at bind time**, and subscribes; two-way input binding uses a single delegated
-`input` listener on the root. Dependency directions are strict: `core/state.js` imports
-only `batch.js` + `log.js`; addons import core only (never other addons); handlers import
-nothing (or `log.js`).
+`state(obj)` wraps a plain object in a `Proxy`. Writes go through a `set` trap (`Object.is` change check → `pendingNotifications` map → schedule a per-state microtask flush). Reads go through a `get` trap that notifies module-level read observers — only populated while `effect()` runs its body under `withReadObserver`, which is how auto-tracking works with **zero permanent coupling** between state.js and effect.js. `batch(fn)` suppresses per-state microtasks and flushes all touched stores synchronously at the end, deduping effects across stores. `bindDom(root, store)` compiles one CSS selector from `[data-bind]` + all handler attrs, resolves each attribute's state path **once at bind time**, and subscribes; two-way input binding uses a single delegated `input` listener on the root. Dependency directions are strict: `core/state.js` imports only `batch.js` + `log.js`; addons import core only (never other addons); handlers import nothing (or `log.js`).
 
 ## Gotchas & invariants (learned the hard way — see design-decisions.md)
 
-- **Bind-time path resolution:** `data-bind="user.address.city"` resolves when `bindDom`
-  runs. If an intermediate object is null then, the binding is *permanently dead* (a
-  console warning is logged). It does not self-heal.
+- **Bind-time path resolution:** `data-bind="user.address.city"` resolves when `bindDom` runs. If an intermediate object is null then, the binding is *permanently dead* (a console warning is logged). It does not self-heal.
 - **Nested state must be explicitly wrapped** in `state()` — no automatic deep reactivity.
-- **Per-state batching:** an effect reading two stores runs once *per store* that changed
-  in a tick — unless writes are wrapped in `batch()`, which guarantees exactly once.
+- **Per-state batching:** an effect reading two stores runs once *per store* that changed in a tick — unless writes are wrapped in `batch()`, which guarantees exactly once.
 - **`$subscribe` fires immediately** with the current value (by design), then on changes.
 - **`$`-prefixed keys** bypass read tracking and the set trap (meta API namespace).
-- **Writes to `__proto__`/`constructor`/`prototype` are silently blocked** (logged warning) —
-  prototype-pollution guard.
+- **Writes to `__proto__`/`constructor`/`prototype` are silently blocked** (logged warning) — prototype-pollution guard.
 - **Subscriber cap:** 1000 per key; past it, subscriptions become loud no-ops.
-- **Flush loops cap at 100 iterations** (both microtask and batch paths) then error-log —
-  the infinite-loop breaker for effects that mutate their own deps.
-- **`sideEffects: false` is load-bearing** — module top-levels must stay pure. This killed
-  a previous pluggable-scheduler branch.
-- **ES2020 ceiling** in `src/` (browser floor Chrome 80/FF 74/Safari 13.1): no
-  `Object.hasOwn`, `.at()`, `??=`, `structuredClone`, `replaceAll`.
-- **`textContent`, never `innerHTML`** in the render path — this is the XSS posture. Don't
-  introduce HTML injection in a handler.
-- **jsdom-only tests:** browser floor compliance is by discipline + review, not by CI
-  running real old browsers.
+- **Flush loops cap at 100 iterations** (both microtask and batch paths) then error-log — the infinite-loop breaker for effects that mutate their own deps.
+- **`sideEffects: false` is load-bearing** — module top-levels must stay pure. This killed a previous pluggable-scheduler branch.
+- **ES2020 ceiling** in `src/` (browser floor Chrome 80/FF 74/Safari 13.1): no `Object.hasOwn`, `.at()`, `??=`, `structuredClone`, `replaceAll`.
+- **`textContent`, never `innerHTML`** in the render path — this is the XSS posture. Don't introduce HTML injection in a handler.
+- **jsdom-only tests:** browser floor compliance is by discipline + review, not by CI running real old browsers.
 
 ## What NOT to touch
 
 - `dist/` (generated), `coverage/` (generated), `gh-pages/` (deployed by workflow — only on request).
 - Package version — never bump unless explicitly asked.
 - `docs/design/design-decisions.md` history — amend with dated blocks, never rewrite.
-- Size budgets in `scripts/check-size.js` — if you're raising a budget, you're probably
-  designing the change wrong; the kernel budget (≤ 1.75 KB) is guarded jealously.
+- Size budgets in `scripts/check-size.js` — if you're raising a budget, you're probably designing the change wrong; the kernel budget (≤ 1.75 KB) is guarded jealously.
