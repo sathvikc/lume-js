@@ -169,8 +169,6 @@ Any library that follows the **Immutable Update Pattern** (Redux toolkit, etc.) 
 
 ---
 
-**← Previous: [Build a Todo App](../tutorials/build-todo-app.md)** | **Next: [Build Tic-Tac-Toe](../tutorials/build-tic-tac-toe.md) →**
-
 > **Deep Dive:** Why does Lume require immutable updates? Read the [Design Decision](../design/design-decisions.md#why-no-loop-rendering-in-core-v-for-x-for).
 
 ---

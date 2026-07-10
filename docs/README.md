@@ -174,7 +174,6 @@ console.log(total.value);  // cached until items changes
 ### AI agents
 - [Agent guide](../AGENT_GUIDE.md) — rules, pitfalls, and patterns for coding agents using Lume
 - [llms.txt](../llms.txt) / [llms-full.txt](../llms-full.txt) — generated doc bundles (`npm run llms`)
-- [Kickoff prompts](prompts/) — Mission Control showcase build, js-framework-benchmark submission
 
 ---
 
