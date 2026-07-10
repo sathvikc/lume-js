@@ -53,6 +53,8 @@ interface Plugin {
 }
 ```
 
+> **Plugin objects are frozen after registration.** Once `withPlugins()` returns, `Object.freeze()` has been applied to each plugin — hooks cannot be swapped afterwards, and writes to plugin properties fail silently. Mutable plugin state (a history stack, a cache) must live in a closure variable next to the plugin, not on the plugin object itself. `onInit` runs before the freeze, so one-time setup on the object is still possible there.
+
 ### Hook: `onInit()`
 
 Called synchronously when the state object is created.
@@ -356,18 +358,21 @@ const validationPlugin = {
 ### History / Undo-Redo
 
 ```javascript
+// Plugin objects are frozen after registration, so mutable plugin state
+// lives in a closure variable — not on the plugin object.
+const historyStack = [];
+
 const historyPlugin = {
   name: 'history',
   onSet: (key, newValue, oldValue) => {
-    if (!historyPlugin.stack) historyPlugin.stack = [];
-    historyPlugin.stack.push({ key, value: oldValue });
+    historyStack.push({ key, value: oldValue });
     return newValue;
   }
 };
 
 function undo(store) {
-  if (historyPlugin.stack.length > 0) {
-    const { key, value } = historyPlugin.stack.pop();
+  if (historyStack.length > 0) {
+    const { key, value } = historyStack.pop();
     store[key] = value;
   }
 }

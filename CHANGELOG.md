@@ -61,6 +61,7 @@
 ### Documentation
 
 - **Installation paths no longer point at the 2.0 alpha:** the installation guide's CDN examples, import map, and npm commands — and the docs-site homepage's copy-to-clipboard button — all used `lume-js@next`, an npm dist-tag that still resolves to `2.0.0-alpha.2`. Everyone following the install docs got a year-old pre-release. All now install the latest stable (with `@2.3.0` shown for version pinning).
+- **`withPlugins` docs describe the freeze:** plugin objects are frozen at registration (a 2.2.1 hardening) — now documented on the API page, and the History/Undo example no longer stores its stack on the (frozen) plugin object, which silently broke it.
 
 ### Tests
 
