@@ -10,7 +10,7 @@
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
     &nbsp;
-    <a href="package.json"><img src="https://img.shields.io/badge/version-2.3.0-orange.svg" alt="v2.3.0"></a>
+    <a href="package.json"><img src="https://img.shields.io/badge/version-2.3.1-orange.svg" alt="v2.3.1"></a>
     &nbsp;
     <a href="tests/"><img src="https://img.shields.io/badge/tests-439%20passing-brightgreen.svg" alt="439 tests"></a>
     &nbsp;

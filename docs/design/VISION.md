@@ -665,7 +665,7 @@ addon → external npm packages (unless peer dep)
 
 ### Current Versions
 
-- **v2.3.0** — Latest stable on npm (`latest` tag): universal `lume-js/state` entry, `batch()`, `persist()`, `on()` handler, template-mode `repeat()`
+- **v2.3.1** — Latest stable on npm (`latest` tag): the v2.3.0 feature wave (universal `lume-js/state` entry, `batch()`, `persist()`, `on()` handler, template-mode `repeat()`) plus the post-release audit fixes
 - **v1.x** — Legacy; see the [migration guide](../guides/migration.md)
 
 > Note: the npm `next` (2.0.0-alpha.2) and `beta` (2.0.0-beta.1) dist-tags are stale leftovers from the v2 pre-release cycle and should be removed or re-pointed.

@@ -8,7 +8,7 @@
 > microtask-batched per store with an explicit batch() escape hatch for
 > cross-store writes.
 
-Version: 2.3.0. Install: `npm install lume-js` or import from
+Version: 2.3.1. Install: `npm install lume-js` or import from
 `https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs`.
 
 Key facts agents get wrong without reading the docs: arrays and nested

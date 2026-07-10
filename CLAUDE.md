@@ -6,7 +6,7 @@
 
 ## What this is
 
-Lume.js is a reactive state-management library whose entire pitch is **standards-only**: plain JavaScript `Proxy` state + `data-*` attributes in valid HTML. No custom syntax, no build step, no virtual DOM. The product is *trust in a tiny core*: a 1.46 KB gz universal kernel (`lume-js/state` — works in Node/Deno/Bun/workers), 2.66 KB with DOM binding (`lume-js`), everything else opt-in via `lume-js/addons` and `lume-js/handlers`. Published on npm as `lume-js` (v2.3.0), MIT, docs site at https://sathvikc.github.io/lume-js/.
+Lume.js is a reactive state-management library whose entire pitch is **standards-only**: plain JavaScript `Proxy` state + `data-*` attributes in valid HTML. No custom syntax, no build step, no virtual DOM. The product is *trust in a tiny core*: a 1.46 KB gz universal kernel (`lume-js/state` — works in Node/Deno/Bun/workers), 2.66 KB with DOM binding (`lume-js`), everything else opt-in via `lume-js/addons` and `lume-js/handlers`. Published on npm as `lume-js` (v2.3.1), MIT, docs site at https://sathvikc.github.io/lume-js/.
 
 ## Formatting rule — never hard-wrap prose (STRICT)
 

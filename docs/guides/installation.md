@@ -18,7 +18,7 @@ For production, pin to an exact version so your page can't break on a new releas
 
 ```html
 <!-- exact version (recommended for production) -->
-'https://cdn.jsdelivr.net/npm/lume-js@2.3.0/dist/index.min.mjs'
+'https://cdn.jsdelivr.net/npm/lume-js@2.3.1/dist/index.min.mjs'
 
 <!-- latest stable -->
 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs'
