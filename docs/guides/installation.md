@@ -8,23 +8,20 @@ Drop a `<script type="module">` into any HTML file and you're done:
 
 ```html
 <script type="module">
-  import { state, bindDom, effect } from 'https://cdn.jsdelivr.net/npm/lume-js@next/dist/index.min.mjs';
+  import { state, bindDom, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
 </script>
 ```
 
 ### Pin the version
 
-For production, pin to an exact version so your page can't break on a new release. The `@next` tag always resolves to the latest beta; omitting a tag gives the latest stable.
+For production, pin to an exact version so your page can't break on a new release. Omitting a tag gives the latest stable.
 
 ```html
 <!-- exact version (recommended for production) -->
-'https://cdn.jsdelivr.net/npm/lume-js@next/dist/index.min.mjs'
+'https://cdn.jsdelivr.net/npm/lume-js@2.3.0/dist/index.min.mjs'
 
 <!-- latest stable -->
 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs'
-
-<!-- latest beta -->
-'https://cdn.jsdelivr.net/npm/lume-js@next/dist/index.min.mjs'
 ```
 
 ### Import map (recommended for CDN projects)
@@ -35,9 +32,9 @@ If your page imports from more than one Lume subpath, an import map removes the 
 <script type="importmap">
 {
   "imports": {
-    "lume-js":          "https://cdn.jsdelivr.net/npm/lume-js@next/dist/index.min.mjs",
-    "lume-js/addons":   "https://cdn.jsdelivr.net/npm/lume-js@next/dist/addons.min.mjs",
-    "lume-js/handlers": "https://cdn.jsdelivr.net/npm/lume-js@next/dist/handlers.min.mjs"
+    "lume-js":          "https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs",
+    "lume-js/addons":   "https://cdn.jsdelivr.net/npm/lume-js/dist/addons.min.mjs",
+    "lume-js/handlers": "https://cdn.jsdelivr.net/npm/lume-js/dist/handlers.min.mjs"
   }
 }
 </script>
@@ -53,11 +50,11 @@ If your page imports from more than one Lume subpath, an import map removes the 
 If you're working in a project with a bundler (Vite, Rollup, esbuild, webpack):
 
 ```bash
-npm install lume-js@next
+npm install lume-js
 # or
-pnpm add lume-js@next
+pnpm add lume-js
 # or
-yarn add lume-js@next
+yarn add lume-js
 ```
 
 Then import as usual:
@@ -72,9 +69,10 @@ import { show, classToggle, stringAttr } from 'lume-js/handlers';
 
 | Subpath | What's inside |
 |---------|---------------|
-| `lume-js` | `state`, `bindDom`, `effect` |
-| `lume-js/addons` | `watch`, `computed`, `repeat`, `withPlugins`, `createDebugPlugin`, `debug`, `isReactive`, `defaultFocusPreservation`, `defaultScrollPreservation` |
-| `lume-js/handlers` | `show`, `classToggle`, `stringAttr`, `boolAttr`, `ariaAttr`, `htmlAttrs`, `formHandlers`, `a11yHandlers` |
+| `lume-js` | `state`, `bindDom`, `effect`, `batch` |
+| `lume-js/state` | `state`, `batch`, `withReadObserver` — DOM-free universal kernel |
+| `lume-js/addons` | `watch`, `computed`, `repeat`, `persist`, `hydrateState`, `createCleanupGroup`, `withPlugins`, `createDebugPlugin`, `debug`, `isReactive`, `defaultFocusPreservation`, `defaultScrollPreservation` |
+| `lume-js/handlers` | `show`, `className`, `classToggle`, `stringAttr`, `boolAttr`, `ariaAttr`, `on`, `htmlAttrs`, `formHandlers`, `a11yHandlers` |
 
 ## Browser support
 

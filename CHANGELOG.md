@@ -58,6 +58,10 @@
   drained before delivery on both flush paths; write-backs queue for the
   next iteration/wave. Found by adversarial review with executable probes.
 
+### Documentation
+
+- **Installation paths no longer point at the 2.0 alpha:** the installation guide's CDN examples, import map, and npm commands — and the docs-site homepage's copy-to-clipboard button — all used `lume-js@next`, an npm dist-tag that still resolves to `2.0.0-alpha.2`. Everyone following the install docs got a year-old pre-release. All now install the latest stable (with `@2.3.0` shown for version pinning).
+
 ### Tests
 
 - **437 tests passing** (from 425 in v2.3.0) | 12 new tests | 100% coverage maintained
