@@ -248,7 +248,7 @@ import { computed, watch, repeat } from 'lume-js/addons';
 | `repeat(container, store, key, opts)` | Render a keyed list with element reuse — incl. declarative `template:` mode bound straight from a `<template>` element |
 | `persist(store, key, opts)` | Sync selected keys with localStorage/sessionStorage — hydrate on call, auto-save on change |
 | `createCleanupGroup()` | Collect multiple cleanup/unsubscribe functions and dispose them all at once |
-| `hydrateState(selector?)` | Read initial state from a `<script type="application/json">` tag (SSR hydration) |
+| `hydrateState(selector?, validate?)` | Read initial state from a `<script type="application/json">` tag (SSR hydration), with optional schema validation |
 
 **Quick rule:** `effect` for writing back into state → `computed` for reading outside state → `watch` for observing a single key → `repeat` for arrays in the DOM.
 

@@ -23,6 +23,8 @@
 
 ### Fixed
 
+- **Type declarations caught up with shipped APIs** (audit findings): `RepeatOptions` was missing `remove` and the documented cleanup-function return of `create` (TS users got excess-property errors for valid options); `hydrateState` was missing its optional `validate` parameter (shipped in 2.2.1); `withPlugins` now declares the `$dispose()` method its returned proxy actually exposes.
+
 - **`lume-js/state` types are now genuinely DOM-free:** the universal
   entry's `.d.ts` re-exported from `index.d.ts`, whose `bindDom`/`Handler`
   declarations reference `HTMLElement` — Node/worker consumers with
