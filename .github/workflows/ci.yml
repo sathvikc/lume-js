@@ -220,7 +220,7 @@ jobs:
     name: PR Report
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'pull_request'
-    needs: [test, lint, complexity, size, typecheck]
+    needs: [test, lint, complexity, size, typecheck, agent-docs]
     permissions:
       pull-requests: write
     steps:
@@ -264,6 +264,7 @@ jobs:
               complexity: '${{ needs.complexity.result }}',
               size:       '${{ needs.size.result }}',
               typecheck:  '${{ needs.typecheck.result }}',
+              agentDocs:  '${{ needs.agent-docs.result }}',
             };
 
             const ok    = r => r === 'success';
@@ -420,6 +421,13 @@ jobs:
             // ── TypeScript ─────────────────────────────────────────────────
             body += `### ${icon(results.typecheck)} TypeScript\n\n`;
             body += ok(results.typecheck) ? 'No type errors found.' : '❌ Type errors found — see job logs for details.';
+            body += '\n\n';
+
+            // ── Agent Docs Freshness ───────────────────────────────────────
+            body += `### ${icon(results.agentDocs)} Agent Docs Freshness\n\n`;
+            body += ok(results.agentDocs)
+              ? 'llms.txt / llms-full.txt match the docs tree.'
+              : '❌ Stale agent docs — run `npm run llms` and commit the result.';
             body += '\n';
 
             // ── Post / update comment ──────────────────────────────────────
