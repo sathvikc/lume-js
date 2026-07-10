@@ -1,14 +1,14 @@
 # Lume.js
 
 > Minimal reactive state management using only standard JavaScript and HTML —
-> no custom syntax, no build step, no framework lock-in. 1.45 KB universal
+> no custom syntax, no build step, no framework lock-in. 1.46 KB universal
 > core (state/batch), 2.66 KB with DOM binding (bindDom/effect). Reactivity
 > that follows web standards: stores are Proxies over plain objects, DOM
 > binding is declarative via valid data-* attributes, updates are
 > microtask-batched per store with an explicit batch() escape hatch for
 > cross-store writes.
 
-Version: 2.2.1. Install: `npm install lume-js` or import from
+Version: 2.3.0. Install: `npm install lume-js` or import from
 `https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs`.
 
 Key facts agents get wrong without reading the docs: arrays and nested
@@ -24,6 +24,7 @@ data-* attribute values are state keys, never expressions.
 
 ## Guides
 
+- [docs/guides/installation.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/installation.md): CDN, npm, and import options
 - [docs/guides/quick-start.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/quick-start.md): First app in five minutes
 - [docs/guides/core-concepts.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/core-concepts.md): Stores, effects, bindings
 - [docs/guides/reactivity.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/reactivity.md): How the Proxy, tracking, and microtask flush work
@@ -54,9 +55,18 @@ data-* attribute values are state keys, never expressions.
 - [docs/api/core/effect.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/core/effect.md): effect() auto-tracking and explicit deps
 - [docs/api/core/bindDom.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/core/bindDom.md): bindDom() DOM binding
 - [docs/api/core/batch.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/core/batch.md): batch() cross-store write grouping
-- [docs/api/core/handlers.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/core/handlers.md): Handler system
-- [docs/api/core/plugins.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/core/plugins.md): State extension system
-- [docs/api/core/isReactive.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/core/isReactive.md): Reactive brand detection
+- [docs/api/core/handlers.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/core/handlers.md): Handler system — the { attr, apply } extension contract
+
+## API reference — handlers
+
+- [docs/api/handlers/show.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/handlers/show.md): Conditional visibility
+- [docs/api/handlers/className.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/handlers/className.md): Full class attribute from state
+- [docs/api/handlers/boolAttr.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/handlers/boolAttr.md): Boolean attributes (disabled, hidden, …)
+- [docs/api/handlers/ariaAttr.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/handlers/ariaAttr.md): ARIA attributes from state
+- [docs/api/handlers/classToggle.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/handlers/classToggle.md): Toggle a single class
+- [docs/api/handlers/stringAttr.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/handlers/stringAttr.md): String attributes (href, src, title, …)
+- [docs/api/handlers/on.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/handlers/on.md): Declarative event wiring via data-on*
+- [docs/api/handlers/htmlAttrs.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/handlers/htmlAttrs.md): Preset bundle of common attributes
 
 ## API reference — addons
 
@@ -67,6 +77,8 @@ data-* attribute values are state keys, never expressions.
 - [docs/api/addons/hydrateState.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/hydrateState.md): SSR hydration
 - [docs/api/addons/createCleanupGroup.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/createCleanupGroup.md): Grouped disposal
 - [docs/api/addons/debug.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/debug.md): Write/flush logging
+- [docs/api/addons/withPlugins.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/withPlugins.md): State extension system
+- [docs/api/addons/isReactive.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/isReactive.md): Reactive brand detection
 
 ## Design
 
