@@ -1,7 +1,7 @@
 # Lume.js Vision & Strategic Direction
 
 > **Purpose:** Consolidated reference document synthesizing all architectural ideas, philosophy, and future plans.  
-> **Last Updated:** 2026-06-11  
+> **Last Updated:** 2026-07-08  
 > **Status:** Living document - update as vision evolves
 
 ---
@@ -176,13 +176,20 @@ Lume.js complexity ≈ Vanilla JS complexity
 
 ## Architecture Vision
 
-### Current State (v2-alpha)
+### Current State (v2.3)
 
 ```
-Core: state, effect, bindDom
-Addons: computed, watch, repeat
-Plugins: state-level hooks (onGet, onSet, onNotify, etc.)
+Kernel (lume-js/state): state, batch, withReadObserver — DOM-free
+Core (lume-js):         kernel + effect, bindDom
+Addons:                 computed, watch, repeat (incl. template mode),
+                        persist, hydrateState, createCleanupGroup,
+                        withPlugins, debug, isReactive
+Handlers:               show, className, classToggle, boolAttr, ariaAttr,
+                        stringAttr, on, htmlAttrs, presets
 ```
+
+Plugin hooks (onGet, onSet, onNotify, …) live in the `withPlugins` addon —
+core `state()` has no plugin awareness.
 
 ### Future State
 
@@ -659,8 +666,10 @@ addon → external npm packages (unless peer dep)
 
 ### Current Versions
 
-- **v1.0.0** — Stable, production-ready
-- **v2.0.0-alpha.1** — Plugin system, experimental features
+- **v2.3.0** — Latest stable on npm (`latest` tag): universal `lume-js/state` entry, `batch()`, `persist()`, `on()` handler, template-mode `repeat()`
+- **v1.x** — Legacy; see the [migration guide](../guides/migration.md)
+
+> Note: the npm `next` (2.0.0-alpha.2) and `beta` (2.0.0-beta.1) dist-tags are stale leftovers from the v2 pre-release cycle and should be removed or re-pointed.
 
 ---
 
@@ -689,6 +698,10 @@ addon → external npm packages (unless peer dep)
 ## Notes & Ideas Log
 
 *Add dated notes below as ideas evolve.*
+
+### 2026-07-08
+- v2.3.0 released to npm (the accumulated wave shipped). Post-release audit refreshed the stale "Current State"/"Current Versions" sections above to v2.3 reality (plugins live in `withPlugins`, kernel entry exists).
+- Flagged: npm `next`/`beta` dist-tags still point at 2.0.0 pre-releases.
 
 ### 2026-06-11
 - Shipped v2.3 wave (see CHANGELOG Unreleased + docs/changes/): batch() in kernel, template-mode repeat, on() handler, persist(), lume-js/state universal entry, four core fixes
