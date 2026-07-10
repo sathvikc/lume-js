@@ -153,15 +153,24 @@ export interface RepeatOptions<T> {
 
   /**
    * Function called ONCE when element is created (for DOM structure setup)
-   * Recommended for event listeners and innerHTML setup
+   * Recommended for event listeners and innerHTML setup.
+   * May return a cleanup function — it is called automatically when the
+   * element is removed (by list update or full cleanup).
    */
-  create?: (item: T, element: HTMLElement, index: number) => void;
+  create?: (item: T, element: HTMLElement, index: number) => void | (() => void);
 
   /**
    * Function called on every update for data binding
    * Skipped if same item reference AND same index (optimization)
    */
   update?: (item: T, element: HTMLElement, index: number, context: UpdateContext) => void;
+
+  /**
+   * Additional cleanup when an element is removed. Called after any cleanup
+   * function returned by create(). Prefer returning a cleanup from create()
+   * for automatic lifecycle management.
+   */
+  remove?: (item: T, element: HTMLElement) => void;
 
   /**
    * Declarative item structure from a standard <template> element.
@@ -458,6 +467,9 @@ export interface Plugin {
  * Wrap a reactive state proxy with plugin hooks.
  * Plugins can intercept get/set/notify/subscribe operations.
  *
+ * The returned proxy additionally exposes $dispose(), which removes the
+ * plugin layer's flush hook and clears its pending notifications.
+ *
  * @param store - A reactive proxy from state()
  * @param plugins - Array of plugin objects
  * @returns A new proxy wrapping the store with plugin behavior
@@ -468,9 +480,13 @@ export interface Plugin {
  * import { withPlugins, createDebugPlugin } from 'lume-js/addons';
  *
  * const store = withPlugins(state({ count: 0 }), [createDebugPlugin({ label: 'counter' })]);
+ * store.$dispose(); // detach the plugin layer when done
  * ```
  */
-export function withPlugins<T extends object>(store: ReactiveState<T>, plugins: Plugin[]): ReactiveState<T>;
+export function withPlugins<T extends object>(
+  store: ReactiveState<T>,
+  plugins: Plugin[]
+): ReactiveState<T> & { $dispose(): void };
 
 /**
  * A group that collects cleanup/unsubscribe functions and can dispose them all at once.
@@ -508,7 +524,9 @@ export function createCleanupGroup(): CleanupGroup;
  * embedded in the server-rendered HTML.
  *
  * @param selector - CSS selector for the script element (default: '#__LUME_DATA__')
- * @returns Parsed JSON object, or empty object if not found or invalid
+ * @param validate - Optional validator: (data) => boolean. If it returns
+ *   false, hydrateState returns {} instead of the parsed data.
+ * @returns Parsed JSON object, or empty object if not found, invalid, or rejected
  *
  * @example
  * ```typescript
@@ -516,9 +534,14 @@ export function createCleanupGroup(): CleanupGroup;
  * import { hydrateState } from 'lume-js/addons';
  *
  * const store = state(hydrateState());
+ *
+ * // With schema validation
+ * const data = hydrateState('#__LUME_DATA__', d =>
+ *   typeof (d as any).title === 'string'
+ * );
  * ```
  */
-export function hydrateState(selector?: string): object;
+export function hydrateState(selector?: string, validate?: (data: unknown) => boolean): object;
 
 /**
  * Options for persist()
