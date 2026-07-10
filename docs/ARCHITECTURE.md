@@ -167,7 +167,7 @@ handwritten `.d.ts`), vite/tailwind/marked/highlight.js (docs site only).
 
 1. **Handlers** — new `data-*` vocabulary, zero core changes.
 2. **`withPlugins`** — extend store creation.
-3. **`$beforeFlush`** — pre-flush hook per store (used by addons like persist).
+3. **`$beforeFlush`** — pre-flush hook per store (used by `withPlugins` for `onNotify`).
 4. **`withReadObserver`** — build your own tracking tools/devtools (internal API, may be
    stabilized later).
 5. **Addons pattern** — anything expressible over `state`/`effect`/`$subscribe` belongs in
