@@ -1,23 +1,18 @@
 # The Universal Core (`lume-js/state`)
 
-Lume's kernel — `state()`, `batch()`, `withReadObserver()` — has no DOM
-dependency at all. The `lume-js/state` entry ships exactly that kernel:
-**1.46 KB gzipped**, runs in Node, Deno, Bun, workers, CLI tools, and
-browsers alike.
+Lume's kernel — `state()`, `batch()`, `withReadObserver()` — has no DOM dependency at all. The `lume-js/state` entry ships exactly that kernel: **1.46 KB gzipped**, runs in Node, Deno, Bun, workers, CLI tools, and browsers alike.
 
 ```js
 import { state, batch } from 'lume-js/state';
 ```
 
-If you're building for the browser and want DOM binding, use the full core
-instead — same `state`, plus `bindDom` and `effect`:
+If you're building for the browser and want DOM binding, use the full core instead — same `state`, plus `bindDom` and `effect`:
 
 ```js
 import { state, bindDom, effect, batch } from 'lume-js';   // 2.66 KB
 ```
 
-Both entries share one implementation — `lume-js/state` is not a fork, it's
-a smaller slice of the same modules.
+Both entries share one implementation — `lume-js/state` is not a fork, it's a smaller slice of the same modules.
 
 ## A complete Node example
 
@@ -63,9 +58,7 @@ queueMicrotask(() => {
 
 ## Why `batch()` shines outside the browser
 
-In the browser, microtask batching usually does the right thing on its own.
-In **tests and server code**, you often want the flush to have happened *on
-the next line* — that's exactly what `batch()` guarantees:
+In the browser, microtask batching usually does the right thing on its own. In **tests and server code**, you often want the flush to have happened *on the next line* — that's exactly what `batch()` guarantees:
 
 ```js
 import { state, batch } from 'lume-js/state';
@@ -92,16 +85,11 @@ assert.deepStrictEqual(audit, [0, 42]);
 | `effect` | auto-tracking is a UI-leaning pattern; in server code, explicit `$subscribe` is usually clearer | `lume-js` |
 | addons (`computed`, `watch`, `persist`, …) | optional patterns | `lume-js/addons` |
 
-Note that `watch()` and `computed()` from `lume-js/addons` are themselves
-DOM-free and work fine in Node — they're just not part of the 1.46 KB
-kernel. (`computed` pulls in `effect` internally.)
+Note that `watch()` and `computed()` from `lume-js/addons` are themselves DOM-free and work fine in Node — they're just not part of the 1.46 KB kernel. (`computed` pulls in `effect` internally.)
 
 ## Building reactive primitives on the kernel
 
-`withReadObserver(onRead, fn)` is the seam `effect()` itself is built on —
-it reports every store read during `fn`'s synchronous execution. If you're
-building your own primitive (a memo, a logger, a dependency visualizer), you
-get the same machinery the library uses:
+`withReadObserver(onRead, fn)` is the seam `effect()` itself is built on — it reports every store read during `fn`'s synchronous execution. If you're building your own primitive (a memo, a logger, a dependency visualizer), you get the same machinery the library uses:
 
 ```js
 import { state, withReadObserver } from 'lume-js/state';
@@ -132,8 +120,7 @@ console.log(sum, deps);   // 3, ['a', 'b']
 | `lume-js/state` (`dist/state.min.mjs`) | 1.46 KB | ≤ 1.75 KB |
 | `lume-js` (`dist/index.min.mjs`) | 2.66 KB | ≤ 3 KB |
 
-Both numbers are enforced by `scripts/check-size.js` on every CI run — they
-can't silently drift.
+Both numbers are enforced by `scripts/check-size.js` on every CI run — they can't silently drift.
 
 ## See also
 

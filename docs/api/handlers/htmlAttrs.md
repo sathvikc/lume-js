@@ -49,11 +49,9 @@ bindDom(document.body, store, { handlers: htmlAttrs() });
 
 `htmlAttrs()` includes handlers for three categories:
 
-**Boolean HTML attributes** — toggled present/absent via `toggleAttribute`:
-`readonly`, `open`, `novalidate`, `formnovalidate`, `multiple`, `autofocus`, `autoplay`, `controls`, `loop`, `muted`, `defer`, `async`, `reversed`, `selected`, `inert`, `allowfullscreen`
+**Boolean HTML attributes** — toggled present/absent via `toggleAttribute`: `readonly`, `open`, `novalidate`, `formnovalidate`, `multiple`, `autofocus`, `autoplay`, `controls`, `loop`, `muted`, `defer`, `async`, `reversed`, `selected`, `inert`, `allowfullscreen`
 
-**String HTML attributes** — set as strings, removed when `null`/`undefined`:
-`href`, `src`, `alt`, `title`, `placeholder`, `action`, `method`, `target`, `rel`, `type`, `name`, `role`, `lang`, `tabindex`, `pattern`, `min`, `max`, `step`, `minlength`, `maxlength`, `width`, `height`, `for`, `form`, `accept`, `autocomplete`, `loading`, `decoding`, `inputmode`, `enterkeyhint`, `draggable`, `contenteditable`, `spellcheck`, `translate`, `dir`, `id`, `poster`, `preload`, `download`, `media`, `sizes`, `srcset`, `colspan`, `rowspan`, `scope`, `headers`, `wrap`, `sandbox`, and more.
+**String HTML attributes** — set as strings, removed when `null`/`undefined`: `href`, `src`, `alt`, `title`, `placeholder`, `action`, `method`, `target`, `rel`, `type`, `name`, `role`, `lang`, `tabindex`, `pattern`, `min`, `max`, `step`, `minlength`, `maxlength`, `width`, `height`, `for`, `form`, `accept`, `autocomplete`, `loading`, `decoding`, `inputmode`, `enterkeyhint`, `draggable`, `contenteditable`, `spellcheck`, `translate`, `dir`, `id`, `poster`, `preload`, `download`, `media`, `sizes`, `srcset`, `colspan`, `rowspan`, `scope`, `headers`, `wrap`, `sandbox`, and more.
 
 **ARIA attributes** — both boolean states (`aria-pressed`, `aria-selected`, `aria-disabled`, …) and string/token attributes (`aria-live`, `aria-label`, `aria-sort`, …).
 

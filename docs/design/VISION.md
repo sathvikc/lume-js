@@ -188,8 +188,7 @@ Handlers:               show, className, classToggle, boolAttr, ariaAttr,
                         stringAttr, on, htmlAttrs, presets
 ```
 
-Plugin hooks (onGet, onSet, onNotify, …) live in the `withPlugins` addon —
-core `state()` has no plugin awareness.
+Plugin hooks (onGet, onSet, onNotify, …) live in the `withPlugins` addon — core `state()` has no plugin awareness.
 
 ### Future State
 

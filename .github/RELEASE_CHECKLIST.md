@@ -2,13 +2,7 @@
 
 Use this for every npm publish — patch, minor, or major. Work top to bottom; don't skip steps.
 
-`main` is protected — all release work lands via PR, never a direct push. npm publish is
-**not** triggered by merging to `main`; it only fires when a GitHub Release is published
-(`.github/workflows/publish.yml`, `on: release: types: [published]`). The gh-pages site,
-by contrast, redeploys on **every** push to `main` (`.github/workflows/gh-pages.yml`) —
-so by the time you publish to npm, the docs site has already been live with the matching
-version for as long as the PR has been merged. Don't publish before that PR is merged;
-otherwise the npm package points at a docs site that hasn't caught up yet.
+`main` is protected — all release work lands via PR, never a direct push. npm publish is **not** triggered by merging to `main`; it only fires when a GitHub Release is published (`.github/workflows/publish.yml`, `on: release: types: [published]`). The gh-pages site, by contrast, redeploys on **every** push to `main` (`.github/workflows/gh-pages.yml`) — so by the time you publish to npm, the docs site has already been live with the matching version for as long as the PR has been merged. Don't publish before that PR is merged; otherwise the npm package points at a docs site that hasn't caught up yet.
 
 ---
 
@@ -121,11 +115,7 @@ git add package.json CHANGELOG.md README.md docs/README.md
 git commit -m "chore(release): prepare vX.Y.Z"
 ```
 
-Bundle this with any accompanying doc/nav/site fixes discovered while preparing the
-release, in the **same PR** — don't split "release commit" and "doc fixes" across two
-PRs. If they land separately, `main` sits mid-merge with the new version number but stale
-docs, and the gh-pages site redeploys that inconsistent state the moment the first PR
-merges (it deploys on every push to `main`, not just release-tagged ones).
+Bundle this with any accompanying doc/nav/site fixes discovered while preparing the release, in the **same PR** — don't split "release commit" and "doc fixes" across two PRs. If they land separately, `main` sits mid-merge with the new version number but stale docs, and the gh-pages site redeploys that inconsistent state the moment the first PR merges (it deploys on every push to `main`, not just release-tagged ones).
 
 ---
 
@@ -135,8 +125,7 @@ merges (it deploys on every push to `main`, not just release-tagged ones).
 - [ ] CI green (`ci.yml` runs on PR)
 - [ ] Merge
 
-Merging triggers `gh-pages.yml` automatically — the docs site redeploys with the new
-version, corrected nav, and updated numbers. Confirm this before moving on:
+Merging triggers `gh-pages.yml` automatically — the docs site redeploys with the new version, corrected nav, and updated numbers. Confirm this before moving on:
 
 - [ ] Actions tab — `Deploy GitHub Pages` workflow completed
 - [ ] Spot-check `https://sathvikc.github.io/lume-js/` — version number and docs correct
@@ -169,15 +158,9 @@ git push origin vX.Y.Z
 - [ ] Body: use `.github/RELEASE_TEMPLATE.md` as a starting point
 - [ ] Publish release
 
-Publishing the release fires `.github/workflows/publish.yml`
-(`on: release: types: [published]`), which re-runs `npm run validate` in CI and then
-`npm publish` — using the `NPM_TOKEN` secret, not your local npm login. **Don't run
-`npm publish` locally as the primary path** — it bypasses the CI validate gate and risks a
-double-publish (npm rejects the second attempt, but it's a confusing failure to debug).
+Publishing the release fires `.github/workflows/publish.yml` (`on: release: types: [published]`), which re-runs `npm run validate` in CI and then `npm publish` — using the `NPM_TOKEN` secret, not your local npm login. **Don't run `npm publish` locally as the primary path** — it bypasses the CI validate gate and risks a double-publish (npm rejects the second attempt, but it's a confusing failure to debug).
 
-Local `npm publish --dry-run` is still useful *before* tagging, to sanity-check what would
-ship. A local `npm publish` is a legitimate fallback only if the Action itself fails after
-you've already confirmed the dry run and validate are clean.
+Local `npm publish --dry-run` is still useful *before* tagging, to sanity-check what would ship. A local `npm publish` is a legitimate fallback only if the Action itself fails after you've already confirmed the dry run and validate are clean.
 
 ---
 
@@ -199,8 +182,7 @@ Wait ~5 minutes, then confirm:
 
 If this release affects observable performance, bundle size, or public API:
 
-1. Wait for npm + CDN propagation (step 10) — the benchmark app pulls from the CDN, not a
-   local build
+1. Wait for npm + CDN propagation (step 10) — the benchmark app pulls from the CDN, not a local build
 2. Update the benchmark app's `lume-js` import to `@X.Y.Z`
 3. Re-run the full benchmark suite
 4. Update `summary.json` and `frameworks.json`
