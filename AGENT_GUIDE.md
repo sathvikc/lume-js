@@ -221,6 +221,4 @@ Import `state`/`batch` from `lume-js/state` (1.46 KB, zero DOM references) in No
 
 `llms.txt` and `llms-full.txt` are regenerated from this guide plus the docs tree by `npm run llms`, and CI fails when they drift — whatever version of `lume-js` is installed, the bundled files match its actual behavior. In a consuming project, add one line to your agent config (`CLAUDE.md`, `.cursorrules`, `AGENTS.md`, …):
 
-> Before writing any code that uses lume-js, read
-> `node_modules/lume-js/AGENT_GUIDE.md`. For API details beyond the guide,
-> consult `node_modules/lume-js/llms-full.txt`.
+> Before writing any code that uses lume-js, read `node_modules/lume-js/AGENT_GUIDE.md`. For API details beyond the guide, consult `node_modules/lume-js/llms-full.txt`.
