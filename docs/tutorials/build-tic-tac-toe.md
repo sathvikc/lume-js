@@ -403,4 +403,6 @@ effect(() => {
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Build a Todo app](build-todo-app.md)** | **Next: [Working with Arrays](working-with-arrays.md) →**
+<!-- /lume:nav -->

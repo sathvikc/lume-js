@@ -72,4 +72,6 @@ Crawlers see the server-rendered HTML. No special rendering mode needed.
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Cleanup & Dispose](cleanup-and-dispose.md)** | **Next: [state()](../api/core/state.md) →**
+<!-- /lume:nav -->

@@ -1,0 +1,96 @@
+{
+  "sections": [
+    {
+      "title": "Start here",
+      "docIndex": false,
+      "entries": [
+        { "path": "AGENT_GUIDE.md", "title": "Agent guide", "description": "Distilled rules, pitfalls, and patterns for coding agents" },
+        { "path": "README.md", "title": "Introduction", "description": "Pitch, installation, quick start, API overview" }
+      ]
+    },
+    {
+      "title": "Getting started",
+      "entries": [
+        { "path": "docs/guides/installation.md", "title": "Installation", "description": "CDN, npm, and import options" },
+        { "path": "docs/guides/quick-start.md", "title": "Quick start", "description": "First app in five minutes" },
+        { "path": "docs/guides/core-concepts.md", "title": "Core concepts", "description": "Stores, effects, bindings" }
+      ]
+    },
+    {
+      "title": "Guides",
+      "entries": [
+        { "path": "docs/guides/reactivity.md", "title": "How reactivity works", "description": "How the Proxy, tracking, and microtask flush work" },
+        { "path": "docs/guides/universal-core.md", "title": "Universal core (Node, CLI, workers)", "description": "Using lume-js/state without a DOM" },
+        { "path": "docs/guides/choosing-reactive-primitives.md", "title": "Choosing reactive primitives", "description": "effect vs computed vs watch" },
+        { "path": "docs/guides/handlers.md", "title": "Handlers", "description": "Extending bindDom with new data-* attributes" },
+        { "path": "docs/guides/two-way-binding.md", "title": "Two-way binding", "description": "Inputs and data-bind" },
+        { "path": "docs/guides/lists.md", "title": "Lists & repeat", "description": "Rendering arrays" },
+        { "path": "docs/guides/forms.md", "title": "Forms", "description": "Form patterns" },
+        { "path": "docs/guides/routing.md", "title": "Routing", "description": "Client-side routing patterns" },
+        { "path": "docs/guides/animations.md", "title": "Animations", "description": "Animating on state change" },
+        { "path": "docs/guides/testing.md", "title": "Testing", "description": "Testing stores and bindings" },
+        { "path": "docs/guides/performance.md", "title": "Performance", "description": "Batching and update costs" },
+        { "path": "docs/guides/cleanup-and-dispose.md", "title": "Cleanup & Dispose", "description": "Tearing down effects and bindings" },
+        { "path": "docs/guides/ssr-hydration.md", "title": "SSR & Hydration", "description": "Server-rendered HTML with reactive hydration" }
+      ]
+    },
+    {
+      "title": "API — Core",
+      "entries": [
+        { "path": "docs/api/core/state.md", "title": "state()", "description": "state() reactive stores" },
+        { "path": "docs/api/core/bindDom.md", "title": "bindDom()", "description": "bindDom() DOM binding" },
+        { "path": "docs/api/core/effect.md", "title": "effect()", "description": "effect() auto-tracking and explicit deps" },
+        { "path": "docs/api/core/batch.md", "title": "batch()", "description": "batch() cross-store write grouping" }
+      ]
+    },
+    {
+      "title": "API — Addons",
+      "entries": [
+        { "path": "docs/api/addons/watch.md", "title": "watch()", "description": "Single-key observation" },
+        { "path": "docs/api/addons/computed.md", "title": "computed()", "description": "Derived read-only values" },
+        { "path": "docs/api/addons/repeat.md", "title": "repeat()", "description": "Keyed list rendering" },
+        { "path": "docs/api/addons/persist.md", "title": "persist()", "description": "localStorage/sessionStorage sync" },
+        { "path": "docs/api/addons/createCleanupGroup.md", "title": "createCleanupGroup()", "description": "Grouped disposal" },
+        { "path": "docs/api/addons/hydrateState.md", "title": "hydrateState()", "description": "SSR hydration" },
+        { "path": "docs/api/addons/debug.md", "title": "createDebugPlugin() / debug", "description": "Write/flush logging" },
+        { "path": "docs/api/addons/withPlugins.md", "title": "withPlugins()", "description": "State extension system" },
+        { "path": "docs/api/addons/isReactive.md", "title": "isReactive()", "description": "Reactive brand detection" }
+      ]
+    },
+    {
+      "title": "API — Handlers",
+      "entries": [
+        { "path": "docs/api/core/handlers.md", "title": "Handlers API", "description": "Handler system — the { attr, apply } extension contract" },
+        { "path": "docs/api/handlers/show.md", "title": "show", "description": "Conditional visibility" },
+        { "path": "docs/api/handlers/className.md", "title": "className", "description": "Full class attribute from state" },
+        { "path": "docs/api/handlers/boolAttr.md", "title": "boolAttr", "description": "Boolean attributes (disabled, hidden, …)" },
+        { "path": "docs/api/handlers/ariaAttr.md", "title": "ariaAttr", "description": "ARIA attributes from state" },
+        { "path": "docs/api/handlers/classToggle.md", "title": "classToggle", "description": "Toggle a single class" },
+        { "path": "docs/api/handlers/stringAttr.md", "title": "stringAttr", "description": "String attributes (href, src, title, …)" },
+        { "path": "docs/api/handlers/on.md", "title": "on", "description": "Declarative event wiring via data-on*" },
+        { "path": "docs/api/handlers/htmlAttrs.md", "title": "htmlAttrs", "description": "Preset bundle of common attributes" }
+      ]
+    },
+    {
+      "title": "Tutorials",
+      "entries": [
+        { "path": "docs/tutorials/build-todo-app.md", "title": "Build a Todo app", "description": "Todo app walkthrough" },
+        { "path": "docs/tutorials/build-tic-tac-toe.md", "title": "Build Tic-Tac-Toe", "description": "Game with history and computed winner" },
+        { "path": "docs/tutorials/working-with-arrays.md", "title": "Working with Arrays", "description": "Immutable array updates — the golden rule" }
+      ]
+    },
+    {
+      "title": "Design",
+      "entries": [
+        { "path": "docs/design/design-decisions.md", "title": "Design decisions", "description": "Ratified decisions and their reasoning" }
+      ]
+    },
+    {
+      "title": "Reference",
+      "entries": [
+        { "path": "docs/guides/migration.md", "title": "Migrating from 1.x", "description": "Migrating between versions" },
+        { "path": "docs/guides/faq.md", "title": "FAQ", "description": "Frequently asked questions" }
+      ]
+    }
+  ]
+}

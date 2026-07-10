@@ -91,4 +91,6 @@ function swapPage(newRoot, newStore) {
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Performance](performance.md)** | **Next: [SSR & Hydration](ssr-hydration.md) →**
+<!-- /lume:nav -->

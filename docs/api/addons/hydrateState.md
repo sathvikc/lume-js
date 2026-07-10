@@ -76,4 +76,6 @@ When `document` is not defined (Node.js, Workers), `hydrateState` returns `{}` s
 
 ---
 
-**← Previous: [createCleanupGroup()](createCleanupGroup.md)** | **Next: [createDebugPlugin](debug.md) →**
+<!-- lume:nav -->
+**← Previous: [createCleanupGroup()](createCleanupGroup.md)** | **Next: [createDebugPlugin() / debug](debug.md) →**
+<!-- /lume:nav -->

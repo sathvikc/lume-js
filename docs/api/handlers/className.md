@@ -57,4 +57,6 @@ Use `className` when the entire class string is computed. Use `classToggle` to f
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [show](show.md)** | **Next: [boolAttr](boolAttr.md) →**
+<!-- /lume:nav -->

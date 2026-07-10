@@ -65,4 +65,6 @@ Same trust model as `data-bind`: an injected `data-on*` attribute can only refer
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [stringAttr](stringAttr.md)** | **Next: [htmlAttrs](htmlAttrs.md) →**
+<!-- /lume:nav -->

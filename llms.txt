@@ -22,43 +22,50 @@ data-* attribute values are state keys, never expressions.
 - [AGENT_GUIDE.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/AGENT_GUIDE.md): Distilled rules, pitfalls, and patterns for coding agents
 - [README.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/README.md): Pitch, installation, quick start, API overview
 
-## Guides
+## Getting started
 
 - [docs/guides/installation.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/installation.md): CDN, npm, and import options
 - [docs/guides/quick-start.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/quick-start.md): First app in five minutes
 - [docs/guides/core-concepts.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/core-concepts.md): Stores, effects, bindings
+
+## Guides
+
 - [docs/guides/reactivity.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/reactivity.md): How the Proxy, tracking, and microtask flush work
+- [docs/guides/universal-core.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/universal-core.md): Using lume-js/state without a DOM
 - [docs/guides/choosing-reactive-primitives.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/choosing-reactive-primitives.md): effect vs computed vs watch
+- [docs/guides/handlers.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/handlers.md): Extending bindDom with new data-* attributes
 - [docs/guides/two-way-binding.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/two-way-binding.md): Inputs and data-bind
 - [docs/guides/lists.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/lists.md): Rendering arrays
 - [docs/guides/forms.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/forms.md): Form patterns
-- [docs/guides/handlers.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/handlers.md): Extending bindDom with new data-* attributes
-- [docs/guides/cleanup-and-dispose.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/cleanup-and-dispose.md): Tearing down effects and bindings
-- [docs/guides/performance.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/performance.md): Batching and update costs
-- [docs/guides/animations.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/animations.md): Animating on state change
 - [docs/guides/routing.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/routing.md): Client-side routing patterns
-- [docs/guides/ssr-hydration.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/ssr-hydration.md): Server-rendered HTML with reactive hydration
-- [docs/guides/universal-core.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/universal-core.md): Using lume-js/state without a DOM
+- [docs/guides/animations.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/animations.md): Animating on state change
 - [docs/guides/testing.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/testing.md): Testing stores and bindings
-- [docs/guides/migration.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/migration.md): Migrating between versions
-- [docs/guides/faq.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/faq.md): Frequently asked questions
+- [docs/guides/performance.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/performance.md): Batching and update costs
+- [docs/guides/cleanup-and-dispose.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/cleanup-and-dispose.md): Tearing down effects and bindings
+- [docs/guides/ssr-hydration.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/ssr-hydration.md): Server-rendered HTML with reactive hydration
 
-## Tutorials
-
-- [docs/tutorials/build-todo-app.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/tutorials/build-todo-app.md): Todo app walkthrough
-- [docs/tutorials/working-with-arrays.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/tutorials/working-with-arrays.md): Immutable array updates — the golden rule
-- [docs/tutorials/build-tic-tac-toe.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/tutorials/build-tic-tac-toe.md): Game with history and computed winner
-
-## API reference — core
+## API — Core
 
 - [docs/api/core/state.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/core/state.md): state() reactive stores
-- [docs/api/core/effect.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/core/effect.md): effect() auto-tracking and explicit deps
 - [docs/api/core/bindDom.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/core/bindDom.md): bindDom() DOM binding
+- [docs/api/core/effect.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/core/effect.md): effect() auto-tracking and explicit deps
 - [docs/api/core/batch.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/core/batch.md): batch() cross-store write grouping
+
+## API — Addons
+
+- [docs/api/addons/watch.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/watch.md): Single-key observation
+- [docs/api/addons/computed.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/computed.md): Derived read-only values
+- [docs/api/addons/repeat.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/repeat.md): Keyed list rendering
+- [docs/api/addons/persist.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/persist.md): localStorage/sessionStorage sync
+- [docs/api/addons/createCleanupGroup.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/createCleanupGroup.md): Grouped disposal
+- [docs/api/addons/hydrateState.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/hydrateState.md): SSR hydration
+- [docs/api/addons/debug.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/debug.md): Write/flush logging
+- [docs/api/addons/withPlugins.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/withPlugins.md): State extension system
+- [docs/api/addons/isReactive.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/isReactive.md): Reactive brand detection
+
+## API — Handlers
+
 - [docs/api/core/handlers.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/core/handlers.md): Handler system — the { attr, apply } extension contract
-
-## API reference — handlers
-
 - [docs/api/handlers/show.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/handlers/show.md): Conditional visibility
 - [docs/api/handlers/className.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/handlers/className.md): Full class attribute from state
 - [docs/api/handlers/boolAttr.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/handlers/boolAttr.md): Boolean attributes (disabled, hidden, …)
@@ -68,21 +75,20 @@ data-* attribute values are state keys, never expressions.
 - [docs/api/handlers/on.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/handlers/on.md): Declarative event wiring via data-on*
 - [docs/api/handlers/htmlAttrs.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/handlers/htmlAttrs.md): Preset bundle of common attributes
 
-## API reference — addons
+## Tutorials
 
-- [docs/api/addons/computed.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/computed.md): Derived read-only values
-- [docs/api/addons/watch.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/watch.md): Single-key observation
-- [docs/api/addons/repeat.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/repeat.md): Keyed list rendering
-- [docs/api/addons/persist.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/persist.md): localStorage/sessionStorage sync
-- [docs/api/addons/hydrateState.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/hydrateState.md): SSR hydration
-- [docs/api/addons/createCleanupGroup.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/createCleanupGroup.md): Grouped disposal
-- [docs/api/addons/debug.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/debug.md): Write/flush logging
-- [docs/api/addons/withPlugins.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/withPlugins.md): State extension system
-- [docs/api/addons/isReactive.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/isReactive.md): Reactive brand detection
+- [docs/tutorials/build-todo-app.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/tutorials/build-todo-app.md): Todo app walkthrough
+- [docs/tutorials/build-tic-tac-toe.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/tutorials/build-tic-tac-toe.md): Game with history and computed winner
+- [docs/tutorials/working-with-arrays.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/tutorials/working-with-arrays.md): Immutable array updates — the golden rule
 
 ## Design
 
 - [docs/design/design-decisions.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/design/design-decisions.md): Ratified decisions and their reasoning
+
+## Reference
+
+- [docs/guides/migration.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/migration.md): Migrating between versions
+- [docs/guides/faq.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/faq.md): Frequently asked questions
 
 ## Optional
 

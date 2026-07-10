@@ -18,7 +18,9 @@ For production, pin to an exact version so your page can't break on a new releas
 
 ```html
 <!-- exact version (recommended for production) -->
+<!-- lume:pin-url -->
 'https://cdn.jsdelivr.net/npm/lume-js@2.3.1/dist/index.min.mjs'
+<!-- /lume:pin-url -->
 
 <!-- latest stable -->
 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs'
@@ -76,7 +78,7 @@ import { show, classToggle, stringAttr } from 'lume-js/handlers';
 
 ## Browser support
 
-Lume targets evergreen browsers: Chrome 80+, Firefox 74+, Safari 13.1+, Edge 80+ (the source uses ES2020 syntax — optional chaining, nullish coalescing — shipped un-transpiled). IE11 is **not** supported. Lume uses `Proxy` for reactivity, and `Proxy` cannot be polyfilled.
+Lume targets evergreen browsers: Chrome <!-- lume:browser-chrome -->80+<!-- /lume:browser-chrome -->, Firefox <!-- lume:browser-firefox -->74+<!-- /lume:browser-firefox -->, Safari <!-- lume:browser-safari -->13.1+<!-- /lume:browser-safari -->, Edge <!-- lume:browser-edge -->80+<!-- /lume:browser-edge --> (the source uses ES2020 syntax — optional chaining, nullish coalescing — shipped un-transpiled). IE11 is **not** supported. Lume uses `Proxy` for reactivity, and `Proxy` cannot be polyfilled.
 
 ## TypeScript
 
@@ -92,4 +94,6 @@ store.unknown;       // ✗ Property 'unknown' does not exist
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Introduction](../README.md)** | **Next: [Quick start](quick-start.md) →**
+<!-- /lume:nav -->

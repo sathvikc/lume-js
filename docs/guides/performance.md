@@ -94,4 +94,6 @@ cleanupDom();
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Testing](testing.md)** | **Next: [Cleanup & Dispose](cleanup-and-dispose.md) →**
+<!-- /lume:nav -->

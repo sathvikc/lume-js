@@ -96,4 +96,6 @@ stop(); // unsubscribes and stops re-running
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [bindDom()](bindDom.md)** | **Next: [batch()](batch.md) →**
+<!-- /lume:nav -->

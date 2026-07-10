@@ -145,4 +145,6 @@ cleanup = bindDom(document.getElementById('app'), store);
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [state()](state.md)** | **Next: [effect()](effect.md) →**
+<!-- /lume:nav -->

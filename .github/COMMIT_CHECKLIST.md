@@ -18,7 +18,7 @@ npm run lint         # cognitive complexity ≤ 15
 
 ```bash
 npm run validate
-# Runs: build → size check → complexity → lint → typecheck → coverage → llms freshness check
+# Runs: build → size check → complexity → lint → typecheck → coverage → docs check
 ```
 
 Or step by step:
@@ -30,10 +30,10 @@ node scripts/complexity.js     # max CC ≤ 10, MI ≥ 50
 npm run lint                   # sonarjs/cognitive-complexity
 npm run typecheck              # tsc --noEmit
 npm run coverage               # vitest --coverage (100% required)
-npm run llms:check             # llms.txt / llms-full.txt match the docs tree
+npm run docs:check             # docs/metrics.json, marker regions, and llms bundles match the docs tree
 ```
 
-Touched `README.md`, `AGENT_GUIDE.md`, `package.json` (version), or anything under `docs/`? Run `npm run llms` and commit the regenerated `llms.txt` / `llms-full.txt` in the same commit — the CI `agent-docs` job fails the PR on drift.
+Touched `README.md`, `AGENT_GUIDE.md`, `package.json` (version), `docs/manifest.json`, or anything under `docs/`? Run `npm run docs:sync` and commit the result — it regenerates `docs/metrics.json`, rewrites every `<!-- lume:* -->` marker region (facts, nav footers, the `docs/README.md` index), and regenerates `llms.txt` / `llms-full.txt`. The CI `agent-docs` job fails the PR on drift.
 
 ---
 
@@ -99,7 +99,7 @@ ci: add cognitive complexity gate via eslint-plugin-sonarjs
 - **New source code** — has tests? coverage still 100%?
 - **New public API** — the matching handwritten `.d.ts` updated in the same commit? (`src/state.d.ts` is the kernel source of truth; `src/index.d.ts` re-exports it; addons/handlers have their own `index.d.ts`.)
 - **New handler or addon** — exported from barrel (`src/handlers/index.js` or `src/addons/index.js`)?
-- **Docs / README / AGENT_GUIDE touched** — `npm run llms` re-run and bundles committed?
+- **Docs / README / AGENT_GUIDE touched** — `npm run docs:sync` re-run and the regenerated files (markers, `docs/metrics.json`, `llms.txt` / `llms-full.txt`) committed?
 - **Complex function** — cognitive complexity ≤ 15? If not, can you simplify? If intentional, add inline disable comment with justification.
 - **Large function** — cyclomatic CC ≤ 10? If pre-existing exception needed, add to `KNOWN_EXCEPTIONS` in `scripts/complexity.js`.
 - **Size-sensitive change** — run `npm run size` and check the budget bars.

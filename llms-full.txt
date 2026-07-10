@@ -267,13 +267,13 @@ FILE: README.md
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
     &nbsp;
-    <a href="package.json"><img src="https://img.shields.io/badge/version-2.3.1-orange.svg" alt="v2.3.1"></a>
+<a href="package.json"><img src="https://img.shields.io/badge/version-2.3.1-orange.svg" alt="v2.3.1"></a>
     &nbsp;
-    <a href="tests/"><img src="https://img.shields.io/badge/tests-439%20passing-brightgreen.svg" alt="439 tests"></a>
+<a href="tests/"><img src="https://img.shields.io/badge/tests-457%20passing-brightgreen.svg" alt="457 tests"></a>
     &nbsp;
-    <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/universal%20core-1.46KB-blue.svg" alt="universal core 1.46KB"></a>
+<a href="scripts/check-size.js"><img src="https://img.shields.io/badge/universal%20core-1.46KB-blue.svg" alt="universal core 1.46KB"></a>
     &nbsp;
-    <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core%20%2B%20DOM-2.66KB-blue.svg" alt="core + DOM 2.66KB"></a>
+<a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core%20%2B%20DOM-2.66KB-blue.svg" alt="core + DOM 2.66KB"></a>
   </p>
   <p><code>npm install lume-js</code></p>
   <p><a href="https://sathvikc.github.io/lume-js/"><strong>Docs & live examples →</strong></a></p>
@@ -1004,6 +1004,145 @@ cleanup(); // removes ALL bindings inside root
 
 
 ========================================================================
+FILE: docs/guides/universal-core.md
+========================================================================
+
+# The Universal Core (`lume-js/state`)
+
+Lume's kernel — `state()`, `batch()`, `withReadObserver()` — has no DOM dependency at all. The `lume-js/state` entry ships exactly that kernel: **1.46 KB gzipped**, runs in Node, Deno, Bun, workers, CLI tools, and browsers alike.
+
+```js
+import { state, batch } from 'lume-js/state';
+```
+
+If you're building for the browser and want DOM binding, use the full core instead — same `state`, plus `bindDom` and `effect`:
+
+```js
+import { state, bindDom, effect, batch } from 'lume-js';   // 2.66 KB
+```
+
+Both entries share one implementation — `lume-js/state` is not a fork, it's a smaller slice of the same modules.
+
+## A complete Node example
+
+Save as `watcher.mjs` and run with `node watcher.mjs` — no DOM, no build:
+
+```js
+import { state, batch } from 'lume-js/state';
+
+// Reactive state on the server: a build pipeline's status
+const build = state({
+  step: 'idle',
+  filesDone: 0,
+  filesTotal: 0,
+  errors: 0,
+});
+
+// Subscriptions work exactly as in the browser
+build.$subscribe('step', step => {
+  console.log(`→ ${step}`);
+});
+
+const progress = () =>
+  build.filesTotal > 0
+    ? `${build.filesDone}/${build.filesTotal}`
+    : 'n/a';
+
+// Simulate a pipeline
+build.step = 'compiling';
+batch(() => {
+  build.filesTotal = 120;
+  build.filesDone = 0;
+});
+
+for (let i = 1; i <= 120; i++) {
+  build.filesDone = i;   // microtask-batched: no log spam, final value wins
+}
+build.step = 'done';
+
+queueMicrotask(() => {
+  console.log(`finished: ${progress()}, errors: ${build.errors}`);
+});
+```
+
+## Why `batch()` shines outside the browser
+
+In the browser, microtask batching usually does the right thing on its own. In **tests and server code**, you often want the flush to have happened *on the next line* — that's exactly what `batch()` guarantees:
+
+```js
+import { state, batch } from 'lume-js/state';
+import assert from 'node:assert';
+
+const order = state({ items: 0, total: 0 });
+const audit = [];
+order.$subscribe('total', t => audit.push(t));
+
+batch(() => {
+  order.items = 3;
+  order.total = 42;
+});
+
+// No `await Promise.resolve()` dance — the flush already ran:
+assert.deepStrictEqual(audit, [0, 42]);
+```
+
+## What's *not* in the kernel
+
+| Not included | Why | Where it lives |
+|--------------|-----|----------------|
+| `bindDom` | DOM-only by definition | `lume-js` |
+| `effect` | auto-tracking is a UI-leaning pattern; in server code, explicit `$subscribe` is usually clearer | `lume-js` |
+| addons (`computed`, `watch`, `persist`, …) | optional patterns | `lume-js/addons` |
+
+Note that `watch()` and `computed()` from `lume-js/addons` are themselves DOM-free and work fine in Node — they're just not part of the 1.46 KB kernel. (`computed` pulls in `effect` internally.)
+
+## Building reactive primitives on the kernel
+
+`withReadObserver(onRead, fn)` is the seam `effect()` itself is built on — it reports every store read during `fn`'s synchronous execution. If you're building your own primitive (a memo, a logger, a dependency visualizer), you get the same machinery the library uses:
+
+```js
+import { state, withReadObserver } from 'lume-js/state';
+
+const store = state({ a: 1, b: 2 });
+
+const deps = [];
+const sum = withReadObserver(
+  (proxy, key) => deps.push(key),
+  () => store.a + store.b
+);
+
+console.log(sum, deps);   // 3, ['a', 'b']
+```
+
+## CDN usage (no npm, no build)
+
+```html
+<script type="module">
+  import { state, batch } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/state.min.mjs';
+</script>
+```
+
+## Size accounting
+
+| Entry | Gzipped | CI budget |
+|-------|---------|-----------|
+| `lume-js/state` (`dist/state.min.mjs`) | 1.46 KB | ≤ 1.75 KB |
+| `lume-js` (`dist/index.min.mjs`) | 2.66 KB | ≤ 3.00 KB |
+
+Both numbers are enforced by `scripts/check-size.js` on every CI run — they can't silently drift.
+
+## See also
+
+- [state()](../api/core/state.md) · [batch()](../api/core/batch.md)
+- [SSR & Hydration](ssr-hydration.md) — server-rendered HTML with reactive hydration
+- Design rationale: [Why a `lume-js/state` entry](../design/design-decisions.md#why-a-lume-jsstate-entry-instead-of-demoting-binddomeffect-v23)
+
+---
+
+**← Previous: [How reactivity works](reactivity.md)** | **Next: [Choosing reactive primitives](choosing-reactive-primitives.md) →**
+
+
+========================================================================
 FILE: docs/guides/choosing-reactive-primitives.md
 ========================================================================
 
@@ -1141,6 +1280,203 @@ By default `watch` fires immediately with the current value (same as `$subscribe
 ---
 
 **← Previous: [Universal core (Node, CLI, workers)](universal-core.md)** | **Next: [Handlers](handlers.md) →**
+
+
+========================================================================
+FILE: docs/guides/handlers.md
+========================================================================
+
+# Handlers
+
+`bindDom` handles `data-bind`, `data-hidden`, `data-disabled`, and a handful of other built-in attributes. For anything else — showing elements, toggling classes, setting `href` or `src`, or any custom behavior — you use a **handler**.
+
+A handler is a plain object with two things: the attribute name it responds to, and a function that applies the reactive value to an element. That's the entire API.
+
+## Anatomy
+
+```js
+const myHandler = {
+  attr: 'data-tooltip',
+  apply(el, value) {
+    el.title = value ?? '';
+  }
+};
+```
+
+When `bindDom` scans the DOM and finds an element with `data-tooltip="someKey"`:
+
+1. It subscribes to `store.someKey`.
+2. It calls `apply(el, store.someKey)` immediately, then again on every subsequent change.
+
+> **→ Why `data-*` attributes?** [See the design decision.](../design/design-decisions.md#why-data-attr-for-reactive-html-attributes)
+
+## Built-in handlers
+
+The handlers below are exported from `lume-js/handlers`. They are opt-in — import only the ones you need.
+
+### `show` — `data-show`
+
+Sets `el.hidden = !Boolean(val)`: hides the element (via the `hidden` attribute) when the value is falsy.
+
+```js
+import { show } from 'lume-js/handlers';
+bindDom(root, store, { handlers: [show] });
+
+// HTML:
+// <div data-show="isVisible">Only when truthy</div>
+```
+
+### `classToggle(name)` — `data-class-{name}`
+
+Toggles a CSS class based on a truthy value. Factory — returns a handler for a specific class.
+
+```js
+import { classToggle } from 'lume-js/handlers';
+
+bindDom(root, store, {
+  handlers: [classToggle('active'), classToggle('error')]
+});
+
+// HTML:
+// <li data-class-active="isSelected">…</li>
+// <input data-class-error="hasError">
+```
+
+### `stringAttr(name)` — `data-{name}` → `{name}`
+
+Mirrors a reactive value to a string attribute. Perfect for `href`, `src`, `alt`, `title`. Removes the attribute when the value is `null` or `undefined`.
+
+```js
+import { stringAttr } from 'lume-js/handlers';
+
+bindDom(root, store, {
+  handlers: [stringAttr('href'), stringAttr('src')]
+});
+
+// HTML:
+// <a data-href="profileUrl">Profile</a>
+// <img data-src="avatarUrl" alt="Avatar">
+```
+
+### `className` — `data-classname`
+
+Replaces the element's entire class string. Use when reactive state holds a full class string rather than toggling individual classes.
+
+```js
+import { className } from 'lume-js/handlers';
+
+bindDom(root, store, { handlers: [className] });
+
+// HTML:
+// <div data-classname="cardClasses">Card</div>
+```
+
+### `boolAttr(name)` — `data-{name}` → boolean attribute
+
+Toggles any HTML boolean attribute by name. Works with any attribute `toggleAttribute()` supports.
+
+```js
+import { boolAttr } from 'lume-js/handlers';
+
+bindDom(root, store, {
+  handlers: [boolAttr('readonly'), boolAttr('open')]
+});
+
+// HTML:
+// <input data-readonly="isLocked">
+// <details data-open="isExpanded">...</details>
+```
+
+> The built-in `data-hidden`, `data-disabled`, `data-checked`, and `data-required` use direct property assignment. `boolAttr()` uses `toggleAttribute()` — correct for all attribute names.
+
+### `ariaAttr(name)` — `data-aria-{name}` → `"true"`/`"false"`
+
+Sets a boolean ARIA attribute, coercing the value to the string `"true"` or `"false"`. Use `stringAttr('aria-label')` for string-valued ARIA attributes.
+
+```js
+import { ariaAttr } from 'lume-js/handlers';
+
+bindDom(root, store, {
+  handlers: [ariaAttr('pressed'), ariaAttr('selected')]
+});
+
+// HTML:
+// <button data-aria-pressed="isPressed">Toggle</button>
+```
+
+### `htmlAttrs()` — batteries-included preset
+
+Returns a flat array of handlers covering all standard HTML boolean attributes, string attributes, and ARIA attributes. Ideal for prototyping or apps that need many different `data-*` bindings without per-handler imports.
+
+```js
+import { htmlAttrs } from 'lume-js/handlers';
+
+bindDom(document.body, store, { handlers: [htmlAttrs()] });
+
+// Now works without additional imports:
+// <input data-readonly="isLocked" data-placeholder="hint" />
+// <a data-href="url" data-title="tooltip">Link</a>
+// <button data-aria-pressed="active" data-aria-label="btnLabel">…</button>
+// <div data-show="isVisible">…</div>
+```
+
+> **Note:** `htmlAttrs()` is a function that returns an array — use `[htmlAttrs()]` (not `htmlAttrs` directly) so `bindDom` can flatten it. For production bundles, cherry-pick individual handlers to keep the import minimal.
+
+## Writing your own
+
+Any behavior you can describe as "this attribute controls this element property based on a reactive value" is a handler. The three examples below cover the most common patterns.
+
+### Example 1 — `data-disabled`
+
+```js
+const disabled = {
+  attr: 'data-disabled',
+  apply(el, value) {
+    el.toggleAttribute('disabled', Boolean(value));
+  }
+};
+```
+
+### Example 2 — `data-style-color`
+
+```js
+function styleProp(prop) {
+  return {
+    attr: `data-style-${prop}`,
+    apply(el, value) {
+      el.style.setProperty(prop, value ?? '');
+    }
+  };
+}
+
+bindDom(root, store, {
+  handlers: [styleProp('color'), styleProp('background-color')]
+});
+```
+
+### Example 3 — `data-format-currency`
+
+```js
+const formatCurrency = {
+  attr: 'data-format-currency',
+  apply(el, value) {
+    el.textContent = new Intl.NumberFormat('en-US', {
+      style: 'currency', currency: 'USD'
+    }).format(value ?? 0);
+  }
+};
+
+// HTML:
+// <span data-format-currency="price"></span>
+```
+
+## Handler ordering
+
+Handlers are applied in the order you pass them. If two handlers share the same `attr` name, the last one wins — it replaces the earlier one. This is how you override a built-in handler: pass your replacement after the built-in in the `handlers` array.
+
+---
+
+**← Previous: [Choosing reactive primitives](choosing-reactive-primitives.md)** | **Next: [Two-way binding](two-way-binding.md) →**
 
 
 ========================================================================
@@ -1426,300 +1762,175 @@ bindDom(root, store, { handlers: formHandlers });
 
 
 ========================================================================
-FILE: docs/guides/handlers.md
+FILE: docs/guides/routing.md
 ========================================================================
 
-# Handlers
+# Routing
 
-`bindDom` handles `data-bind`, `data-hidden`, `data-disabled`, and a handful of other built-in attributes. For anything else — showing elements, toggling classes, setting `href` or `src`, or any custom behavior — you use a **handler**.
+Lume does not include a router, and it does not need to. Routing is just state — store the current route in a `state()` object and react to it with `effect()`. Two patterns cover most use cases.
 
-A handler is a plain object with two things: the attribute name it responds to, and a function that applies the reactive value to an element. That's the entire API.
+## Hash-based routing
 
-## Anatomy
+The simplest approach uses the URL hash (`#`). No server configuration required.
 
-```js
-const myHandler = {
-  attr: 'data-tooltip',
-  apply(el, value) {
-    el.title = value ?? '';
-  }
-};
-```
-
-When `bindDom` scans the DOM and finds an element with `data-tooltip="someKey"`:
-
-1. It subscribes to `store.someKey`.
-2. It calls `apply(el, store.someKey)` immediately, then again on every subsequent change.
-
-> **→ Why `data-*` attributes?** [See the design decision.](../design/design-decisions.md#why-data-attr-for-reactive-html-attributes)
-
-## Built-in handlers
-
-The handlers below are exported from `lume-js/handlers`. They are opt-in — import only the ones you need.
-
-### `show` — `data-show`
-
-Sets `el.hidden = !Boolean(val)`: hides the element (via the `hidden` attribute) when the value is falsy.
-
-```js
-import { show } from 'lume-js/handlers';
-bindDom(root, store, { handlers: [show] });
-
-// HTML:
-// <div data-show="isVisible">Only when truthy</div>
-```
-
-### `classToggle(name)` — `data-class-{name}`
-
-Toggles a CSS class based on a truthy value. Factory — returns a handler for a specific class.
-
-```js
-import { classToggle } from 'lume-js/handlers';
-
-bindDom(root, store, {
-  handlers: [classToggle('active'), classToggle('error')]
+```javascript
+const store = state({
+  route: 'home'
 });
 
-// HTML:
-// <li data-class-active="isSelected">…</li>
-// <input data-class-error="hasError">
-```
-
-### `stringAttr(name)` — `data-{name}` → `{name}`
-
-Mirrors a reactive value to a string attribute. Perfect for `href`, `src`, `alt`, `title`. Removes the attribute when the value is `null` or `undefined`.
-
-```js
-import { stringAttr } from 'lume-js/handlers';
-
-bindDom(root, store, {
-  handlers: [stringAttr('href'), stringAttr('src')]
-});
-
-// HTML:
-// <a data-href="profileUrl">Profile</a>
-// <img data-src="avatarUrl" alt="Avatar">
-```
-
-### `className` — `data-classname`
-
-Replaces the element's entire class string. Use when reactive state holds a full class string rather than toggling individual classes.
-
-```js
-import { className } from 'lume-js/handlers';
-
-bindDom(root, store, { handlers: [className] });
-
-// HTML:
-// <div data-classname="cardClasses">Card</div>
-```
-
-### `boolAttr(name)` — `data-{name}` → boolean attribute
-
-Toggles any HTML boolean attribute by name. Works with any attribute `toggleAttribute()` supports.
-
-```js
-import { boolAttr } from 'lume-js/handlers';
-
-bindDom(root, store, {
-  handlers: [boolAttr('readonly'), boolAttr('open')]
-});
-
-// HTML:
-// <input data-readonly="isLocked">
-// <details data-open="isExpanded">...</details>
-```
-
-> The built-in `data-hidden`, `data-disabled`, `data-checked`, and `data-required` use direct property assignment. `boolAttr()` uses `toggleAttribute()` — correct for all attribute names.
-
-### `ariaAttr(name)` — `data-aria-{name}` → `"true"`/`"false"`
-
-Sets a boolean ARIA attribute, coercing the value to the string `"true"` or `"false"`. Use `stringAttr('aria-label')` for string-valued ARIA attributes.
-
-```js
-import { ariaAttr } from 'lume-js/handlers';
-
-bindDom(root, store, {
-  handlers: [ariaAttr('pressed'), ariaAttr('selected')]
-});
-
-// HTML:
-// <button data-aria-pressed="isPressed">Toggle</button>
-```
-
-### `htmlAttrs()` — batteries-included preset
-
-Returns a flat array of handlers covering all standard HTML boolean attributes, string attributes, and ARIA attributes. Ideal for prototyping or apps that need many different `data-*` bindings without per-handler imports.
-
-```js
-import { htmlAttrs } from 'lume-js/handlers';
-
-bindDom(document.body, store, { handlers: [htmlAttrs()] });
-
-// Now works without additional imports:
-// <input data-readonly="isLocked" data-placeholder="hint" />
-// <a data-href="url" data-title="tooltip">Link</a>
-// <button data-aria-pressed="active" data-aria-label="btnLabel">…</button>
-// <div data-show="isVisible">…</div>
-```
-
-> **Note:** `htmlAttrs()` is a function that returns an array — use `[htmlAttrs()]` (not `htmlAttrs` directly) so `bindDom` can flatten it. For production bundles, cherry-pick individual handlers to keep the import minimal.
-
-## Writing your own
-
-Any behavior you can describe as "this attribute controls this element property based on a reactive value" is a handler. The three examples below cover the most common patterns.
-
-### Example 1 — `data-disabled`
-
-```js
-const disabled = {
-  attr: 'data-disabled',
-  apply(el, value) {
-    el.toggleAttribute('disabled', Boolean(value));
-  }
-};
-```
-
-### Example 2 — `data-style-color`
-
-```js
-function styleProp(prop) {
-  return {
-    attr: `data-style-${prop}`,
-    apply(el, value) {
-      el.style.setProperty(prop, value ?? '');
-    }
-  };
+function handleHash() {
+  const hash = window.location.hash.replace('#', '') || 'home';
+  store.route = hash;
 }
 
-bindDom(root, store, {
-  handlers: [styleProp('color'), styleProp('background-color')]
+window.addEventListener('hashchange', handleHash);
+handleHash(); // sync with the URL on first load
+```
+
+Then use `effect()` to show or hide content based on the current route:
+
+```javascript
+effect(() => {
+  document.getElementById('home-page').style.display =
+    store.route === 'home' ? 'block' : 'none';
+
+  document.getElementById('about-page').style.display =
+    store.route === 'about' ? 'block' : 'none';
 });
 ```
 
-### Example 3 — `data-format-currency`
+Navigating to `#about` sets `store.route = 'about'` and the effect re-runs automatically.
 
-```js
-const formatCurrency = {
-  attr: 'data-format-currency',
-  apply(el, value) {
-    el.textContent = new Intl.NumberFormat('en-US', {
-      style: 'currency', currency: 'USD'
-    }).format(value ?? 0);
+## History API (clean URLs)
+
+For URLs without a `#`, use the History API. You need to intercept link clicks to prevent a full page reload, and handle the browser back button via `popstate`.
+
+```javascript
+document.addEventListener('click', (e) => {
+  if (e.target.matches('a')) {
+    e.preventDefault();
+    const href = e.target.getAttribute('href');
+    history.pushState(null, '', href);
+    store.route = href;
   }
-};
+});
 
-// HTML:
-// <span data-format-currency="price"></span>
+window.addEventListener('popstate', () => {
+  store.route = window.location.pathname;
+});
 ```
 
-## Handler ordering
-
-Handlers are applied in the order you pass them. If two handlers share the same `attr` name, the last one wins — it replaces the earlier one. This is how you override a built-in handler: pass your replacement after the built-in in the `handlers` array.
+Your server must return the same HTML file for all routes so that a direct visit or page refresh still works. This is a standard requirement for any single-page app using the History API.
 
 ---
 
-**← Previous: [Choosing reactive primitives](choosing-reactive-primitives.md)** | **Next: [Two-way binding](two-way-binding.md) →**
+**← Previous: [Forms](forms.md)** | **Next: [Animations](animations.md) →**
 
 
 ========================================================================
-FILE: docs/guides/cleanup-and-dispose.md
+FILE: docs/guides/animations.md
 ========================================================================
 
-# Cleanup & Dispose Patterns
+# Animations
 
-Every Lume API that creates subscriptions or listeners returns a cleanup function. This guide shows how to manage them efficiently, especially when swapping views or tearing down components.
+Lume pairs well with CSS transitions and animation libraries like [GSAP](https://greensock.com/gsap/). Because state changes are plain property writes and effects are plain functions, there is nothing special to learn — hook in wherever you would normally trigger an animation.
 
-## What Returns a Cleanup?
+## CSS Transitions
 
-| API | Returns | What it cleans up |
-|-----|---------|-----------------|
-| `bindDom(root, store)` | `() => void` | All subscriptions + event delegation listener |
-| `effect(fn)` | `() => void` | All tracked subscriptions |
-| `store.$subscribe(key, fn)` | `() => void` | That single subscription |
-| `repeat(...)` | `() => void` | DOM elements + subscriptions |
-| `computed(...).dispose()` | — | Internal effect + subscriptions |
+The lightest approach: toggle a class in an `effect` and let CSS do the rest.
 
-## The Array Pattern (Zero Overhead)
+```javascript
+const store = state({ isOpen: false });
 
-For simple cases, a plain array is enough:
-
-```js
-const cleanups = [];
-
-cleanups.push(bindDom(root, store));
-cleanups.push(effect(() => { ... }));
-cleanups.push(store.$subscribe('key', fn));
-
-// Dispose everything
-while (cleanups.length) cleanups.pop()();
+effect(() => {
+  document.getElementById('menu').classList.toggle('open', store.isOpen);
+});
 ```
 
-**Why this works:** `pop()` removes items in reverse order, so nested teardown happens safely. Zero library code, idiomatic JavaScript.
-
-## The CleanupGroup Addon
-
-For apps with many teardown points, `createCleanupGroup()` provides a `.dispose()` method:
-
-```js
-import { createCleanupGroup } from 'lume-js/addons';
-
-const group = createCleanupGroup();
-
-group.add(bindDom(root, store));
-group.add(effect(() => { ... }));
-group.add(store.$subscribe('key', fn));
-
-// Later — one call disposes everything
-group.dispose();
-```
-
-**Features:**
-- Ignores non-function values passed to `add()`
-- Safe to call `dispose()` multiple times
-- One failing cleanup doesn't block the rest
-- Can be reused after `dispose()`
-
-## Re-initialization (Page / Route Swaps)
-
-`bindDom` supports re-init naturally. Clean up the old binding, then bind to new DOM:
-
-```js
-let cleanup = bindDom(document.getElementById('app'), store);
-
-function swapPage(newRoot, newStore) {
-  cleanup();           // remove old subscriptions
-  cleanup = bindDom(newRoot, newStore);
+```css
+#menu {
+  transition: transform 0.3s;
+  transform: translateX(-100%);
+}
+#menu.open {
+  transform: translateX(0);
 }
 ```
 
-With a cleanup group:
+Set `store.isOpen = true` and the menu slides in. No extra API to learn.
 
-```js
-let group = createCleanupGroup();
-group.add(bindDom(root, store));
-group.add(effect(() => { ... }));
+## GSAP
 
-function swapPage(newRoot, newStore) {
-  group.dispose();
-  group = createCleanupGroup();
-  group.add(bindDom(newRoot, newStore));
-  group.add(effect(() => { ... }));
-}
+Use `effect()` or `watch()` to trigger GSAP animations when state changes. `watch` is the cleaner choice when you need to react to a single key:
+
+```javascript
+import gsap from 'gsap';
+import { watch } from 'lume-js/addons';
+
+const store = state({ x: 0 });
+
+watch(store, 'x', (newX) => {
+  gsap.to('.box', { x: newX, duration: 0.5 });
+});
 ```
 
-## When to Use What
-
-| Situation | Recommendation |
-|-----------|----------------|
-| Single `bindDom` call | Just use the returned cleanup directly |
-| A few effects + subscriptions | Array pattern is fine |
-| Complex page with many teardowns | `createCleanupGroup` for ergonomics |
-| Route / page swaps | Group + re-create pattern |
+Any other GSAP method (`gsap.from`, `gsap.timeline`, etc.) works the same way — just call it inside the callback.
 
 ---
 
-**← Previous: [Performance](performance.md)** | **Next: [SSR & Hydration](ssr-hydration.md) →**
+**← Previous: [Routing](routing.md)** | **Next: [Testing](testing.md) →**
+
+
+========================================================================
+FILE: docs/guides/testing.md
+========================================================================
+
+# Testing
+
+Lume uses standard JavaScript objects and the standard DOM, so testing requires no special setup. Unit tests run without a DOM, and DOM tests work with any environment that provides one (Vitest ships with jsdom).
+
+## Unit testing state
+
+State logic is plain JavaScript — test it directly without touching the DOM.
+
+```javascript
+import { state } from 'lume-js';
+import { test, expect } from 'vitest';
+
+test('increment count', () => {
+  const store = state({ count: 0 });
+  store.count++;
+  expect(store.count).toBe(1);
+});
+```
+
+## Testing DOM updates
+
+Lume batches DOM updates via `queueMicrotask`, so after writing to the store you need to yield to the microtask queue before asserting. A zero-millisecond `setTimeout` is the simplest way to do this.
+
+```javascript
+import { state, bindDom } from 'lume-js';
+import { test, expect } from 'vitest';
+
+test('updates DOM', async () => {
+  document.body.innerHTML = '<span data-bind="text"></span>';
+  const store = state({ text: 'Hello' });
+  bindDom(document.body, store);
+
+  expect(document.querySelector('span').textContent).toBe('Hello');
+
+  store.text = 'World';
+
+  // Wait for the microtask flush
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  expect(document.querySelector('span').textContent).toBe('World');
+});
+```
+
+---
+
+**← Previous: [Animations](animations.md)** | **Next: [Performance](performance.md) →**
 
 
 ========================================================================
@@ -1826,123 +2037,103 @@ cleanupDom();
 
 
 ========================================================================
-FILE: docs/guides/animations.md
+FILE: docs/guides/cleanup-and-dispose.md
 ========================================================================
 
-# Animations
+# Cleanup & Dispose Patterns
 
-Lume pairs well with CSS transitions and animation libraries like [GSAP](https://greensock.com/gsap/). Because state changes are plain property writes and effects are plain functions, there is nothing special to learn — hook in wherever you would normally trigger an animation.
+Every Lume API that creates subscriptions or listeners returns a cleanup function. This guide shows how to manage them efficiently, especially when swapping views or tearing down components.
 
-## CSS Transitions
+## What Returns a Cleanup?
 
-The lightest approach: toggle a class in an `effect` and let CSS do the rest.
+| API | Returns | What it cleans up |
+|-----|---------|-----------------|
+| `bindDom(root, store)` | `() => void` | All subscriptions + event delegation listener |
+| `effect(fn)` | `() => void` | All tracked subscriptions |
+| `store.$subscribe(key, fn)` | `() => void` | That single subscription |
+| `repeat(...)` | `() => void` | DOM elements + subscriptions |
+| `computed(...).dispose()` | — | Internal effect + subscriptions |
 
-```javascript
-const store = state({ isOpen: false });
+## The Array Pattern (Zero Overhead)
 
-effect(() => {
-  document.getElementById('menu').classList.toggle('open', store.isOpen);
-});
+For simple cases, a plain array is enough:
+
+```js
+const cleanups = [];
+
+cleanups.push(bindDom(root, store));
+cleanups.push(effect(() => { ... }));
+cleanups.push(store.$subscribe('key', fn));
+
+// Dispose everything
+while (cleanups.length) cleanups.pop()();
 ```
 
-```css
-#menu {
-  transition: transform 0.3s;
-  transform: translateX(-100%);
+**Why this works:** `pop()` removes items in reverse order, so nested teardown happens safely. Zero library code, idiomatic JavaScript.
+
+## The CleanupGroup Addon
+
+For apps with many teardown points, `createCleanupGroup()` provides a `.dispose()` method:
+
+```js
+import { createCleanupGroup } from 'lume-js/addons';
+
+const group = createCleanupGroup();
+
+group.add(bindDom(root, store));
+group.add(effect(() => { ... }));
+group.add(store.$subscribe('key', fn));
+
+// Later — one call disposes everything
+group.dispose();
+```
+
+**Features:**
+- Ignores non-function values passed to `add()`
+- Safe to call `dispose()` multiple times
+- One failing cleanup doesn't block the rest
+- Can be reused after `dispose()`
+
+## Re-initialization (Page / Route Swaps)
+
+`bindDom` supports re-init naturally. Clean up the old binding, then bind to new DOM:
+
+```js
+let cleanup = bindDom(document.getElementById('app'), store);
+
+function swapPage(newRoot, newStore) {
+  cleanup();           // remove old subscriptions
+  cleanup = bindDom(newRoot, newStore);
 }
-#menu.open {
-  transform: translateX(0);
+```
+
+With a cleanup group:
+
+```js
+let group = createCleanupGroup();
+group.add(bindDom(root, store));
+group.add(effect(() => { ... }));
+
+function swapPage(newRoot, newStore) {
+  group.dispose();
+  group = createCleanupGroup();
+  group.add(bindDom(newRoot, newStore));
+  group.add(effect(() => { ... }));
 }
 ```
 
-Set `store.isOpen = true` and the menu slides in. No extra API to learn.
+## When to Use What
 
-## GSAP
-
-Use `effect()` or `watch()` to trigger GSAP animations when state changes. `watch` is the cleaner choice when you need to react to a single key:
-
-```javascript
-import gsap from 'gsap';
-import { watch } from 'lume-js/addons';
-
-const store = state({ x: 0 });
-
-watch(store, 'x', (newX) => {
-  gsap.to('.box', { x: newX, duration: 0.5 });
-});
-```
-
-Any other GSAP method (`gsap.from`, `gsap.timeline`, etc.) works the same way — just call it inside the callback.
+| Situation | Recommendation |
+|-----------|----------------|
+| Single `bindDom` call | Just use the returned cleanup directly |
+| A few effects + subscriptions | Array pattern is fine |
+| Complex page with many teardowns | `createCleanupGroup` for ergonomics |
+| Route / page swaps | Group + re-create pattern |
 
 ---
 
-**← Previous: [Routing](routing.md)** | **Next: [Testing](testing.md) →**
-
-
-========================================================================
-FILE: docs/guides/routing.md
-========================================================================
-
-# Routing
-
-Lume does not include a router, and it does not need to. Routing is just state — store the current route in a `state()` object and react to it with `effect()`. Two patterns cover most use cases.
-
-## Hash-based routing
-
-The simplest approach uses the URL hash (`#`). No server configuration required.
-
-```javascript
-const store = state({
-  route: 'home'
-});
-
-function handleHash() {
-  const hash = window.location.hash.replace('#', '') || 'home';
-  store.route = hash;
-}
-
-window.addEventListener('hashchange', handleHash);
-handleHash(); // sync with the URL on first load
-```
-
-Then use `effect()` to show or hide content based on the current route:
-
-```javascript
-effect(() => {
-  document.getElementById('home-page').style.display =
-    store.route === 'home' ? 'block' : 'none';
-
-  document.getElementById('about-page').style.display =
-    store.route === 'about' ? 'block' : 'none';
-});
-```
-
-Navigating to `#about` sets `store.route = 'about'` and the effect re-runs automatically.
-
-## History API (clean URLs)
-
-For URLs without a `#`, use the History API. You need to intercept link clicks to prevent a full page reload, and handle the browser back button via `popstate`.
-
-```javascript
-document.addEventListener('click', (e) => {
-  if (e.target.matches('a')) {
-    e.preventDefault();
-    const href = e.target.getAttribute('href');
-    history.pushState(null, '', href);
-    store.route = href;
-  }
-});
-
-window.addEventListener('popstate', () => {
-  store.route = window.location.pathname;
-});
-```
-
-Your server must return the same HTML file for all routes so that a direct visit or page refresh still works. This is a standard requirement for any single-page app using the History API.
-
----
-
-**← Previous: [Forms](forms.md)** | **Next: [Animations](animations.md) →**
+**← Previous: [Performance](performance.md)** | **Next: [SSR & Hydration](ssr-hydration.md) →**
 
 
 ========================================================================
@@ -2027,1334 +2218,6 @@ Crawlers see the server-rendered HTML. No special rendering mode needed.
 
 
 ========================================================================
-FILE: docs/guides/universal-core.md
-========================================================================
-
-# The Universal Core (`lume-js/state`)
-
-Lume's kernel — `state()`, `batch()`, `withReadObserver()` — has no DOM dependency at all. The `lume-js/state` entry ships exactly that kernel: **1.46 KB gzipped**, runs in Node, Deno, Bun, workers, CLI tools, and browsers alike.
-
-```js
-import { state, batch } from 'lume-js/state';
-```
-
-If you're building for the browser and want DOM binding, use the full core instead — same `state`, plus `bindDom` and `effect`:
-
-```js
-import { state, bindDom, effect, batch } from 'lume-js';   // 2.66 KB
-```
-
-Both entries share one implementation — `lume-js/state` is not a fork, it's a smaller slice of the same modules.
-
-## A complete Node example
-
-Save as `watcher.mjs` and run with `node watcher.mjs` — no DOM, no build:
-
-```js
-import { state, batch } from 'lume-js/state';
-
-// Reactive state on the server: a build pipeline's status
-const build = state({
-  step: 'idle',
-  filesDone: 0,
-  filesTotal: 0,
-  errors: 0,
-});
-
-// Subscriptions work exactly as in the browser
-build.$subscribe('step', step => {
-  console.log(`→ ${step}`);
-});
-
-const progress = () =>
-  build.filesTotal > 0
-    ? `${build.filesDone}/${build.filesTotal}`
-    : 'n/a';
-
-// Simulate a pipeline
-build.step = 'compiling';
-batch(() => {
-  build.filesTotal = 120;
-  build.filesDone = 0;
-});
-
-for (let i = 1; i <= 120; i++) {
-  build.filesDone = i;   // microtask-batched: no log spam, final value wins
-}
-build.step = 'done';
-
-queueMicrotask(() => {
-  console.log(`finished: ${progress()}, errors: ${build.errors}`);
-});
-```
-
-## Why `batch()` shines outside the browser
-
-In the browser, microtask batching usually does the right thing on its own. In **tests and server code**, you often want the flush to have happened *on the next line* — that's exactly what `batch()` guarantees:
-
-```js
-import { state, batch } from 'lume-js/state';
-import assert from 'node:assert';
-
-const order = state({ items: 0, total: 0 });
-const audit = [];
-order.$subscribe('total', t => audit.push(t));
-
-batch(() => {
-  order.items = 3;
-  order.total = 42;
-});
-
-// No `await Promise.resolve()` dance — the flush already ran:
-assert.deepStrictEqual(audit, [0, 42]);
-```
-
-## What's *not* in the kernel
-
-| Not included | Why | Where it lives |
-|--------------|-----|----------------|
-| `bindDom` | DOM-only by definition | `lume-js` |
-| `effect` | auto-tracking is a UI-leaning pattern; in server code, explicit `$subscribe` is usually clearer | `lume-js` |
-| addons (`computed`, `watch`, `persist`, …) | optional patterns | `lume-js/addons` |
-
-Note that `watch()` and `computed()` from `lume-js/addons` are themselves DOM-free and work fine in Node — they're just not part of the 1.46 KB kernel. (`computed` pulls in `effect` internally.)
-
-## Building reactive primitives on the kernel
-
-`withReadObserver(onRead, fn)` is the seam `effect()` itself is built on — it reports every store read during `fn`'s synchronous execution. If you're building your own primitive (a memo, a logger, a dependency visualizer), you get the same machinery the library uses:
-
-```js
-import { state, withReadObserver } from 'lume-js/state';
-
-const store = state({ a: 1, b: 2 });
-
-const deps = [];
-const sum = withReadObserver(
-  (proxy, key) => deps.push(key),
-  () => store.a + store.b
-);
-
-console.log(sum, deps);   // 3, ['a', 'b']
-```
-
-## CDN usage (no npm, no build)
-
-```html
-<script type="module">
-  import { state, batch } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/state.min.mjs';
-</script>
-```
-
-## Size accounting
-
-| Entry | Gzipped | CI budget |
-|-------|---------|-----------|
-| `lume-js/state` (`dist/state.min.mjs`) | 1.46 KB | ≤ 1.75 KB |
-| `lume-js` (`dist/index.min.mjs`) | 2.66 KB | ≤ 3 KB |
-
-Both numbers are enforced by `scripts/check-size.js` on every CI run — they can't silently drift.
-
-## See also
-
-- [state()](../api/core/state.md) · [batch()](../api/core/batch.md)
-- [SSR & Hydration](ssr-hydration.md) — server-rendered HTML with reactive hydration
-- Design rationale: [Why a `lume-js/state` entry](../design/design-decisions.md#why-a-lume-jsstate-entry-instead-of-demoting-binddomeffect-v23)
-
----
-
-**← Previous: [How reactivity works](reactivity.md)** | **Next: [Choosing reactive primitives](choosing-reactive-primitives.md) →**
-
-
-========================================================================
-FILE: docs/guides/testing.md
-========================================================================
-
-# Testing
-
-Lume uses standard JavaScript objects and the standard DOM, so testing requires no special setup. Unit tests run without a DOM, and DOM tests work with any environment that provides one (Vitest ships with jsdom).
-
-## Unit testing state
-
-State logic is plain JavaScript — test it directly without touching the DOM.
-
-```javascript
-import { state } from 'lume-js';
-import { test, expect } from 'vitest';
-
-test('increment count', () => {
-  const store = state({ count: 0 });
-  store.count++;
-  expect(store.count).toBe(1);
-});
-```
-
-## Testing DOM updates
-
-Lume batches DOM updates via `queueMicrotask`, so after writing to the store you need to yield to the microtask queue before asserting. A zero-millisecond `setTimeout` is the simplest way to do this.
-
-```javascript
-import { state, bindDom } from 'lume-js';
-import { test, expect } from 'vitest';
-
-test('updates DOM', async () => {
-  document.body.innerHTML = '<span data-bind="text"></span>';
-  const store = state({ text: 'Hello' });
-  bindDom(document.body, store);
-
-  expect(document.querySelector('span').textContent).toBe('Hello');
-
-  store.text = 'World';
-
-  // Wait for the microtask flush
-  await new Promise(resolve => setTimeout(resolve, 0));
-
-  expect(document.querySelector('span').textContent).toBe('World');
-});
-```
-
----
-
-**← Previous: [Animations](animations.md)** | **Next: [Performance](performance.md) →**
-
-
-========================================================================
-FILE: docs/guides/migration.md
-========================================================================
-
-# Migrating from 1.x to 2.x
-
-Lume 2.0 is a near-complete rewrite. The internals are faster and the architecture is cleaner — but the core API is fully backward compatible, so migrating is straightforward.
-
-## Breaking changes
-
-**Bump the version in `package.json`:**
-
-```diff
-   "dependencies": {
--    "lume-js": "^1.0.0"
-+    "lume-js": "^2.0.0"
-   }
-```
-
-**`isReactive` moved to `lume-js/addons`:**
-
-```diff
-- import { state, isReactive } from 'lume-js';
-+ import { state } from 'lume-js';
-+ import { isReactive } from 'lume-js/addons';
-```
-
-Everything else continues to work without modification.
-
-## New in 2.x
-
-- `watch(store, key, fn)` — explicit single-key watcher; fires immediately on subscribe with the current value
-- `computed()` — derived value with auto-tracking and `.dispose()`
-- `effect()` — reactive side-effect with optional explicit deps
-- `isReactive()` — detect a reactive proxy (import from `lume-js/addons`)
-- `data-show` attribute (via `show` handler) — conditional visibility, positive counterpart to `data-hidden`
-- `data-class-*` attributes (via `classToggle()` factory) — per-class CSS toggle (e.g. `data-class-active`)
-- `show`, `classToggle()`, `stringAttr`, `boolAttr`, `ariaAttr` handlers — import from `lume-js/handlers`
-- `withPlugins(store, plugins)` — apply plugins (logging, validation, transforms) to a store, import from `lume-js/addons`
-- `createDebugPlugin` / `debug` — developer logging addon (import from `lume-js/addons`)
-
-## Unchanged
-
-- `state(obj)` — same API, same contract
-- `bindDom(root, store, { handlers })` — same API
-- `data-bind`, `data-hidden`, `data-disabled`, `data-checked` attribute names
-- Zero dependencies, no build step required
-
----
-
-**← Previous: [Working with Arrays](../tutorials/working-with-arrays.md)** | **Next: [FAQ](faq.md) →**
-
-
-========================================================================
-FILE: docs/guides/faq.md
-========================================================================
-
-# FAQ
-
-## Is Lume.js production-ready?
-
-Yes. Lume 2.x is stable — the current release on npm is v2.3.1 (`npm install lume-js`), backed by 439 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
-
-## Does Lume work without a build step?
-
-Yes — that's one of its main advantages. Import from a CDN and write plain JavaScript:
-
-```html
-<script type="module">
-  import { state, bindDom, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
-</script>
-```
-
-No bundler, no npm, no config.
-
-## Does Lume support TypeScript?
-
-Yes. Types are included in the package. No `@types/` install needed.
-
-## Can I use Lume with an existing server-rendered page?
-
-Yes — that's a primary use case. Attach `bindDom` to any element on the page and the rest of the page is untouched:
-
-```js
-const store = state({ open: false });
-bindDom(document.getElementById('nav'), store);
-```
-
-## How does Lume compare to Alpine.js?
-
-Both work inline with server-rendered HTML. Lume uses standard `data-*` attributes; Alpine uses `x-*` directives with a custom expression syntax. Lume is smaller (2.66 KB vs ~15 KB gzipped — 1.46 KB for the DOM-free kernel) and has no custom expression evaluator — logic lives in plain JS, not attribute strings.
-
-## How does Lume compare to Vue 3's reactivity?
-
-Lume's core reactivity (`state`, `effect`, `watch`, `computed`) is conceptually similar to Vue's `reactive`/`watchEffect`/`watch`/`computed`. The main difference is that Lume has no component model or template compiler — it binds directly to the DOM via `data-*` attributes.
-
-## Can I use `Map` or `Set` in state?
-
-No. The Proxy only intercepts plain object and array operations. Use plain arrays instead of `Set`, and objects with string keys instead of `Map`.
-
-```js
-// Not reactive
-const store = state({ tags: new Set(['js', 'css']) });
-
-// Use an array
-const store = state({ tags: ['js', 'css'] });
-```
-
-## Why does my effect run more than I expect?
-
-Effects re-run for every key they read. If you read `store.a` and `store.b` inside one effect, it re-runs when either changes. Use `watch(store, 'key', fn)` when you need to react to exactly one key, or use `computed` to derive a single value that the effect reads.
-
-## How do I do conditional rendering?
-
-The simplest way is `data-show` or `data-hidden`. Note that `data-show` requires opting in to the `show` handler — it is not built into `bindDom` by default:
-
-```js
-import { state, bindDom } from 'lume-js';
-import { show } from 'lume-js/handlers';
-
-const store = state({ isLoggedIn: false });
-bindDom(document.body, store, { handlers: [show] });
-```
-
-```html
-<div data-show="isLoggedIn">Welcome back!</div>
-<div data-hidden="isLoggedIn">Please log in.</div>
-```
-
-For replacing entire sections, assign `innerHTML` inside an `effect` — but only with markup you wrote yourself, never with user-supplied data (Lume's own bindings use `textContent` exactly to avoid HTML injection):
-
-```js
-effect(() => {
-  outlet.innerHTML = store.page === 'home' ? homeHTML : aboutHTML;
-});
-```
-
-## Does Lume support async effects?
-
-`effect` itself is synchronous — it runs its function immediately and tracks dependencies. For async work, trigger it from a `watch` callback:
-
-```js
-watch(store, 'userId', async (id) => {
-  const user = await fetch(`/api/users/${id}`).then(r => r.json());
-  store.userName = user.name;
-});
-```
-
-## How do I share state between multiple `bindDom` calls?
-
-Pass the same store object to each call:
-
-```js
-const store = state({ count: 0, theme: 'light' });
-
-bindDom(document.getElementById('header'), store);
-bindDom(document.getElementById('main'), store);
-bindDom(document.getElementById('footer'), store);
-```
-
-All three subtrees share the same reactive store. A write in one subtree updates all of them.
-
-## Can I have multiple independent stores?
-
-Yes — create as many `state()` objects as you need:
-
-```js
-const userStore = state({ name: 'Ada', role: 'admin' });
-const cartStore = state({ items: [], total: 0 });
-
-bindDom(document.getElementById('user-panel'), userStore);
-bindDom(document.getElementById('cart'), cartStore);
-```
-
-## How do I clean up when removing a component?
-
-Call the cleanup function returned by `bindDom` and dispose any effects:
-
-```js
-const cleanup = bindDom(el, store);
-const stopEffect = effect(() => { /* … */ });
-
-// When tearing down:
-cleanup();
-stopEffect();
-```
-
----
-
-**← Previous: [Migrating from 1.x](migration.md)** | **Next: [Design decisions](../design/design-decisions.md) →**
-
-
-========================================================================
-FILE: docs/tutorials/build-todo-app.md
-========================================================================
-
-# Tutorial: Build a Todo App
-
-Build a fully functional todo app — add, toggle, delete, filter, and persist — using nothing but a single HTML file and a CDN import. No build step required.
-
-**What you will learn:**
-- Handling form inputs
-- Rendering lists with `repeat` (for performance)
-- Filtering data with `computed`
-- Persisting data to `localStorage`
-
-## Step 1: The Setup
-
-Create an `index.html` file.
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Lume Todo</title>
-  <style>
-    body { font-family: sans-serif; max-width: 500px; margin: 2rem auto; }
-    .todo-list { list-style: none; padding: 0; }
-    .todo-item { display: flex; gap: 10px; padding: 5px 0; border-bottom: 1px solid #eee; }
-    .done { text-decoration: line-through; color: #888; }
-  </style>
-</head>
-<body>
-  <h1>Todo App</h1>
-  
-  <!-- Input Form -->
-  <form id="todo-form">
-    <input id="new-todo" placeholder="What needs to be done?" autocomplete="off">
-    <button>Add</button>
-  </form>
-
-  <!-- List Container -->
-  <ul id="todo-list" class="todo-list"></ul>
-
-  <script type="module">
-    import { state, bindDom } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
-    import { repeat, computed } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/addons.min.mjs';
-
-    // Code goes here...
-  </script>
-</body>
-</html>
-```
-
-## Step 2: Define the State
-
-We need a list of todos. Each todo will be an object with an `id`, `text`, and `done` status.
-
-```javascript
-const store = state({
-  todos: [
-    { id: 1, text: 'Learn Lume.js', done: false },
-    { id: 2, text: 'Build something cool', done: false }
-  ]
-});
-```
-
-## Step 3: Render the List
-
-We *could* use `innerHTML` like in the Tic-Tac-Toe tutorial. But for lists that change often, Lume provides a helper called `repeat`. It's much faster because it reuses DOM elements.
-
-```javascript
-const listContainer = document.getElementById('todo-list');
-
-repeat(listContainer, store, 'todos', {
-  // 1. Unique Key (Critical for performance!)
-  key: todo => todo.id,
-
-  // 2. Create Function (DOM structure - called once per element)
-  create: (todo, el) => {
-    el.className = 'todo-item';
-    el.innerHTML = `
-      <input type="checkbox" class="toggle">
-      <span class="text"></span>
-      <button class="delete">×</button>
-    `;
-  },
-
-  // 3. Update Function (Data binding - called on every update)
-  update: (todo, el) => {
-    const checkbox = el.querySelector('.toggle');
-    const span = el.querySelector('.text');
-    
-    checkbox.checked = todo.done;
-    span.textContent = todo.text;
-    span.classList.toggle('done', todo.done);
-  }
-});
-```
-
-Open `index.html`. You should see the two initial todos.
-
-## Step 4: Adding Todos
-
-Let's handle the form submission.
-
-```javascript
-const form = document.getElementById('todo-form');
-const input = document.getElementById('new-todo');
-
-form.addEventListener('submit', (e) => {
-  e.preventDefault(); // Prevent page reload
-  
-  const text = input.value.trim();
-  if (!text) return;
-
-  // Create new todo object
-  const newTodo = {
-    id: Date.now(), // Simple ID generator
-    text: text,
-    done: false
-  };
-
-  // IMPORTANT: Immutable Update!
-  // We create a NEW array with the new item at the end.
-  store.todos = [...store.todos, newTodo];
-
-  // Clear input
-  input.value = '';
-});
-```
-
-Try adding a few items. They should appear instantly!
-
-## Step 5: Toggling and Deleting
-
-Event listeners belong in `create` — it runs once per DOM element, so you won't accidentally attach duplicate listeners on every update.
-
-Replace your `create` function with this complete version:
-
-```javascript
-create: (todo, el) => {
-  el.className = 'todo-item';
-  el.innerHTML = `
-    <input type="checkbox" class="toggle">
-    <span class="text"></span>
-    <button class="delete">×</button>
-  `;
-
-  el.querySelector('.toggle').addEventListener('change', () => {
-    store.todos = store.todos.map(t =>
-      t.id === todo.id ? { ...t, done: !t.done } : t
-    );
-  });
-
-  el.querySelector('.delete').addEventListener('click', () => {
-    store.todos = store.todos.filter(t => t.id !== todo.id);
-  });
-}
-```
-
-Notice the pattern: `create` sets up structure and listeners, `update` (from the previous step) handles data. They don't overlap.
-
-## Step 6: Computed Filtering
-
-Let's add a feature to show only "Active" or "Completed" items.
-
-First, add a `filter` key to the store. Update your `state()` call to include it:
-
-```javascript
-const store = state({
-  todos: [
-    { id: 1, text: 'Learn Lume.js', done: false },
-    { id: 2, text: 'Build something cool', done: false }
-  ],
-  filter: 'all' // 'all', 'active', 'completed'
-});
-```
-
-Then, create a `computed` value for the visible todos:
-
-```javascript
-const visibleTodos = computed(() => {
-  if (store.filter === 'active') {
-    return store.todos.filter(t => !t.done);
-  }
-  if (store.filter === 'completed') {
-    return store.todos.filter(t => t.done);
-  }
-  return store.todos;
-});
-```
-
-Finally, update `repeat` to read from `visibleTodos` instead of `store` directly. Computed objects work as stores — just use `'value'` as the key:
-
-```javascript
-repeat(listContainer, visibleTodos, 'value', {
-  key: todo => todo.id,
-  create: (todo, el) => { /* same as before */ },
-  update: (todo, el) => { /* same as before */ }
-});
-```
-
-And add some buttons to change the filter:
-
-```html
-<div>
-  <button onclick="setFilter('all')">All</button>
-  <button onclick="setFilter('active')">Active</button>
-  <button onclick="setFilter('completed')">Completed</button>
-</div>
-
-<script>
-  // ...
-  window.setFilter = (f) => store.filter = f;
-</script>
-```
-
-## Step 7: LocalStorage Persistence
-
-We want our todos to survive a page refresh. We can use `effect()` to automatically save whenever `store.todos` changes.
-
-```javascript
-// 1. Load initial state
-const saved = localStorage.getItem('lume-todos');
-const initialTodos = saved ? JSON.parse(saved) : [];
-
-const store = state({
-  todos: initialTodos,
-  filter: 'all'
-});
-
-// 2. Auto-save
-effect(() => {
-  localStorage.setItem('lume-todos', JSON.stringify(store.todos));
-});
-```
-
-Now refresh the page. Your todos are still there!
-
-## Final Code
-
-<details>
-<summary>Click to see the full working code</summary>
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Lume Todo</title>
-  <style>
-    body { font-family: sans-serif; max-width: 500px; margin: 2rem auto; }
-    .todo-list { list-style: none; padding: 0; }
-    .todo-item { display: flex; gap: 10px; padding: 5px 0; border-bottom: 1px solid #eee; }
-    .done { text-decoration: line-through; color: #888; }
-    .filters { margin-top: 1rem; }
-  </style>
-</head>
-<body>
-  <h1>Todo App</h1>
-  
-  <form id="todo-form">
-    <input id="new-todo" placeholder="What needs to be done?" autocomplete="off">
-    <button>Add</button>
-  </form>
-
-  <ul id="todo-list" class="todo-list"></ul>
-
-  <div class="filters">
-    <button onclick="setFilter('all')">All</button>
-    <button onclick="setFilter('active')">Active</button>
-    <button onclick="setFilter('completed')">Completed</button>
-  </div>
-
-  <script type="module">
-    import { state, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
-    import { repeat, computed } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/addons.min.mjs';
-
-    // --- State ---
-    const saved = localStorage.getItem('lume-todos');
-    const store = state({
-      todos: saved ? JSON.parse(saved) : [],
-      filter: 'all'
-    });
-
-    // --- Persistence ---
-    effect(() => {
-      localStorage.setItem('lume-todos', JSON.stringify(store.todos));
-    });
-
-    // --- Computed ---
-    const visibleTodos = computed(() => {
-      if (store.filter === 'active') return store.todos.filter(t => !t.done);
-      if (store.filter === 'completed') return store.todos.filter(t => t.done);
-      return store.todos;
-    });
-
-    // --- Actions ---
-    window.setFilter = (f) => store.filter = f;
-
-    const form = document.getElementById('todo-form');
-    const input = document.getElementById('new-todo');
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const text = input.value.trim();
-      if (!text) return;
-
-      store.todos = [...store.todos, { id: Date.now(), text, done: false }];
-      input.value = '';
-    });
-
-    // --- Render ---
-    const listContainer = document.getElementById('todo-list');
-
-    repeat(listContainer, visibleTodos, 'value', {
-      key: todo => todo.id,
-      create: (todo, el) => {
-        el.className = 'todo-item';
-        el.innerHTML = `
-          <input type="checkbox" class="toggle">
-          <span class="text"></span>
-          <button class="delete">×</button>
-        `;
-        
-        // Bind Events (once)
-        el.querySelector('.toggle').addEventListener('change', () => {
-          store.todos = store.todos.map(t => t.id === todo.id ? { ...t, done: !t.done } : t);
-        });
-        
-        el.querySelector('.delete').addEventListener('click', () => {
-          store.todos = store.todos.filter(t => t.id !== todo.id);
-        });
-      },
-      update: (todo, el) => {
-        el.querySelector('.toggle').checked = todo.done;
-        el.querySelector('.text').textContent = todo.text;
-        el.querySelector('.text').classList.toggle('done', todo.done);
-      }
-    });
-  </script>
-</body>
-</html>
-```
-</details>
-
----
-
-**← Previous: [htmlAttrs](../api/handlers/htmlAttrs.md)** | **Next: [Build Tic-Tac-Toe](build-tic-tac-toe.md) →**
-
-
-========================================================================
-FILE: docs/tutorials/working-with-arrays.md
-========================================================================
-
-# Working with Arrays in Lume.js
-
-If you are coming from Vue 2 or older frameworks, you might be used to modifying arrays directly:
-```javascript
-// ❌ THIS WILL NOT WORK IN LUME
-store.items.push(newItem);
-```
-
-In Lume.js, **you must update arrays immutably**. This guide explains why and how.
-
-## The Golden Rule
-
-> **Always create a new array when you want to trigger an update.**
-
-```javascript
-// ✅ CORRECT
-store.items = [...store.items, newItem];
-```
-
-## Why?
-
-Lume.js uses **Reference Equality** (`===`) to detect changes.
-
-1.  **Performance**: Checking `oldArray === newArray` is instant. Checking every item inside an array is slow.
-2.  **Predictability**: You explicitly tell Lume "I have changed this data" by assigning a new value.
-3.  **Simplicity**: Lume doesn't need to monkey-patch `Array.prototype.push` or wrap arrays in heavy Proxies.
-
-## Common Patterns
-
-Here is a cheat sheet for common array operations.
-
-### Adding Items
-
-**Don't use:** `push()`, `unshift()`
-
-**Use:** Spread syntax `[...]`
-
-```javascript
-// Add to end (push)
-store.items = [...store.items, newItem];
-
-// Add to start (unshift)
-store.items = [newItem, ...store.items];
-```
-
-### Removing Items
-
-**Don't use:** `splice()`, `pop()`, `shift()`
-
-**Use:** `filter()`
-
-```javascript
-// Remove by ID
-store.items = store.items.filter(item => item.id !== targetId);
-
-// Remove by Index
-store.items = store.items.filter((_, index) => index !== targetIndex);
-
-// Remove last item
-store.items = store.items.slice(0, -1);
-```
-
-### Updating Items
-
-**Don't use:** `store.items[i] = newValue`
-
-**Use:** `map()`
-
-```javascript
-// Update item with specific ID
-store.items = store.items.map(item => 
-  item.id === targetId 
-    ? { ...item, status: 'done' } // Create new object for the updated item
-    : item                        // Keep other items as-is
-);
-```
-
-### Sorting and Reordering
-
-**Don't use:** `sort()`, `reverse()` (these mutate in place!)
-
-**Use:** Copy then sort
-
-```javascript
-// Sort by name
-store.items = [...store.items].sort((a, b) => a.name.localeCompare(b.name));
-
-// Reverse
-store.items = [...store.items].reverse();
-```
-
-## Integration with `repeat`
-
-When using the `repeat` addon, immutable updates are essential. `repeat` compares the new array to the old one to decide what DOM elements to add, remove, or update.
-
-```javascript
-// Pattern 1: Simple (render only)
-repeat(list, store, 'items', {
-  key: item => item.id,
-  render: (item, el) => {
-    el.textContent = item.name;  // Called on every update
-  }
-});
-
-// Pattern 2: Clean separation (recommended)
-repeat(list, store, 'items', {
-  key: item => item.id,
-  create: (item, el) => { /* DOM structure once */ },
-  update: (item, el) => { /* Data binding on updates */ }
-});
-```
-
-If you mutate the array in place (`push`), `repeat` won't know anything happened because the array reference hasn't changed.
-
-## Common Mistakes
-
-### Mistake 1: Mutating inside `map`
-```javascript
-// ❌ WRONG: Mutating the object inside map
-store.items = store.items.map(item => {
-  if (item.id === 1) {
-    item.done = true; // Mutates existing object!
-    return item;
-  }
-  return item;
-});
-
-// ✅ CORRECT: Return a new object
-store.items = store.items.map(item => {
-  if (item.id === 1) {
-    return { ...item, done: true }; // New object
-  }
-  return item;
-});
-```
-
-### Mistake 2: Using `sort()` directly
-```javascript
-// ❌ WRONG: sort() mutates in place
-store.items.sort(); // Returns the SAME array, no update triggered
-
-// ✅ CORRECT: Copy then sort
-store.items = [...store.items].sort(); // New array
-```
-
-## Summary
-
-- **Read** arrays however you want.
-- **Write** arrays by creating new ones.
-- Use `map`, `filter`, and `[...spread]` instead of `push`, `splice`, and loops.
-
-## Using Helper Libraries (e.g., Immer)
-
-If you prefer writing mutable-style code, you can use libraries like [Immer](https://immerjs.github.io/immer/).
-
-Immer takes your current state, lets you "mutate" a draft, and then produces a **new immutable state**. This works perfectly with Lume because Lume sees the new reference and triggers the update.
-
-```javascript
-import { produce } from 'immer';
-
-// ✅ WORKS: Immer returns a new array reference
-store.items = produce(store.items, draft => {
-  draft.push(newItem);
-  draft[0].done = true;
-});
-```
-
-Any library that follows the **Immutable Update Pattern** (Redux toolkit, etc.) is compatible with Lume.js.
-
----
-
-> **Deep Dive:** Why does Lume require immutable updates? Read the [Design Decision](../design/design-decisions.md#why-no-loop-rendering-in-core-v-for-x-for).
-
----
-
-**← Previous: [Build Tic-Tac-Toe](build-tic-tac-toe.md)** | **Next: [Migrating from 1.x](../guides/migration.md) →**
-
-
-========================================================================
-FILE: docs/tutorials/build-tic-tac-toe.md
-========================================================================
-
-# Tutorial: Tic-Tac-Toe
-
-Build a complete Tic-Tac-Toe game with move history and time travel — entirely in a single HTML file, with no build step. This tutorial is a good introduction to `computed` values and keeping state as an immutable history.
-
-**What you will learn:**
-- Creating reactive state
-- Rendering lists
-- Handling clicks
-- Computed values
-- Implementing "Undo" (Time Travel)
-
-## Step 1: The Setup
-
-Create an `index.html` file. We'll put everything in here.
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Lume Tic-Tac-Toe</title>
-  <style>
-    /* Basic CSS to make it look decent */
-    body { font-family: sans-serif; margin: 20px; }
-    .board-row { display: flex; }
-    .square { 
-      width: 60px; height: 60px; 
-      background: #fff; border: 1px solid #999;
-      font-size: 24px; font-weight: bold;
-      margin: -1px -1px 0 0; padding: 0;
-      cursor: pointer;
-    }
-    .square:focus { background: #ddd; }
-    .game { display: flex; gap: 20px; }
-  </style>
-</head>
-<body>
-  <div id="root"></div>
-
-  <script type="module">
-    import { state, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
-    import { computed } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/addons.min.mjs';
-
-    const root = document.getElementById('root');
-
-    // We will write our code here...
-  </script>
-</body>
-</html>
-```
-
-## Step 2: Define the State
-
-We need a place to store the game state. For a simple board, we need an array of 9 squares.
-
-```javascript
-// 1. Create the state
-const store = state({
-  squares: Array(9).fill(null), // [null, null, null, ...]
-  xIsNext: true                 // 'X' starts first
-});
-```
-
-## Step 3: Render the Board
-
-Now let's display the board. We'll use `effect()` to render the HTML whenever the state changes.
-
-```javascript
-// 2. Render the board
-effect(() => {
-  const status = `Next player: ${store.xIsNext ? 'X' : 'O'}`;
-
-  root.innerHTML = `
-    <div class="status">${status}</div>
-    <div class="board">
-      ${[0, 1, 2].map(row => `
-        <div class="board-row">
-          ${[0, 1, 2].map(col => {
-            const i = row * 3 + col;
-            return `<button class="square" data-index="${i}">${store.squares[i] || ''}</button>`;
-          }).join('')}
-        </div>
-      `).join('')}
-    </div>
-  `;
-});
-```
-
-Open `index.html` in your browser. You should see the empty grid.
-
-## Step 4: Handle Clicks
-
-We need to update the state when a user clicks a square. We'll use **Event Delegation** (attaching one listener to the root) for better performance.
-
-```javascript
-// 3. Handle clicks
-root.addEventListener('click', (e) => {
-  // Only care if a .square was clicked
-  if (!e.target.matches('.square')) return;
-  
-  const i = parseInt(e.target.dataset.index);
-  
-  // If square is already filled, ignore
-  if (store.squares[i]) return;
-
-  // IMPORTANT: Create a COPY of the array (Immutability)
-  const nextSquares = [...store.squares];
-  
-  // Update the copy
-  nextSquares[i] = store.xIsNext ? 'X' : 'O';
-  
-  // Save back to state
-  store.squares = nextSquares;
-  store.xIsNext = !store.xIsNext;
-});
-```
-
-Try clicking the squares now. They should fill with X and O!
-
-## Step 5: Determine a Winner
-
-We need a helper function to check for a winner.
-
-```javascript
-function calculateWinner(squares) {
-  const lines = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Cols
-    [0, 4, 8], [2, 4, 6]             // Diagonals
-  ];
-  for (let line of lines) {
-    const [a, b, c] = line;
-    if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-      return squares[a];
-    }
-  }
-  return null;
-}
-```
-
-Now, let's use `computed()` to automatically track the winner.
-
-```javascript
-// 4. Computed values
-const winner = computed(() => calculateWinner(store.squares));
-
-// Update our effect to show the winner
-effect(() => {
-  let statusText;
-  if (winner.value) {
-    statusText = `Winner: ${winner.value}`;
-  } else {
-    statusText = `Next player: ${store.xIsNext ? 'X' : 'O'}`;
-  }
-
-  // ... rest of render code ...
-});
-```
-
-And update the click handler to stop the game if someone won:
-
-```javascript
-root.addEventListener('click', (e) => {
-  // ...
-  // Check if winner exists
-  if (store.squares[i] || winner.value) return;
-  // ...
-});
-```
-
-## Step 6: Adding Time Travel (History)
-
-To support "Undo", we need to store the entire history of the game, not just the current squares.
-
-Let's change our state structure:
-
-```javascript
-const store = state({
-  history: [
-    { squares: Array(9).fill(null) }
-  ],
-  stepNumber: 0,
-  xIsNext: true
-});
-```
-
-## Step 7: Updating Computed Values
-
-Now that the board state lives inside `history`, we derive the current squares from the active step number:
-
-```javascript
-const currentSquares = computed(() => store.history[store.stepNumber].squares);
-const winner = computed(() => calculateWinner(currentSquares.value));
-```
-
-## Step 8: Updating the Click Handler for History
-
-When clicking, we now add to history instead of just replacing `squares`.
-
-```javascript
-root.addEventListener('click', (e) => {
-  if (!e.target.matches('.square')) return;
-  const i = parseInt(e.target.dataset.index);
-
-  // If we went back in time, discard "future" history
-  const history = store.history.slice(0, store.stepNumber + 1);
-  const current = history[history.length - 1];
-  const squares = current.squares;
-
-  if (calculateWinner(squares) || squares[i]) return;
-
-  const nextSquares = [...squares];
-  nextSquares[i] = store.xIsNext ? 'X' : 'O';
-
-  store.history = [...history, { squares: nextSquares }];
-  store.stepNumber = history.length;
-  store.xIsNext = !store.xIsNext;
-});
-```
-
-## Step 9: Rendering the History List
-
-Finally, let's render the list of past moves.
-
-```javascript
-// Jump to any past move
-window.jumpTo = (step) => {
-  store.stepNumber = step;
-  store.xIsNext = (step % 2) === 0;
-};
-
-effect(() => {
-  const squares = currentSquares.value;
-
-  // Build the history button list
-  const moves = store.history.map((step, move) => {
-    const desc = move ? `Go to move #${move}` : 'Go to game start';
-    const isCurrent = move === store.stepNumber;
-    return `
-      <li>
-        <button onclick="jumpTo(${move})" style="${isCurrent ? 'font-weight: bold' : ''}">
-          ${desc}
-        </button>
-      </li>
-    `;
-  }).join('');
-
-  // Render board + history together
-  root.innerHTML = `
-    <div class="game">
-      <div class="game-board">
-        <div class="status">${winner.value ? 'Winner: ' + winner.value : 'Next player: ' + (store.xIsNext ? 'X' : 'O')}</div>
-        <div class="board">
-          ${[0, 1, 2].map(row => `
-            <div class="board-row">
-              ${[0, 1, 2].map(col => {
-                const i = row * 3 + col;
-                return \`<button class="square" data-index="\${i}">\${squares[i] || ''}</button>\`;
-              }).join('')}
-            </div>
-          `).join('')}
-        </div>
-      </div>
-      <div class="game-info">
-        <ol>${moves}</ol>
-      </div>
-    </div>
-  `;
-});
-```
-
-## Final Code
-
-<details>
-<summary>Click to see the full working code</summary>
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Lume Tic-Tac-Toe</title>
-  <style>
-    body { font-family: sans-serif; margin: 20px; }
-    .game { display: flex; gap: 20px; }
-    .board-row { display: flex; }
-    .square { 
-      width: 60px; height: 60px; 
-      background: #fff; border: 1px solid #999;
-      font-size: 24px; font-weight: bold;
-      margin: -1px -1px 0 0; padding: 0;
-      cursor: pointer;
-    }
-    .square:focus { background: #ddd; }
-  </style>
-</head>
-<body>
-  <div id="root"></div>
-
-  <script type="module">
-    import { state, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
-    import { computed } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/addons.min.mjs';
-
-    // --- Logic ---
-    function calculateWinner(squares) {
-      const lines = [
-        [0, 1, 2], [3, 4, 5], [6, 7, 8],
-        [0, 3, 6], [1, 4, 7], [2, 5, 8],
-        [0, 4, 8], [2, 4, 6]
-      ];
-      for (let line of lines) {
-        const [a, b, c] = line;
-        if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-          return squares[a];
-        }
-      }
-      return null;
-    }
-
-    // --- State ---
-    const store = state({
-      history: [{ squares: Array(9).fill(null) }],
-      stepNumber: 0,
-      xIsNext: true
-    });
-
-    // --- Computed ---
-    const currentSquares = computed(() => store.history[store.stepNumber].squares);
-    const winner = computed(() => calculateWinner(currentSquares.value));
-    const status = computed(() => {
-      if (winner.value) return `Winner: ${winner.value}`;
-      return `Next player: ${store.xIsNext ? 'X' : 'O'}`;
-    });
-
-    // --- Actions ---
-    window.jumpTo = (step) => {
-      store.stepNumber = step;
-      store.xIsNext = (step % 2) === 0;
-    };
-
-    const root = document.getElementById('root');
-
-    root.addEventListener('click', (e) => {
-      if (!e.target.matches('.square')) return;
-      
-      const i = parseInt(e.target.dataset.index);
-      const history = store.history.slice(0, store.stepNumber + 1);
-      const current = history[history.length - 1];
-      const squares = current.squares;
-
-      if (calculateWinner(squares) || squares[i]) return;
-
-      const nextSquares = [...squares];
-      nextSquares[i] = store.xIsNext ? 'X' : 'O';
-
-      store.history = [...history, { squares: nextSquares }];
-      store.stepNumber = history.length;
-      store.xIsNext = !store.xIsNext;
-    });
-
-    // --- Render ---
-    effect(() => {
-      const squares = currentSquares.value;
-      
-      const moves = store.history.map((step, move) => {
-        const desc = move ? `Go to move #${move}` : 'Go to game start';
-        const isCurrent = move === store.stepNumber;
-        return `
-          <li>
-            <button onclick="jumpTo(${move})" style="${isCurrent ? 'font-weight: bold' : ''}">
-              ${desc}
-            </button>
-          </li>
-        `;
-      }).join('');
-
-      root.innerHTML = `
-        <div class="game">
-          <div class="game-board">
-            <div class="status">${status.value}</div>
-            <div class="board">
-              ${[0, 1, 2].map(row => `
-                <div class="board-row">
-                  ${[0, 1, 2].map(col => {
-                    const i = row * 3 + col;
-                    return \`<button class="square" data-index="\${i}">\${squares[i] || ''}</button>\`;
-                  }).join('')}
-                </div>
-              `).join('')}
-            </div>
-          </div>
-          <div class="game-info">
-            <ol>\${moves}</ol>
-          </div>
-        </div>
-      `;
-    });
-  </script>
-</body>
-</html>
-```
-</details>
-
----
-
-**← Previous: [Build a Todo app](build-todo-app.md)** | **Next: [Working with Arrays](working-with-arrays.md) →**
-
-
-========================================================================
 FILE: docs/api/core/state.md
 ========================================================================
 
@@ -3429,111 +2292,6 @@ store.settings.theme = 'light'; // notifies subscribers of 'theme'
 ---
 
 **← Previous: [SSR & Hydration](../../guides/ssr-hydration.md)** | **Next: [bindDom()](bindDom.md) →**
-
-
-========================================================================
-FILE: docs/api/core/effect.md
-========================================================================
-
-# effect(fn)
-
-Runs a function immediately and re-runs it whenever any store key it reads changes.
-
-## Signature
-
-```ts
-function effect(
-  fn: () => void,
-  deps?: Array<[store: object, ...keys: string[]]>
-): () => void
-```
-
-Imported from `lume-js`.
-
-## Parameters
-
-- `fn` — The function to run reactively. Must be synchronous. Return value is ignored.
-
-## Returns
-
-A dispose function. Call it to stop the effect and free its subscriptions.
-
-## How it works
-
-`effect` sets a global tracking context, runs `fn`, then clears it. Every store `get` that fires during the run registers the current effect as a subscriber for that key. On any subsequent write to a tracked key, the effect is queued in a microtask and re-runs. Before each re-run, previous subscriptions are torn down and rebuilt from the new read set, so stale dependencies are dropped automatically.
-
-You can also pass an explicit `deps` array of `[store, ...keys]` tuples to skip auto-tracking and subscribe to specific keys only. Explicit-deps notifications are coalesced: however many tracked keys (or stores) change in the same tick, the effect re-runs exactly once, on the next microtask.
-
-> **→ Why support explicit deps?** [See the design decision.](../../design/design-decisions.md#why-support-explicit-dependencies-in-effect)
-
-```js
-import { state, effect } from 'lume-js';
-
-const store = state({ count: 0, name: 'Ada' });
-
-const stop = effect(() => {
-  console.log(`Count: ${store.count}`);
-  // store.name is NOT read, so it is NOT a dependency
-});
-
-store.count++;    // logs "Count: 1"
-store.name = 'Z'; // nothing — name is not tracked
-stop();           // effect stops
-store.count++;    // nothing — disposed
-```
-
-## Conditional dependencies
-
-Dependencies are determined by which keys are **actually read** in a given run. If a read is behind a condition, the subscription only exists while that branch is active.
-
-```js
-const store = state({ show: true, value: 42 });
-
-effect(() => {
-  if (store.show) {
-    console.log(store.value); // only subscribed when show is true
-  }
-});
-```
-
-## Avoiding infinite loops
-
-Writing to a store key inside an effect that reads the same key causes an infinite loop. If you need to derive a value, use [`computed`](../addons/computed.md) instead. Reading one key and writing a different key is fine:
-
-```js
-// Reads store.a, writes store.b — no loop
-effect(() => {
-  store.b = store.a * 2;
-});
-
-// Reads and writes store.count — infinite loop
-effect(() => {
-  store.count = store.count + 1;
-});
-```
-
-## Cleanup
-
-The dispose function returned by `effect()` tears down all subscriptions. Call it to stop the effect:
-
-```js
-const stop = effect(() => {
-  document.title = `Count: ${store.count}`;
-});
-
-// Later:
-stop(); // unsubscribes and stops re-running
-```
-
-## See also
-
-- [watch()](../addons/watch.md) — explicit single-key subscription (no auto-tracking)
-- [computed()](../addons/computed.md) — cached derived value
-- [How reactivity works](../../guides/reactivity.md)
-
----
-
-**← Previous: [bindDom()](bindDom.md)** | **Next: [batch()](batch.md) →**
 
 
 ========================================================================
@@ -3691,6 +2449,111 @@ cleanup = bindDom(document.getElementById('app'), store);
 
 
 ========================================================================
+FILE: docs/api/core/effect.md
+========================================================================
+
+# effect(fn)
+
+Runs a function immediately and re-runs it whenever any store key it reads changes.
+
+## Signature
+
+```ts
+function effect(
+  fn: () => void,
+  deps?: Array<[store: object, ...keys: string[]]>
+): () => void
+```
+
+Imported from `lume-js`.
+
+## Parameters
+
+- `fn` — The function to run reactively. Must be synchronous. Return value is ignored.
+
+## Returns
+
+A dispose function. Call it to stop the effect and free its subscriptions.
+
+## How it works
+
+`effect` sets a global tracking context, runs `fn`, then clears it. Every store `get` that fires during the run registers the current effect as a subscriber for that key. On any subsequent write to a tracked key, the effect is queued in a microtask and re-runs. Before each re-run, previous subscriptions are torn down and rebuilt from the new read set, so stale dependencies are dropped automatically.
+
+You can also pass an explicit `deps` array of `[store, ...keys]` tuples to skip auto-tracking and subscribe to specific keys only. Explicit-deps notifications are coalesced: however many tracked keys (or stores) change in the same tick, the effect re-runs exactly once, on the next microtask.
+
+> **→ Why support explicit deps?** [See the design decision.](../../design/design-decisions.md#why-support-explicit-dependencies-in-effect)
+
+```js
+import { state, effect } from 'lume-js';
+
+const store = state({ count: 0, name: 'Ada' });
+
+const stop = effect(() => {
+  console.log(`Count: ${store.count}`);
+  // store.name is NOT read, so it is NOT a dependency
+});
+
+store.count++;    // logs "Count: 1"
+store.name = 'Z'; // nothing — name is not tracked
+stop();           // effect stops
+store.count++;    // nothing — disposed
+```
+
+## Conditional dependencies
+
+Dependencies are determined by which keys are **actually read** in a given run. If a read is behind a condition, the subscription only exists while that branch is active.
+
+```js
+const store = state({ show: true, value: 42 });
+
+effect(() => {
+  if (store.show) {
+    console.log(store.value); // only subscribed when show is true
+  }
+});
+```
+
+## Avoiding infinite loops
+
+Writing to a store key inside an effect that reads the same key causes an infinite loop. If you need to derive a value, use [`computed`](../addons/computed.md) instead. Reading one key and writing a different key is fine:
+
+```js
+// Reads store.a, writes store.b — no loop
+effect(() => {
+  store.b = store.a * 2;
+});
+
+// Reads and writes store.count — infinite loop
+effect(() => {
+  store.count = store.count + 1;
+});
+```
+
+## Cleanup
+
+The dispose function returned by `effect()` tears down all subscriptions. Call it to stop the effect:
+
+```js
+const stop = effect(() => {
+  document.title = `Count: ${store.count}`;
+});
+
+// Later:
+stop(); // unsubscribes and stops re-running
+```
+
+## See also
+
+- [watch()](../addons/watch.md) — explicit single-key subscription (no auto-tracking)
+- [computed()](../addons/computed.md) — cached derived value
+- [How reactivity works](../../guides/reactivity.md)
+
+---
+
+**← Previous: [bindDom()](bindDom.md)** | **Next: [batch()](batch.md) →**
+
+
+========================================================================
 FILE: docs/api/core/batch.md
 ========================================================================
 
@@ -3786,6 +2649,1370 @@ Single-store updates are already batched by the microtask scheduler — `batch()
 ---
 
 **← Previous: [effect()](effect.md)** | **Next: [watch()](../addons/watch.md) →**
+
+
+========================================================================
+FILE: docs/api/addons/watch.md
+========================================================================
+
+# watch(store, key, fn, options?)
+
+Subscribes to a single store key. More explicit than `effect` — no auto-tracking, and the callback always receives the new value directly.
+
+## Signature
+
+```ts
+function watch(
+  store: object,
+  key: string,
+  fn: (newValue: any) => void,
+  options?: { immediate?: boolean }
+): () => void
+```
+
+Imported from `lume-js/addons`.
+
+## Parameters
+
+- `store` — A reactive store created by `state()`.
+- `key` — The property name to watch.
+- `fn` — Called with the new value on every change.
+- `options.immediate` — Whether to call `fn` immediately with the current value (default: `true`).
+
+## Returns
+
+An unsubscribe function. Call it to stop watching.
+
+## Examples
+
+### Basic
+
+```js
+import { state } from 'lume-js';
+import { watch } from 'lume-js/addons';
+
+const store = state({ theme: 'light', count: 0 });
+
+watch(store, 'theme', (newTheme) => {
+  document.documentElement.dataset.theme = newTheme;
+});
+// Called immediately with 'light', then again on every change
+
+store.theme = 'dark'; // callback fires with 'dark'
+```
+
+### One-time watcher
+
+```js
+const stop = watch(store, 'count', (val) => {
+  if (val >= 10) {
+    console.log('Reached 10!');
+    stop(); // unsubscribe after the condition is met
+  }
+});
+```
+
+### Side effects (localStorage, analytics)
+
+`watch` is the right tool for side effects that should react to exactly one key. Unlike auto-tracking `effect`, there is no risk of accidentally subscribing to extra keys.
+
+```js
+watch(store, 'theme', (theme) => {
+  localStorage.setItem('theme', theme);
+});
+
+watch(store, 'userId', (id) => {
+  analytics.identify(id);
+});
+```
+
+### Skip the initial call with `{ immediate: false }`
+
+By default `watch` fires immediately so you get the current value on subscribe. Pass `{ immediate: false }` to only react to future changes.
+
+```js
+// fires immediately with current value, then on every change
+watch(store, 'count', (val) => console.log('count:', val));
+
+// only fires on future changes — initial value is NOT logged
+watch(store, 'count', (val) => {
+  sendAnalytics('count_changed', val);
+}, { immediate: false });
+```
+
+## Compared to `effect`
+
+| | `effect(fn)` | `watch(store, key, fn)` |
+|--|--------------|------------------------|
+| Dependency tracking | Auto — all reads inside fn | Explicit — one key only |
+| Callback args | none | `(newValue)` |
+| Runs immediately | Yes (on first call) | Yes (always, on subscribe) |
+| Best for | UI bindings, rendering | Side effects, persistence |
+
+## See also
+
+- [effect()](../core/effect.md)
+- [computed()](computed.md)
+
+---
+
+**← Previous: [batch()](../core/batch.md)** | **Next: [computed()](computed.md) →**
+
+
+========================================================================
+FILE: docs/api/addons/computed.md
+========================================================================
+
+# computed(fn)
+
+Creates a cached, read-only reactive value derived from store state.
+
+## Signature
+
+```ts
+function computed<T>(fn: () => T): {
+  readonly value: T;
+  subscribe(callback: (value: T) => void): () => void;
+  dispose(): void;
+}
+```
+
+Imported from `lume-js/addons`.
+
+## Parameters
+
+- `fn` — A getter function. Must be synchronous. Should have no side effects.
+
+## Returns
+
+An object with:
+- `value` — The current computed result. Re-evaluated only when dependencies change.
+- `subscribe(callback)` — Subscribes to value changes. Calls `callback` immediately with the current value, then again on every subsequent change. Returns an unsubscribe function.
+- `dispose()` — Stops the computation and frees subscriptions.
+
+## Description
+
+> **→ Why is `computed` an addon and not part of core?** [See the design decision.](../../design/design-decisions.md#why-no-computed-properties-in-core)
+
+`computed` uses the same auto-tracking as `effect`: all store reads inside `fn` become dependencies. When any dependency changes, `fn` re-runs on the next microtask flush. The result is cached — `fn` never runs more than once per dependency change, no matter how many places read `computed.value`.
+
+```js
+import { state } from 'lume-js';
+import { computed } from 'lume-js/addons';
+
+const store = state({ price: 1.5, qty: 2 });
+
+const total = computed(() => store.price * store.qty);
+
+console.log(total.value); // 3
+
+store.qty = 4;
+// After microtask:
+console.log(total.value); // 6
+```
+
+## Filtering lists
+
+```js
+const store = state({ todos: [...], filter: 'all' });
+
+const visible = computed(() => {
+  if (store.filter === 'active')    return store.todos.filter(t => !t.done);
+  if (store.filter === 'completed') return store.todos.filter(t => t.done);
+  return store.todos;
+});
+
+// Use in effects or templates:
+effect(() => {
+  badge.textContent = visible.value.length;
+});
+```
+
+## With `repeat`
+
+Pass a computed as the store to `repeat`, with `'value'` as the key:
+
+```js
+import { repeat } from 'lume-js/addons';
+
+repeat(listEl, visible, 'value', {
+  key: todo => todo.id,
+  render: (todo, el) => { el.textContent = todo.text; }
+});
+```
+
+## Cleanup
+
+`computed` creates an internal `effect`. Call `dispose()` when the computed is no longer needed:
+
+```js
+const c = computed(() => store.x * 2);
+// … later
+c.dispose();
+```
+
+## See also
+
+- [effect()](../core/effect.md)
+- [watch()](watch.md)
+- [Lists & repeat](../../guides/lists.md)
+
+---
+
+**← Previous: [watch()](watch.md)** | **Next: [repeat()](repeat.md) →**
+
+
+========================================================================
+FILE: docs/api/addons/repeat.md
+========================================================================
+
+# repeat(container, store, key, options)
+
+The right tool for any list that changes. `repeat` renders a keyed list from a reactive array and reuses existing DOM nodes across updates — so adding, removing, or reordering items only touches what actually changed.
+
+## Signature
+
+```ts
+function repeat(
+  container: HTMLElement | string,
+  store: object,
+  key: string,
+  options: {
+    key: (item: any) => string | number;
+    render?: (item: any, el: HTMLElement, index: number) => void;
+    create?: (item: any, el: HTMLElement, index: number) => void;
+    update?: (item: any, el: HTMLElement, index: number, ctx: { isFirstRender: boolean }) => void;
+    template?: true | string | HTMLTemplateElement;
+    element?: string | (() => HTMLElement);
+    preserveFocus?: Function | null;
+    preserveScroll?: Function | null;
+  }
+): () => void
+```
+
+Imported from `lume-js/addons`.
+
+## Parameters
+
+- `container` — The element (or CSS selector string) to render into.
+- `store` — A reactive store or computed whose key holds the array.
+- `key` — The property name of the array in `store`.
+- `options.key` — **Required.** Returns a stable unique identifier per item. Used to match DOM nodes across updates.
+- `options.render` — Mutates the element directly. (Return value is ignored). Called for new and updated items.
+- `options.create` — Called once when a new DOM element is created. Use for DOM structure and event listeners.
+- `options.update` — Called for data binding. Receives `{ isFirstRender }` so you can animate only on updates. **Skipped when the item reference and index are both unchanged from the previous render** (optimization). Use `render` instead if you always need to re-apply data regardless of reference equality.
+- `options.template` — Declarative item structure from a standard `<template>` element: `true` (first `<template>` inside the container), a CSS selector, or the element itself. See [Pattern 0](#pattern-0--template-recommended-for-declarative-html).
+- `options.element` — Tag name or factory for the wrapper element. Default: `'div'`. Ignored when `template` is set.
+- `options.preserveFocus` — Optional strategy for preserving focus during re-renders. Default: `defaultFocusPreservation`.
+- `options.preserveScroll` — Optional strategy for preserving scroll position during re-renders. Default: `defaultScrollPreservation`.
+
+Use `render` alone for simple read-only lists. Use `create + update` for lists with event listeners — `create` runs once when the element is created, `update` runs on every data change.
+
+> **→ Why `create` + `update` instead of a single `render`?** [See the design decision.](../../design/design-decisions.md#why-create--update-instead-of-just-render)
+
+## Returns
+
+A cleanup function.
+
+## Pattern 0 — Template (recommended for declarative HTML)
+
+The item's structure lives in your HTML as a standard `<template>` element — valid HTML, inert until cloned, no custom syntax. `data-bind` paths inside the template resolve against **each item**.
+
+```html
+<ul id="list">
+  <template>
+    <li>
+      <strong data-bind="name"></strong>
+      <span data-bind="user.city"></span>
+      <em data-bind="$index"></em>
+    </li>
+  </template>
+</ul>
+```
+
+```js
+import { state } from 'lume-js';
+import { repeat } from 'lume-js/addons';
+
+const store = state({
+  people: [
+    { id: 1, name: 'Ada',   user: { city: 'London' } },
+    { id: 2, name: 'Grace', user: { city: 'New York' } },
+  ]
+});
+
+repeat('#list', store, 'people', {
+  key: p => p.id,
+  template: true   // the <template> inside #list
+});
+```
+
+That's the whole list — no `createElement`, no `innerHTML`, no manual `textContent`.
+
+**Binding paths** (identical value semantics to `bindDom`'s `data-bind` — inputs get `.value`/`.checked`, everything else gets `textContent`):
+
+| Path | Resolves to |
+|------|-------------|
+| `data-bind="name"` | `item.name` |
+| `data-bind="user.city"` | `item.user.city` |
+| `data-bind="$item"` | the item itself (primitive arrays) |
+| `data-bind="$index"` | the item's current index |
+
+Bindings are **one-way snapshots**, re-applied on each list update (items are plain objects, not stores — update arrays immutably as usual). For event listeners or extra binding, add `create`/`update` on top:
+
+```js
+repeat('#list', store, 'people', {
+  key: p => p.id,
+  template: true,
+  create: (p, el) => {
+    el.querySelector('button.delete').onclick = () => {
+      store.people = store.people.filter(x => x.id !== p.id);
+    };
+  }
+});
+```
+
+The template must contain exactly **one root element**. `render` is ignored (with a warning) in template mode; `element` is ignored. The source `<template>` element is **preserved** — reconciliation and cleanup never remove it from your markup, so unmounting and re-binding with `template: true` works.
+
+## Pattern 1 — Simple (render only)
+
+Best for read-only lists where no event listeners are needed on items.
+
+```js
+import { state } from 'lume-js';
+import { repeat } from 'lume-js/addons';
+
+const store = state({
+  todos: [
+    { id: 1, text: 'Buy milk', done: false },
+    { id: 2, text: 'Walk dog', done: true  },
+  ]
+});
+
+repeat(document.getElementById('list'), store, 'todos', {
+  key: todo => todo.id,
+  element: 'li',
+  render: (todo, el) => {
+    el.className = todo.done ? 'done' : '';
+    el.textContent = todo.text;
+  }
+});
+```
+
+## Pattern 2 — create + update (recommended)
+
+Best for items with event listeners. `create` runs once per DOM element; `update` runs on every data change.
+
+```js
+repeat('#todo-list', store, 'todos', {
+  key: todo => todo.id,
+  element: 'li',
+
+  create: (todo, el) => {
+    el.innerHTML = `
+      <input type="checkbox" class="toggle">
+      <span class="text"></span>
+      <button class="delete">×</button>
+    `;
+    el.querySelector('.toggle').onchange = () => {
+      store.todos = store.todos.map(t =>
+        t.id === todo.id ? { ...t, done: !t.done } : t
+      );
+    };
+    el.querySelector('.delete').onclick = () => {
+      store.todos = store.todos.filter(t => t.id !== todo.id);
+    };
+  },
+
+  update: (todo, el, index, { isFirstRender }) => {
+    el.querySelector('.toggle').checked = todo.done;
+    el.querySelector('.text').textContent = todo.text;
+    el.classList.toggle('done', todo.done);
+    if (!isFirstRender) el.classList.add('updated'); // animate on change
+  }
+});
+```
+
+## Array operations
+
+| Array change | DOM effect |
+|--------------|------------|
+| New key added (immutable replace) | Appends/inserts new row |
+| Key removed (immutable replace) | Removes row |
+| Reorder — same keys (immutable replace) | Moves existing nodes, `update` fires (index changed) |
+| Same key, item ref changed | Only that row's `update` fires |
+
+> **→ Why check both reference AND index to skip `update`?** [See the design decision.](../../design/design-decisions.md#why-check-both-reference-and-index-for-update-skip)
+
+## Using with `computed`
+
+Pass a `computed` as the store and `'value'` as the key:
+
+```js
+import { computed } from 'lume-js/addons';
+
+const filtered = computed(() =>
+  store.todos.filter(t => store.filter === 'all' || !t.done)
+);
+
+repeat(listEl, filtered, 'value', {
+  key: t => t.id,
+  render: (t, el) => { el.textContent = t.text; }
+});
+```
+
+## Caveats
+
+- **Keys must be unique.** Duplicate keys log a warning; both items end up sharing the same DOM element, which produces incorrect rendering.
+- **Each rendered element must have exactly one root.** Wrap fragments in a `<div>` or `<li>`.
+
+## See also
+
+- [Lists & repeat guide](../../guides/lists.md)
+- [computed()](computed.md)
+- [Todo app tutorial](../../tutorials/build-todo-app.md)
+
+---
+
+**← Previous: [computed()](computed.md)** | **Next: [persist()](persist.md) →**
+
+
+========================================================================
+FILE: docs/api/addons/persist.md
+========================================================================
+
+# persist(store, storageKey, options?)
+
+Keeps selected store keys in sync with `localStorage` (or any Storage-like object): hydrates them when called, then saves automatically on change.
+
+## Signature
+
+```ts
+function persist(
+  store: ReactiveState<any>,
+  storageKey: string,
+  options?: {
+    keys?: string[];
+    storage?: Pick<Storage, 'getItem' | 'setItem'> | null;
+  }
+): () => void
+```
+
+Imported from `lume-js/addons`.
+
+## Parameters
+
+- `store` — A reactive store created with `state()`.
+- `storageKey` — The storage entry name to read/write (one JSON blob per `persist()` call).
+- `options.keys` — Which keys to persist. Default: all own non-`$` keys of the store at call time.
+- `options.storage` — `localStorage` (default), `sessionStorage`, or any object with `getItem`/`setItem`.
+
+## Returns
+
+A dispose function. Call it to stop watching and saving.
+
+## Example
+
+```js
+import { state, bindDom } from 'lume-js';
+import { persist } from 'lume-js/addons';
+
+const store = state({
+  todos: [],
+  filter: 'all',
+  draft: '',          // transient — excluded below
+});
+
+// Hydrates todos/filter from storage, then saves them on every change
+const stop = persist(store, 'todo-app', { keys: ['todos', 'filter'] });
+
+bindDom(document.body, store);
+```
+
+That replaces the usual hand-rolled pair of `JSON.parse(localStorage.getItem(...))` at startup and `localStorage.setItem(...)` sprinkled through every mutation site.
+
+## Behavior
+
+| Concern | Behavior |
+|---------|----------|
+| Hydration | Stored values are assigned **through the proxy**, so subscribers and DOM bindings see them like any other write |
+| Unknown keys in storage | Ignored — only watched keys are ever assigned (stale storage can't inject state) |
+| Save timing | Coalesced to **one** storage write per microtask, no matter how many keys changed |
+| Unchanged data | Skipped — if the serialized snapshot equals what storage already holds, no write happens |
+| Corrupted JSON | Console warning, starts fresh |
+| Unserializable state (circular refs, etc.) | Console warning, save skipped |
+| Quota exceeded / write failure | Console warning, app keeps running |
+| No storage (SSR, locked-down browsers) | Console warning, persistence disabled, returned dispose is a safe no-op |
+| `keys: []` | Respected — persists and hydrates nothing (only an *absent* option falls back to all keys) |
+| Same `storageKey` managed twice | Console warning on the second `persist()` — instances would overwrite each other's data |
+
+## Per-tab persistence
+
+```js
+persist(store, 'wizard-progress', { storage: sessionStorage });
+```
+
+## Multiple stores
+
+Each call owns one storage entry — give each store its own key (a second `persist()` on an already-managed key logs a warning, since the instances would overwrite each other):
+
+```js
+persist(settingsStore, 'app:settings');
+persist(cartStore, 'app:cart', { keys: ['items'] });
+```
+
+## What it doesn't do
+
+- **No cross-tab sync** — it doesn't listen to the `storage` event. (Candidate for a future option.)
+- **No serialization of functions/Symbols** — values pass through `JSON.stringify`; keep persisted keys to plain data.
+- **No versioning/migrations** — pair it with [`hydrateState`](hydrateState.md)-style validation if your schema evolves: read, validate, then `persist()`.
+
+## See also
+
+- [hydrateState()](hydrateState.md) — initial state from server-rendered JSON
+- [watch()](watch.md) — the manual building block this replaces
+
+---
+
+**← Previous: [repeat()](repeat.md)** | **Next: [createCleanupGroup()](createCleanupGroup.md) →**
+
+
+========================================================================
+FILE: docs/api/addons/createCleanupGroup.md
+========================================================================
+
+# createCleanupGroup()
+
+Creates a cleanup group that collects multiple cleanup/unsubscribe functions and disposes them all at once.
+
+## Signature
+
+```ts
+function createCleanupGroup(): {
+  add(fn: () => void): void;
+  dispose(): void;
+}
+```
+
+Imported from `lume-js/addons`.
+
+## Returns
+
+An object with:
+- `add(fn)` — Registers a cleanup function. Non-functions are silently ignored.
+- `dispose()` — Calls all registered cleanup functions in reverse order, then clears the group.
+
+## Description
+
+`createCleanupGroup` solves the problem of tracking many cleanup functions across a component or view lifecycle. Each Lume primitive returns an unsubscribe/cleanup function — `bindDom`, `effect`, `watch`, `computed`, `store.$subscribe`. Instead of keeping references to each individually, add them to a group and call `dispose()` once.
+
+```js
+import { state, bindDom, effect } from 'lume-js';
+import { createCleanupGroup, watch } from 'lume-js/addons';
+
+const store = state({ name: 'World', count: 0 });
+const group = createCleanupGroup();
+
+group.add(bindDom(document.body, store));
+group.add(effect(() => { store.doubled = store.count * 2; }));
+group.add(watch(store, 'count', val => localStorage.setItem('count', val)));
+
+// Later — dispose everything at once
+group.dispose();
+```
+
+## Component teardown
+
+The most common use case is tearing down all reactivity when a view or component is removed:
+
+```js
+function mountUserCard(container, store) {
+  const group = createCleanupGroup();
+
+  group.add(bindDom(container, store));
+  group.add(store.$subscribe('profile', render));
+
+  return () => group.dispose(); // return teardown function
+}
+
+const teardown = mountUserCard(el, store);
+// When the component unmounts:
+teardown();
+```
+
+## Error handling
+
+Errors thrown by individual cleanup functions are caught and swallowed so that one broken cleanup does not prevent the others from running.
+
+## See also
+
+- [effect()](../core/effect.md)
+- [watch()](watch.md)
+- [bindDom()](../core/bindDom.md)
+- [Cleanup & Disposal guide](../../guides/cleanup-and-dispose.md)
+
+---
+
+**← Previous: [persist()](persist.md)** | **Next: [hydrateState()](hydrateState.md) →**
+
+
+========================================================================
+FILE: docs/api/addons/hydrateState.md
+========================================================================
+
+# hydrateState()
+
+Reads initial state from a `<script type="application/json">` element embedded in server-rendered HTML.
+
+## Signature
+
+```ts
+function hydrateState(selector?: string): object
+```
+
+Imported from `lume-js/addons`.
+
+## Parameters
+
+- `selector` — CSS selector for the script element. Defaults to `'#__LUME_DATA__'`.
+
+## Returns
+
+The parsed JSON object from the selected element, or an empty object `{}` if the element is not found or the JSON is invalid.
+
+## Description
+
+`hydrateState` enables SSR hydration: the server embeds the page's initial data as JSON in the HTML, and the client reads it to initialize reactive state without a separate API request.
+
+**Server (any language/framework):**
+```html
+<script id="__LUME_DATA__" type="application/json">
+  {"title": "Welcome", "user": "Ada", "count": 42}
+</script>
+```
+
+**Client:**
+```js
+import { state, bindDom } from 'lume-js';
+import { hydrateState } from 'lume-js/addons';
+
+const store = state(hydrateState());
+bindDom(document.body, store);
+```
+
+The store is initialized with `{ title: 'Welcome', user: 'Ada', count: 42 }` immediately — no async, no flash of empty content.
+
+## Custom selector
+
+Use a different selector when embedding multiple data blocks on one page:
+
+```html
+<script id="sidebar-data" type="application/json">{"open": false}</script>
+<script id="cart-data"    type="application/json">{"items": [], "total": 0}</script>
+```
+
+```js
+const sidebar = state(hydrateState('#sidebar-data'));
+const cart    = state(hydrateState('#cart-data'));
+```
+
+## Safe fallback
+
+`hydrateState` always returns an object. If the selector matches nothing, or the JSON is malformed, you get `{}` — which merges cleanly with default state:
+
+```js
+const store = state({
+  count: 0,          // default
+  ...hydrateState(), // server overrides
+});
+```
+
+## Non-browser environments
+
+When `document` is not defined (Node.js, Workers), `hydrateState` returns `{}` safely.
+
+## See also
+
+- [state()](../core/state.md)
+- [createCleanupGroup()](createCleanupGroup.md)
+
+---
+
+**← Previous: [createCleanupGroup()](createCleanupGroup.md)** | **Next: [createDebugPlugin() / debug](debug.md) →**
+
+
+========================================================================
+FILE: docs/api/addons/debug.md
+========================================================================
+
+# createDebugPlugin(options)
+
+`createDebugPlugin` logs every read, write, and notification on a store to the console. Use it during development to see exactly which state changes triggered which updates — and which keys are being read more than you expect.
+
+## Import
+
+```javascript
+import { state } from 'lume-js';
+import { withPlugins, createDebugPlugin, debug } from 'lume-js/addons';
+```
+
+## createDebugPlugin(options)
+
+Creates a debug plugin object. Wrap it with `withPlugins()` to apply it to a store.
+
+### Signature
+
+```typescript
+function createDebugPlugin(options?: DebugPluginOptions): Plugin;
+
+interface DebugPluginOptions {
+  label?: string;       // Label for log messages (default: 'store')
+  logGet?: boolean;     // Log property reads (default: false)
+  logSet?: boolean;     // Log property writes (default: true)
+  logNotify?: boolean;  // Log subscriber notifications (default: true)
+  trace?: boolean;      // Show stack trace for SET operations (default: false)
+}
+```
+
+### Example
+
+```javascript
+import { state } from 'lume-js';
+import { withPlugins, createDebugPlugin } from 'lume-js/addons';
+
+const store = withPlugins(state({ count: 0 }), [
+  createDebugPlugin({ 
+    label: 'counter',
+    logGet: true,
+    logSet: true,
+    logNotify: true,
+    trace: true  // Show stack traces for debugging
+  })
+]);
+
+store.count++;
+// Console: [counter] SET count: 0 → 1
+// Console: [counter] Stack trace for count (if trace: true)
+```
+
+### Dynamic Options
+
+Options can use getters for runtime toggling:
+
+```javascript
+const config = { logGet: false };
+
+const store = withPlugins(state({ count: 0 }), [
+  createDebugPlugin({ 
+    label: 'myStore',
+    get logGet() { return config.logGet; }
+  })
+]);
+
+// Toggle at runtime
+config.logGet = true;  // Now GET operations will log
+```
+
+## debug (Global Controls)
+
+`debug` is a global object that controls all active debug plugins at once. Use it to toggle logging, filter by key name, or inspect operation counts without touching each store individually.
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `debug.enable()` | Enable debug logging globally |
+| `debug.disable()` | Disable debug logging globally |
+| `debug.isEnabled()` | Check if logging is enabled |
+| `debug.filter(pattern)` | Filter by key (string, RegExp, or null) |
+| `debug.getFilter()` | Get current filter pattern |
+| `debug.stats()` | Get statistics data (silent) |
+| `debug.logStats()` | Log statistics to console with table |
+| `debug.resetStats()` | Clear all statistics |
+
+### Example
+
+```javascript
+import { debug } from 'lume-js/addons';
+
+debug.enable();           // Turn on logging
+debug.filter('count');    // Only log keys containing 'count'
+debug.filter(/^user/);    // Only log keys starting with 'user'
+debug.filter(null);       // Clear filter
+
+const stats = debug.stats();  // Get stats data (silent)
+debug.logStats();             // Log stats to console with formatting
+debug.resetStats();           // Clear stats
+```
+
+## Statistics
+
+The debug addon tracks operation counts for each store:
+
+```javascript
+const stats = debug.stats();
+// {
+//   counter: {
+//     gets: { count: 5 },
+//     sets: { count: 3 },
+//     notifies: { count: 3 }
+//   },
+//   user: {
+//     gets: { name: 2, age: 1 },
+//     sets: { name: 1 },
+//     notifies: { name: 1 }
+//   }
+// }
+```
+
+## Console Output
+
+Debug logs use colored output:
+- **GET** (green): Property reads
+- **SET** (orange): Property writes  
+- **NOTIFY** (pink): Subscriber notifications
+- **SUBSCRIBE** (purple): New subscriptions
+
+---
+
+**← Previous: [hydrateState()](hydrateState.md)** | **Next: [withPlugins()](withPlugins.md) →**
+
+
+========================================================================
+FILE: docs/api/addons/withPlugins.md
+========================================================================
+
+# withPlugins API
+
+> **Version:** 2.0.0+ **Status:** Stable
+
+The plugin system lets you extend Lume state with custom behaviors — logging, validation, persistence, transformation, and more. Plugins intercept state operations through a small set of hooks.
+
+Plugins are applied via `withPlugins()`, an addon wrapper. The core `state()` function has no plugin support — this keeps the core minimal and fast.
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Plugin Interface](#plugin-interface)
+- [Hook Execution Order](#hook-execution-order)
+- [Chain Pattern](#chain-pattern)
+- [Best Practices](#best-practices)
+- [Common Patterns](#common-patterns)
+- [Performance](#performance)
+
+## Quick Start
+
+```javascript
+import { state } from 'lume-js';
+import { withPlugins } from 'lume-js/addons';
+
+const debugPlugin = {
+  name: 'debug',
+  onGet: (key, value) => {
+    console.log(`GET ${key}:`, value);
+    return value;
+  },
+  onSet: (key, newValue, oldValue) => {
+    console.log(`SET ${key}:`, oldValue, '→', newValue);
+    return newValue;
+  }
+};
+
+const store = withPlugins(state({ count: 0 }), [debugPlugin]);
+```
+
+## Plugin Interface
+
+A plugin is a plain object with a `name` property and optional hook functions:
+
+```typescript
+interface Plugin {
+  name: string;                                                    // Required: unique identifier
+  onInit?: () => void;                                             // Called when state is created
+  onGet?: (key: string, value: any) => any;                       // Intercept reads
+  onSet?: (key: string, newValue: any, oldValue: any) => any;     // Intercept writes
+  onSubscribe?: (key: string) => void;                             // Called when a subscriber is added
+  onNotify?: (key: string, value: any) => void;                   // Before subscribers are notified
+}
+```
+
+> **Plugin objects are frozen after registration.** Once `withPlugins()` returns, `Object.freeze()` has been applied to each plugin — hooks cannot be swapped afterwards, and writes to plugin properties fail silently. Mutable plugin state (a history stack, a cache) must live in a closure variable next to the plugin, not on the plugin object itself. `onInit` runs before the freeze, so one-time setup on the object is still possible there.
+
+### Hook: `onInit()`
+
+Called synchronously when the state object is created.
+
+**Use cases:** initialize plugin state, set up external connections, register global handlers.
+
+```javascript
+const plugin = {
+  name: 'logger',
+  onInit: () => {
+    console.log('State initialized at', new Date());
+  }
+};
+```
+
+### Hook: `onGet(key, value)`
+
+Called when a property is accessed, before the value is returned.
+
+**Parameters:**
+- `key` — Property key being accessed.
+- `value` — Current value (possibly transformed by earlier plugins in the chain).
+
+**Returns:** Transformed value, or the original `value` to pass it through unchanged.
+
+**Use cases:** transform values on read, log access, implement computed properties, lazy loading.
+
+```javascript
+const transformPlugin = {
+  name: 'transform',
+  onGet: (key, value) => {
+    if (key === 'name' && typeof value === 'string') {
+      return value.toUpperCase();
+    }
+    return value;
+  }
+};
+```
+
+### Hook: `onSet(key, newValue, oldValue)`
+
+Called when a property is updated, before subscribers are notified.
+
+**Parameters:**
+- `key` — Property key being updated.
+- `newValue` — New value (possibly transformed by earlier plugins).
+- `oldValue` — Previous value.
+
+**Returns:** The value to store. Return `oldValue` to reject the change.
+
+**Use cases:** validate input, transform values on write, prevent updates, track history.
+
+```javascript
+const validationPlugin = {
+  name: 'validation',
+  onSet: (key, newValue, oldValue) => {
+    if (key === 'age' && (newValue < 0 || newValue > 150)) {
+      console.warn('Invalid age, keeping old value');
+      return oldValue; // Reject change
+    }
+    return newValue; // Accept change
+  }
+};
+```
+
+### Hook: `onSubscribe(key)`
+
+Called when a new subscriber is added to a property.
+
+**Parameters:**
+- `key` — Property key being subscribed to.
+
+**Use cases:** track active subscriptions, lazy load data, initialize watchers.
+
+```javascript
+const trackPlugin = {
+  name: 'tracker',
+  onSubscribe: (key) => {
+    console.log(`New subscriber for "${key}"`);
+  }
+};
+```
+
+### Hook: `onNotify(key, value)`
+
+Called during microtask flush, before subscribers are notified. This is the right place for side effects.
+
+**Parameters:**
+- `key` — Property key that changed.
+- `value` — New value being notified.
+
+**Use cases:** log notifications, sync with external systems, trigger side effects.
+
+```javascript
+const syncPlugin = {
+  name: 'sync',
+  onNotify: (key, value) => {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+};
+```
+
+## Hook Execution Order
+
+### Property access (get)
+
+```
+1. Property accessed: store.count
+2. onGet hooks run (all plugins, in registration order)
+3. Transformed value returned to caller
+```
+
+### Property update (set)
+
+```
+1. Property set: store.count = 5
+2. onSet hooks run (all plugins, in registration order)
+3. Final value stored
+4. Change queued for microtask
+--- microtask boundary ---
+5. onNotify hooks run (all plugins, in registration order)
+6. Subscribers notified
+7. Effects re-run
+```
+
+### Diagram
+
+```
+store.count = 5
+    ↓
+  onSet (plugin1)
+    ↓
+  onSet (plugin2)
+    ↓
+  value stored
+    ↓
+  microtask scheduled
+    ↓
+  --- wait for microtask ---
+    ↓
+  onNotify (plugin1)
+    ↓
+  onNotify (plugin2)
+    ↓
+  subscribers called
+    ↓
+  effects run
+```
+
+## Chain Pattern
+
+When multiple plugins are registered, each plugin receives the output of the previous one.
+
+### Get chain
+
+```javascript
+const plugin1 = {
+  name: 'double',
+  onGet: (key, value) => typeof value === 'number' ? value * 2 : value
+};
+
+const plugin2 = {
+  name: 'add10',
+  onGet: (key, value) => typeof value === 'number' ? value + 10 : value
+};
+
+const store = withPlugins(state({ count: 5 }), [plugin1, plugin2]);
+
+console.log(store.count); // (5 * 2) + 10 = 20
+```
+
+### Set chain
+
+```javascript
+const plugin1 = {
+  name: 'clamp',
+  onSet: (key, value) => {
+    if (key === 'age') return Math.max(0, Math.min(150, value));
+    return value;
+  }
+};
+
+const plugin2 = {
+  name: 'round',
+  onSet: (key, value) => {
+    if (key === 'age') return Math.round(value);
+    return value;
+  }
+};
+
+const store = withPlugins(state({ age: 0 }), [plugin1, plugin2]);
+
+store.age = 175.7;
+console.log(store.age); // Math.round(Math.min(150, 175.7)) = 150
+```
+
+## Best Practices
+
+### Keep plugins focused
+
+Each plugin should do one thing well.
+
+```javascript
+// Good: Single responsibility
+const validationPlugin = { name: 'validation', onSet: validateData };
+const loggingPlugin    = { name: 'logging',    onGet: logAccess };
+
+// Avoid: Mixed responsibilities in one plugin
+const godPlugin = {
+  name: 'everything',
+  onGet: (key, value) => { /* validate + log + transform + … */ }
+};
+```
+
+### Return early for non-applicable keys
+
+```javascript
+const ageValidator = {
+  name: 'age-validator',
+  onSet: (key, newValue, oldValue) => {
+    if (key !== 'age') return newValue;
+    if (newValue < 0 || newValue > 150) return oldValue;
+    return newValue;
+  }
+};
+```
+
+### Handle errors gracefully
+
+Lume catches errors in plugin hooks and logs them, but your plugin should handle expected errors:
+
+```javascript
+const safePlugin = {
+  name: 'safe',
+  onGet: (key, value) => {
+    try {
+      return JSON.parse(value);
+    } catch (e) {
+      console.warn(`Failed to parse ${key}:`, e);
+      return value;
+    }
+  }
+};
+```
+
+### Keep `onGet` pure
+
+`onGet` runs on every property read. Side effects here (fetch calls, writes to other keys) will fire far more often than you expect. Use `onNotify` for side effects instead.
+
+```javascript
+// Good: pure transformation
+const plugin = {
+  name: 'format',
+  onGet: (key, value) => typeof value === 'string' ? value.toUpperCase() : value
+};
+
+// Avoid: side effects in onGet
+const plugin = {
+  name: 'bad',
+  onGet: (key, value) => {
+    fetch('/api/log', { method: 'POST', body: key }); // fires on every read!
+    return value;
+  }
+};
+```
+
+### Use `onNotify` for side effects
+
+```javascript
+const persistPlugin = {
+  name: 'persist',
+  onNotify: (key, value) => {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+};
+```
+
+## Common Patterns
+
+### Validation
+
+```javascript
+const validationPlugin = {
+  name: 'validation',
+  onSet: (key, newValue, oldValue) => {
+    const rules = {
+      email: (v) => typeof v === 'string' && v.includes('@'),
+      age:   (v) => typeof v === 'number' && v >= 0 && v <= 150
+    };
+
+    if (rules[key] && !rules[key](newValue)) {
+      console.error(`Validation failed for ${key}`);
+      return oldValue;
+    }
+
+    return newValue;
+  }
+};
+```
+
+### History / Undo-Redo
+
+```javascript
+// Plugin objects are frozen after registration, so mutable plugin state
+// lives in a closure variable — not on the plugin object.
+const historyStack = [];
+
+const historyPlugin = {
+  name: 'history',
+  onSet: (key, newValue, oldValue) => {
+    historyStack.push({ key, value: oldValue });
+    return newValue;
+  }
+};
+
+function undo(store) {
+  if (historyStack.length > 0) {
+    const { key, value } = historyStack.pop();
+    store[key] = value;
+  }
+}
+```
+
+### Persistence
+
+```javascript
+const persistPlugin = {
+  name: 'persist',
+
+  onInit: () => {
+    persistPlugin.loaded = true;
+  },
+
+  onGet: (key, value) => {
+    if (persistPlugin.loaded && value === undefined) {
+      const stored = localStorage.getItem(key);
+      return stored ? JSON.parse(stored) : value;
+    }
+    return value;
+  },
+
+  onNotify: (key, value) => {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+};
+```
+
+### Transform / Normalize
+
+```javascript
+const normalizePlugin = {
+  name: 'normalize',
+  onSet: (key, newValue) => {
+    if (key === 'email' && typeof newValue === 'string') {
+      return newValue.toLowerCase().trim();
+    }
+    if (key === 'phone' && typeof newValue === 'string') {
+      return newValue.replace(/\D/g, ''); // digits only
+    }
+    return newValue;
+  }
+};
+```
+
+## Performance
+
+Plugin hooks add minimal overhead — typically 10–30% per operation depending on complexity. Each hook call is synchronous, and multiple plugins execute sequentially.
+
+**Tips:**
+- Filter early: return immediately for non-applicable keys.
+- Keep hook logic lightweight.
+- Cache computed results when needed.
+- For typical apps, 1–3 plugins is plenty.
+
+Typical overhead on a modern system (M1 Mac):
+
+| Operation | No Plugins | 1 Plugin | 3 Plugins | 10 Plugins |
+|-----------|------------|----------|-----------|------------|
+| Get | 0.001 ms | 0.002 ms | 0.004 ms | 0.010 ms |
+| Set | 0.002 ms | 0.003 ms | 0.006 ms | 0.015 ms |
+
+For the vast majority of applications, plugin overhead is negligible.
+
+## Error Handling
+
+Plugin errors are caught and logged but do not crash the application:
+
+```javascript
+const buggyPlugin = {
+  name: 'buggy',
+  onGet: (key, value) => {
+    throw new Error('Oops!');
+  }
+};
+
+const store = withPlugins(state({ count: 0 }), [buggyPlugin]);
+
+store.count; // Logs error, returns original value
+// Console: [Lume.js] Plugin "buggy" error in onGet: Error: Oops!
+```
+
+## TypeScript Support
+
+Full TypeScript definitions are provided:
+
+```typescript
+import { state } from 'lume-js';
+import { withPlugins, Plugin } from 'lume-js/addons';
+
+const myPlugin: Plugin = {
+  name: 'example',
+  onGet: (key: string, value: unknown): unknown => {
+    return value;
+  }
+};
+
+const store = withPlugins(state({ count: 0 }), [myPlugin]);
+```
+
+## See also
+
+- [Design Decisions](../../design/design-decisions.md) — Why plugins work this way
+- [State API](../core/state.md) — Core state documentation
+- [addons/debug](./debug.md) — Built-in debug plugin using withPlugins
+
+---
+
+**← Previous: [createDebugPlugin() / debug](debug.md)** | **Next: [isReactive()](isReactive.md) →**
+
+
+========================================================================
+FILE: docs/api/addons/isReactive.md
+========================================================================
+
+# isReactive(value)
+
+Returns `true` if the value is a Lume reactive proxy created by `state()`.
+
+> **Import path changed in v2.0.0:** `isReactive` moved from `lume-js` to `lume-js/addons`.
+
+## Signature
+
+```ts
+function isReactive(value: any): boolean;
+```
+
+## Parameters
+
+- `value` — The value to check.
+
+## Returns
+
+`true` if the value carries the Lume reactive brand (a registry symbol stamped by `state()`), or — as a compatibility fallback — has a `$subscribe` method. `false` otherwise.
+
+## Example
+
+```js
+import { state } from 'lume-js';
+import { isReactive } from 'lume-js/addons';
+
+const store = state({ count: 0 });
+
+isReactive(store); // true
+isReactive({});    // false
+```
+
+This is useful when writing utilities or addons that need to accept either a raw object or an already-reactive store without double-wrapping it.
+
+## Note
+
+Detection checks the shared brand symbol first (`Symbol.for('lume.reactive')`, checked with the `in` operator so it never registers an effect dependency), then falls back to duck-typing (`typeof obj.$subscribe === 'function'`) for stores created by older lume-js versions. The brand is a type tag, not a security boundary — any code can stamp it.
+
+---
+
+**← Previous: [withPlugins()](withPlugins.md)** | **Next: [Handlers API](../core/handlers.md) →**
 
 
 ========================================================================
@@ -4618,1367 +4845,948 @@ bindDom(root, store, {
 
 
 ========================================================================
-FILE: docs/api/addons/computed.md
+FILE: docs/tutorials/build-todo-app.md
 ========================================================================
 
-# computed(fn)
+# Tutorial: Build a Todo App
 
-Creates a cached, read-only reactive value derived from store state.
+Build a fully functional todo app — add, toggle, delete, filter, and persist — using nothing but a single HTML file and a CDN import. No build step required.
 
-## Signature
+**What you will learn:**
+- Handling form inputs
+- Rendering lists with `repeat` (for performance)
+- Filtering data with `computed`
+- Persisting data to `localStorage`
 
-```ts
-function computed<T>(fn: () => T): {
-  readonly value: T;
-  subscribe(callback: (value: T) => void): () => void;
-  dispose(): void;
-}
-```
+## Step 1: The Setup
 
-Imported from `lume-js/addons`.
-
-## Parameters
-
-- `fn` — A getter function. Must be synchronous. Should have no side effects.
-
-## Returns
-
-An object with:
-- `value` — The current computed result. Re-evaluated only when dependencies change.
-- `subscribe(callback)` — Subscribes to value changes. Calls `callback` immediately with the current value, then again on every subsequent change. Returns an unsubscribe function.
-- `dispose()` — Stops the computation and frees subscriptions.
-
-## Description
-
-> **→ Why is `computed` an addon and not part of core?** [See the design decision.](../../design/design-decisions.md#why-no-computed-properties-in-core)
-
-`computed` uses the same auto-tracking as `effect`: all store reads inside `fn` become dependencies. When any dependency changes, `fn` re-runs on the next microtask flush. The result is cached — `fn` never runs more than once per dependency change, no matter how many places read `computed.value`.
-
-```js
-import { state } from 'lume-js';
-import { computed } from 'lume-js/addons';
-
-const store = state({ price: 1.5, qty: 2 });
-
-const total = computed(() => store.price * store.qty);
-
-console.log(total.value); // 3
-
-store.qty = 4;
-// After microtask:
-console.log(total.value); // 6
-```
-
-## Filtering lists
-
-```js
-const store = state({ todos: [...], filter: 'all' });
-
-const visible = computed(() => {
-  if (store.filter === 'active')    return store.todos.filter(t => !t.done);
-  if (store.filter === 'completed') return store.todos.filter(t => t.done);
-  return store.todos;
-});
-
-// Use in effects or templates:
-effect(() => {
-  badge.textContent = visible.value.length;
-});
-```
-
-## With `repeat`
-
-Pass a computed as the store to `repeat`, with `'value'` as the key:
-
-```js
-import { repeat } from 'lume-js/addons';
-
-repeat(listEl, visible, 'value', {
-  key: todo => todo.id,
-  render: (todo, el) => { el.textContent = todo.text; }
-});
-```
-
-## Cleanup
-
-`computed` creates an internal `effect`. Call `dispose()` when the computed is no longer needed:
-
-```js
-const c = computed(() => store.x * 2);
-// … later
-c.dispose();
-```
-
-## See also
-
-- [effect()](../core/effect.md)
-- [watch()](watch.md)
-- [Lists & repeat](../../guides/lists.md)
-
----
-
-**← Previous: [watch()](watch.md)** | **Next: [repeat()](repeat.md) →**
-
-
-========================================================================
-FILE: docs/api/addons/watch.md
-========================================================================
-
-# watch(store, key, fn, options?)
-
-Subscribes to a single store key. More explicit than `effect` — no auto-tracking, and the callback always receives the new value directly.
-
-## Signature
-
-```ts
-function watch(
-  store: object,
-  key: string,
-  fn: (newValue: any) => void,
-  options?: { immediate?: boolean }
-): () => void
-```
-
-Imported from `lume-js/addons`.
-
-## Parameters
-
-- `store` — A reactive store created by `state()`.
-- `key` — The property name to watch.
-- `fn` — Called with the new value on every change.
-- `options.immediate` — Whether to call `fn` immediately with the current value (default: `true`).
-
-## Returns
-
-An unsubscribe function. Call it to stop watching.
-
-## Examples
-
-### Basic
-
-```js
-import { state } from 'lume-js';
-import { watch } from 'lume-js/addons';
-
-const store = state({ theme: 'light', count: 0 });
-
-watch(store, 'theme', (newTheme) => {
-  document.documentElement.dataset.theme = newTheme;
-});
-// Called immediately with 'light', then again on every change
-
-store.theme = 'dark'; // callback fires with 'dark'
-```
-
-### One-time watcher
-
-```js
-const stop = watch(store, 'count', (val) => {
-  if (val >= 10) {
-    console.log('Reached 10!');
-    stop(); // unsubscribe after the condition is met
-  }
-});
-```
-
-### Side effects (localStorage, analytics)
-
-`watch` is the right tool for side effects that should react to exactly one key. Unlike auto-tracking `effect`, there is no risk of accidentally subscribing to extra keys.
-
-```js
-watch(store, 'theme', (theme) => {
-  localStorage.setItem('theme', theme);
-});
-
-watch(store, 'userId', (id) => {
-  analytics.identify(id);
-});
-```
-
-### Skip the initial call with `{ immediate: false }`
-
-By default `watch` fires immediately so you get the current value on subscribe. Pass `{ immediate: false }` to only react to future changes.
-
-```js
-// fires immediately with current value, then on every change
-watch(store, 'count', (val) => console.log('count:', val));
-
-// only fires on future changes — initial value is NOT logged
-watch(store, 'count', (val) => {
-  sendAnalytics('count_changed', val);
-}, { immediate: false });
-```
-
-## Compared to `effect`
-
-| | `effect(fn)` | `watch(store, key, fn)` |
-|--|--------------|------------------------|
-| Dependency tracking | Auto — all reads inside fn | Explicit — one key only |
-| Callback args | none | `(newValue)` |
-| Runs immediately | Yes (on first call) | Yes (always, on subscribe) |
-| Best for | UI bindings, rendering | Side effects, persistence |
-
-## See also
-
-- [effect()](../core/effect.md)
-- [computed()](computed.md)
-
----
-
-**← Previous: [batch()](../core/batch.md)** | **Next: [computed()](computed.md) →**
-
-
-========================================================================
-FILE: docs/api/addons/repeat.md
-========================================================================
-
-# repeat(container, store, key, options)
-
-The right tool for any list that changes. `repeat` renders a keyed list from a reactive array and reuses existing DOM nodes across updates — so adding, removing, or reordering items only touches what actually changed.
-
-## Signature
-
-```ts
-function repeat(
-  container: HTMLElement | string,
-  store: object,
-  key: string,
-  options: {
-    key: (item: any) => string | number;
-    render?: (item: any, el: HTMLElement, index: number) => void;
-    create?: (item: any, el: HTMLElement, index: number) => void;
-    update?: (item: any, el: HTMLElement, index: number, ctx: { isFirstRender: boolean }) => void;
-    template?: true | string | HTMLTemplateElement;
-    element?: string | (() => HTMLElement);
-    preserveFocus?: Function | null;
-    preserveScroll?: Function | null;
-  }
-): () => void
-```
-
-Imported from `lume-js/addons`.
-
-## Parameters
-
-- `container` — The element (or CSS selector string) to render into.
-- `store` — A reactive store or computed whose key holds the array.
-- `key` — The property name of the array in `store`.
-- `options.key` — **Required.** Returns a stable unique identifier per item. Used to match DOM nodes across updates.
-- `options.render` — Mutates the element directly. (Return value is ignored). Called for new and updated items.
-- `options.create` — Called once when a new DOM element is created. Use for DOM structure and event listeners.
-- `options.update` — Called for data binding. Receives `{ isFirstRender }` so you can animate only on updates. **Skipped when the item reference and index are both unchanged from the previous render** (optimization). Use `render` instead if you always need to re-apply data regardless of reference equality.
-- `options.template` — Declarative item structure from a standard `<template>` element: `true` (first `<template>` inside the container), a CSS selector, or the element itself. See [Pattern 0](#pattern-0--template-recommended-for-declarative-html).
-- `options.element` — Tag name or factory for the wrapper element. Default: `'div'`. Ignored when `template` is set.
-- `options.preserveFocus` — Optional strategy for preserving focus during re-renders. Default: `defaultFocusPreservation`.
-- `options.preserveScroll` — Optional strategy for preserving scroll position during re-renders. Default: `defaultScrollPreservation`.
-
-Use `render` alone for simple read-only lists. Use `create + update` for lists with event listeners — `create` runs once when the element is created, `update` runs on every data change.
-
-> **→ Why `create` + `update` instead of a single `render`?** [See the design decision.](../../design/design-decisions.md#why-create--update-instead-of-just-render)
-
-## Returns
-
-A cleanup function.
-
-## Pattern 0 — Template (recommended for declarative HTML)
-
-The item's structure lives in your HTML as a standard `<template>` element — valid HTML, inert until cloned, no custom syntax. `data-bind` paths inside the template resolve against **each item**.
+Create an `index.html` file.
 
 ```html
-<ul id="list">
-  <template>
-    <li>
-      <strong data-bind="name"></strong>
-      <span data-bind="user.city"></span>
-      <em data-bind="$index"></em>
-    </li>
-  </template>
-</ul>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lume Todo</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 2rem auto; }
+    .todo-list { list-style: none; padding: 0; }
+    .todo-item { display: flex; gap: 10px; padding: 5px 0; border-bottom: 1px solid #eee; }
+    .done { text-decoration: line-through; color: #888; }
+  </style>
+</head>
+<body>
+  <h1>Todo App</h1>
+  
+  <!-- Input Form -->
+  <form id="todo-form">
+    <input id="new-todo" placeholder="What needs to be done?" autocomplete="off">
+    <button>Add</button>
+  </form>
+
+  <!-- List Container -->
+  <ul id="todo-list" class="todo-list"></ul>
+
+  <script type="module">
+    import { state, bindDom } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
+    import { repeat, computed } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/addons.min.mjs';
+
+    // Code goes here...
+  </script>
+</body>
+</html>
 ```
 
-```js
-import { state } from 'lume-js';
-import { repeat } from 'lume-js/addons';
+## Step 2: Define the State
 
-const store = state({
-  people: [
-    { id: 1, name: 'Ada',   user: { city: 'London' } },
-    { id: 2, name: 'Grace', user: { city: 'New York' } },
-  ]
-});
+We need a list of todos. Each todo will be an object with an `id`, `text`, and `done` status.
 
-repeat('#list', store, 'people', {
-  key: p => p.id,
-  template: true   // the <template> inside #list
-});
-```
-
-That's the whole list — no `createElement`, no `innerHTML`, no manual `textContent`.
-
-**Binding paths** (identical value semantics to `bindDom`'s `data-bind` — inputs get `.value`/`.checked`, everything else gets `textContent`):
-
-| Path | Resolves to |
-|------|-------------|
-| `data-bind="name"` | `item.name` |
-| `data-bind="user.city"` | `item.user.city` |
-| `data-bind="$item"` | the item itself (primitive arrays) |
-| `data-bind="$index"` | the item's current index |
-
-Bindings are **one-way snapshots**, re-applied on each list update (items are plain objects, not stores — update arrays immutably as usual). For event listeners or extra binding, add `create`/`update` on top:
-
-```js
-repeat('#list', store, 'people', {
-  key: p => p.id,
-  template: true,
-  create: (p, el) => {
-    el.querySelector('button.delete').onclick = () => {
-      store.people = store.people.filter(x => x.id !== p.id);
-    };
-  }
-});
-```
-
-The template must contain exactly **one root element**. `render` is ignored (with a warning) in template mode; `element` is ignored. The source `<template>` element is **preserved** — reconciliation and cleanup never remove it from your markup, so unmounting and re-binding with `template: true` works.
-
-## Pattern 1 — Simple (render only)
-
-Best for read-only lists where no event listeners are needed on items.
-
-```js
-import { state } from 'lume-js';
-import { repeat } from 'lume-js/addons';
-
+```javascript
 const store = state({
   todos: [
-    { id: 1, text: 'Buy milk', done: false },
-    { id: 2, text: 'Walk dog', done: true  },
+    { id: 1, text: 'Learn Lume.js', done: false },
+    { id: 2, text: 'Build something cool', done: false }
   ]
-});
-
-repeat(document.getElementById('list'), store, 'todos', {
-  key: todo => todo.id,
-  element: 'li',
-  render: (todo, el) => {
-    el.className = todo.done ? 'done' : '';
-    el.textContent = todo.text;
-  }
 });
 ```
 
-## Pattern 2 — create + update (recommended)
+## Step 3: Render the List
 
-Best for items with event listeners. `create` runs once per DOM element; `update` runs on every data change.
+We *could* use `innerHTML` like in the Tic-Tac-Toe tutorial. But for lists that change often, Lume provides a helper called `repeat`. It's much faster because it reuses DOM elements.
 
-```js
-repeat('#todo-list', store, 'todos', {
+```javascript
+const listContainer = document.getElementById('todo-list');
+
+repeat(listContainer, store, 'todos', {
+  // 1. Unique Key (Critical for performance!)
   key: todo => todo.id,
-  element: 'li',
 
+  // 2. Create Function (DOM structure - called once per element)
   create: (todo, el) => {
+    el.className = 'todo-item';
     el.innerHTML = `
       <input type="checkbox" class="toggle">
       <span class="text"></span>
       <button class="delete">×</button>
     `;
-    el.querySelector('.toggle').onchange = () => {
-      store.todos = store.todos.map(t =>
-        t.id === todo.id ? { ...t, done: !t.done } : t
-      );
-    };
-    el.querySelector('.delete').onclick = () => {
-      store.todos = store.todos.filter(t => t.id !== todo.id);
-    };
   },
 
-  update: (todo, el, index, { isFirstRender }) => {
-    el.querySelector('.toggle').checked = todo.done;
-    el.querySelector('.text').textContent = todo.text;
-    el.classList.toggle('done', todo.done);
-    if (!isFirstRender) el.classList.add('updated'); // animate on change
+  // 3. Update Function (Data binding - called on every update)
+  update: (todo, el) => {
+    const checkbox = el.querySelector('.toggle');
+    const span = el.querySelector('.text');
+    
+    checkbox.checked = todo.done;
+    span.textContent = todo.text;
+    span.classList.toggle('done', todo.done);
   }
 });
 ```
 
-## Array operations
+Open `index.html`. You should see the two initial todos.
 
-| Array change | DOM effect |
-|--------------|------------|
-| New key added (immutable replace) | Appends/inserts new row |
-| Key removed (immutable replace) | Removes row |
-| Reorder — same keys (immutable replace) | Moves existing nodes, `update` fires (index changed) |
-| Same key, item ref changed | Only that row's `update` fires |
+## Step 4: Adding Todos
 
-> **→ Why check both reference AND index to skip `update`?** [See the design decision.](../../design/design-decisions.md#why-check-both-reference-and-index-for-update-skip)
+Let's handle the form submission.
 
-## Using with `computed`
+```javascript
+const form = document.getElementById('todo-form');
+const input = document.getElementById('new-todo');
 
-Pass a `computed` as the store and `'value'` as the key:
+form.addEventListener('submit', (e) => {
+  e.preventDefault(); // Prevent page reload
+  
+  const text = input.value.trim();
+  if (!text) return;
 
-```js
-import { computed } from 'lume-js/addons';
+  // Create new todo object
+  const newTodo = {
+    id: Date.now(), // Simple ID generator
+    text: text,
+    done: false
+  };
 
-const filtered = computed(() =>
-  store.todos.filter(t => store.filter === 'all' || !t.done)
-);
+  // IMPORTANT: Immutable Update!
+  // We create a NEW array with the new item at the end.
+  store.todos = [...store.todos, newTodo];
 
-repeat(listEl, filtered, 'value', {
-  key: t => t.id,
-  render: (t, el) => { el.textContent = t.text; }
+  // Clear input
+  input.value = '';
 });
 ```
 
-## Caveats
+Try adding a few items. They should appear instantly!
 
-- **Keys must be unique.** Duplicate keys log a warning; both items end up sharing the same DOM element, which produces incorrect rendering.
-- **Each rendered element must have exactly one root.** Wrap fragments in a `<div>` or `<li>`.
+## Step 5: Toggling and Deleting
 
-## See also
+Event listeners belong in `create` — it runs once per DOM element, so you won't accidentally attach duplicate listeners on every update.
 
-- [Lists & repeat guide](../../guides/lists.md)
-- [computed()](computed.md)
-- [Todo app tutorial](../../tutorials/build-todo-app.md)
+Replace your `create` function with this complete version:
 
----
+```javascript
+create: (todo, el) => {
+  el.className = 'todo-item';
+  el.innerHTML = `
+    <input type="checkbox" class="toggle">
+    <span class="text"></span>
+    <button class="delete">×</button>
+  `;
 
-**← Previous: [computed()](computed.md)** | **Next: [persist()](persist.md) →**
+  el.querySelector('.toggle').addEventListener('change', () => {
+    store.todos = store.todos.map(t =>
+      t.id === todo.id ? { ...t, done: !t.done } : t
+    );
+  });
 
-
-========================================================================
-FILE: docs/api/addons/persist.md
-========================================================================
-
-# persist(store, storageKey, options?)
-
-Keeps selected store keys in sync with `localStorage` (or any Storage-like object): hydrates them when called, then saves automatically on change.
-
-## Signature
-
-```ts
-function persist(
-  store: ReactiveState<any>,
-  storageKey: string,
-  options?: {
-    keys?: string[];
-    storage?: Pick<Storage, 'getItem' | 'setItem'> | null;
-  }
-): () => void
+  el.querySelector('.delete').addEventListener('click', () => {
+    store.todos = store.todos.filter(t => t.id !== todo.id);
+  });
+}
 ```
 
-Imported from `lume-js/addons`.
+Notice the pattern: `create` sets up structure and listeners, `update` (from the previous step) handles data. They don't overlap.
 
-## Parameters
+## Step 6: Computed Filtering
 
-- `store` — A reactive store created with `state()`.
-- `storageKey` — The storage entry name to read/write (one JSON blob per `persist()` call).
-- `options.keys` — Which keys to persist. Default: all own non-`$` keys of the store at call time.
-- `options.storage` — `localStorage` (default), `sessionStorage`, or any object with `getItem`/`setItem`.
+Let's add a feature to show only "Active" or "Completed" items.
 
-## Returns
+First, add a `filter` key to the store. Update your `state()` call to include it:
 
-A dispose function. Call it to stop watching and saving.
-
-## Example
-
-```js
-import { state, bindDom } from 'lume-js';
-import { persist } from 'lume-js/addons';
-
+```javascript
 const store = state({
-  todos: [],
-  filter: 'all',
-  draft: '',          // transient — excluded below
+  todos: [
+    { id: 1, text: 'Learn Lume.js', done: false },
+    { id: 2, text: 'Build something cool', done: false }
+  ],
+  filter: 'all' // 'all', 'active', 'completed'
 });
-
-// Hydrates todos/filter from storage, then saves them on every change
-const stop = persist(store, 'todo-app', { keys: ['todos', 'filter'] });
-
-bindDom(document.body, store);
 ```
 
-That replaces the usual hand-rolled pair of `JSON.parse(localStorage.getItem(...))` at startup and `localStorage.setItem(...)` sprinkled through every mutation site.
+Then, create a `computed` value for the visible todos:
 
-## Behavior
-
-| Concern | Behavior |
-|---------|----------|
-| Hydration | Stored values are assigned **through the proxy**, so subscribers and DOM bindings see them like any other write |
-| Unknown keys in storage | Ignored — only watched keys are ever assigned (stale storage can't inject state) |
-| Save timing | Coalesced to **one** storage write per microtask, no matter how many keys changed |
-| Unchanged data | Skipped — if the serialized snapshot equals what storage already holds, no write happens |
-| Corrupted JSON | Console warning, starts fresh |
-| Unserializable state (circular refs, etc.) | Console warning, save skipped |
-| Quota exceeded / write failure | Console warning, app keeps running |
-| No storage (SSR, locked-down browsers) | Console warning, persistence disabled, returned dispose is a safe no-op |
-| `keys: []` | Respected — persists and hydrates nothing (only an *absent* option falls back to all keys) |
-| Same `storageKey` managed twice | Console warning on the second `persist()` — instances would overwrite each other's data |
-
-## Per-tab persistence
-
-```js
-persist(store, 'wizard-progress', { storage: sessionStorage });
+```javascript
+const visibleTodos = computed(() => {
+  if (store.filter === 'active') {
+    return store.todos.filter(t => !t.done);
+  }
+  if (store.filter === 'completed') {
+    return store.todos.filter(t => t.done);
+  }
+  return store.todos;
+});
 ```
 
-## Multiple stores
+Finally, update `repeat` to read from `visibleTodos` instead of `store` directly. Computed objects work as stores — just use `'value'` as the key:
 
-Each call owns one storage entry — give each store its own key (a second `persist()` on an already-managed key logs a warning, since the instances would overwrite each other):
-
-```js
-persist(settingsStore, 'app:settings');
-persist(cartStore, 'app:cart', { keys: ['items'] });
+```javascript
+repeat(listContainer, visibleTodos, 'value', {
+  key: todo => todo.id,
+  create: (todo, el) => { /* same as before */ },
+  update: (todo, el) => { /* same as before */ }
+});
 ```
 
-## What it doesn't do
+And add some buttons to change the filter:
 
-- **No cross-tab sync** — it doesn't listen to the `storage` event. (Candidate for a future option.)
-- **No serialization of functions/Symbols** — values pass through `JSON.stringify`; keep persisted keys to plain data.
-- **No versioning/migrations** — pair it with [`hydrateState`](hydrateState.md)-style validation if your schema evolves: read, validate, then `persist()`.
-
-## See also
-
-- [hydrateState()](hydrateState.md) — initial state from server-rendered JSON
-- [watch()](watch.md) — the manual building block this replaces
-
----
-
-**← Previous: [repeat()](repeat.md)** | **Next: [createCleanupGroup()](createCleanupGroup.md) →**
-
-
-========================================================================
-FILE: docs/api/addons/hydrateState.md
-========================================================================
-
-# hydrateState()
-
-Reads initial state from a `<script type="application/json">` element embedded in server-rendered HTML.
-
-## Signature
-
-```ts
-function hydrateState(selector?: string): object
-```
-
-Imported from `lume-js/addons`.
-
-## Parameters
-
-- `selector` — CSS selector for the script element. Defaults to `'#__LUME_DATA__'`.
-
-## Returns
-
-The parsed JSON object from the selected element, or an empty object `{}` if the element is not found or the JSON is invalid.
-
-## Description
-
-`hydrateState` enables SSR hydration: the server embeds the page's initial data as JSON in the HTML, and the client reads it to initialize reactive state without a separate API request.
-
-**Server (any language/framework):**
 ```html
-<script id="__LUME_DATA__" type="application/json">
-  {"title": "Welcome", "user": "Ada", "count": 42}
+<div>
+  <button onclick="setFilter('all')">All</button>
+  <button onclick="setFilter('active')">Active</button>
+  <button onclick="setFilter('completed')">Completed</button>
+</div>
+
+<script>
+  // ...
+  window.setFilter = (f) => store.filter = f;
 </script>
 ```
 
-**Client:**
-```js
-import { state, bindDom } from 'lume-js';
-import { hydrateState } from 'lume-js/addons';
+## Step 7: LocalStorage Persistence
 
-const store = state(hydrateState());
-bindDom(document.body, store);
-```
+We want our todos to survive a page refresh. We can use `effect()` to automatically save whenever `store.todos` changes.
 
-The store is initialized with `{ title: 'Welcome', user: 'Ada', count: 42 }` immediately — no async, no flash of empty content.
+```javascript
+// 1. Load initial state
+const saved = localStorage.getItem('lume-todos');
+const initialTodos = saved ? JSON.parse(saved) : [];
 
-## Custom selector
-
-Use a different selector when embedding multiple data blocks on one page:
-
-```html
-<script id="sidebar-data" type="application/json">{"open": false}</script>
-<script id="cart-data"    type="application/json">{"items": [], "total": 0}</script>
-```
-
-```js
-const sidebar = state(hydrateState('#sidebar-data'));
-const cart    = state(hydrateState('#cart-data'));
-```
-
-## Safe fallback
-
-`hydrateState` always returns an object. If the selector matches nothing, or the JSON is malformed, you get `{}` — which merges cleanly with default state:
-
-```js
 const store = state({
-  count: 0,          // default
-  ...hydrateState(), // server overrides
+  todos: initialTodos,
+  filter: 'all'
+});
+
+// 2. Auto-save
+effect(() => {
+  localStorage.setItem('lume-todos', JSON.stringify(store.todos));
 });
 ```
 
-## Non-browser environments
+Now refresh the page. Your todos are still there!
 
-When `document` is not defined (Node.js, Workers), `hydrateState` returns `{}` safely.
+## Final Code
 
-## See also
+<details>
+<summary>Click to see the full working code</summary>
 
-- [state()](../core/state.md)
-- [createCleanupGroup()](createCleanupGroup.md)
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lume Todo</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 2rem auto; }
+    .todo-list { list-style: none; padding: 0; }
+    .todo-item { display: flex; gap: 10px; padding: 5px 0; border-bottom: 1px solid #eee; }
+    .done { text-decoration: line-through; color: #888; }
+    .filters { margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Todo App</h1>
+  
+  <form id="todo-form">
+    <input id="new-todo" placeholder="What needs to be done?" autocomplete="off">
+    <button>Add</button>
+  </form>
+
+  <ul id="todo-list" class="todo-list"></ul>
+
+  <div class="filters">
+    <button onclick="setFilter('all')">All</button>
+    <button onclick="setFilter('active')">Active</button>
+    <button onclick="setFilter('completed')">Completed</button>
+  </div>
+
+  <script type="module">
+    import { state, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
+    import { repeat, computed } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/addons.min.mjs';
+
+    // --- State ---
+    const saved = localStorage.getItem('lume-todos');
+    const store = state({
+      todos: saved ? JSON.parse(saved) : [],
+      filter: 'all'
+    });
+
+    // --- Persistence ---
+    effect(() => {
+      localStorage.setItem('lume-todos', JSON.stringify(store.todos));
+    });
+
+    // --- Computed ---
+    const visibleTodos = computed(() => {
+      if (store.filter === 'active') return store.todos.filter(t => !t.done);
+      if (store.filter === 'completed') return store.todos.filter(t => t.done);
+      return store.todos;
+    });
+
+    // --- Actions ---
+    window.setFilter = (f) => store.filter = f;
+
+    const form = document.getElementById('todo-form');
+    const input = document.getElementById('new-todo');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+
+      store.todos = [...store.todos, { id: Date.now(), text, done: false }];
+      input.value = '';
+    });
+
+    // --- Render ---
+    const listContainer = document.getElementById('todo-list');
+
+    repeat(listContainer, visibleTodos, 'value', {
+      key: todo => todo.id,
+      create: (todo, el) => {
+        el.className = 'todo-item';
+        el.innerHTML = `
+          <input type="checkbox" class="toggle">
+          <span class="text"></span>
+          <button class="delete">×</button>
+        `;
+        
+        // Bind Events (once)
+        el.querySelector('.toggle').addEventListener('change', () => {
+          store.todos = store.todos.map(t => t.id === todo.id ? { ...t, done: !t.done } : t);
+        });
+        
+        el.querySelector('.delete').addEventListener('click', () => {
+          store.todos = store.todos.filter(t => t.id !== todo.id);
+        });
+      },
+      update: (todo, el) => {
+        el.querySelector('.toggle').checked = todo.done;
+        el.querySelector('.text').textContent = todo.text;
+        el.querySelector('.text').classList.toggle('done', todo.done);
+      }
+    });
+  </script>
+</body>
+</html>
+```
+</details>
 
 ---
 
-**← Previous: [createCleanupGroup()](createCleanupGroup.md)** | **Next: [createDebugPlugin](debug.md) →**
+**← Previous: [htmlAttrs](../api/handlers/htmlAttrs.md)** | **Next: [Build Tic-Tac-Toe](build-tic-tac-toe.md) →**
 
 
 ========================================================================
-FILE: docs/api/addons/createCleanupGroup.md
+FILE: docs/tutorials/build-tic-tac-toe.md
 ========================================================================
 
-# createCleanupGroup()
+# Tutorial: Tic-Tac-Toe
 
-Creates a cleanup group that collects multiple cleanup/unsubscribe functions and disposes them all at once.
+Build a complete Tic-Tac-Toe game with move history and time travel — entirely in a single HTML file, with no build step. This tutorial is a good introduction to `computed` values and keeping state as an immutable history.
 
-## Signature
+**What you will learn:**
+- Creating reactive state
+- Rendering lists
+- Handling clicks
+- Computed values
+- Implementing "Undo" (Time Travel)
 
-```ts
-function createCleanupGroup(): {
-  add(fn: () => void): void;
-  dispose(): void;
+## Step 1: The Setup
+
+Create an `index.html` file. We'll put everything in here.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lume Tic-Tac-Toe</title>
+  <style>
+    /* Basic CSS to make it look decent */
+    body { font-family: sans-serif; margin: 20px; }
+    .board-row { display: flex; }
+    .square { 
+      width: 60px; height: 60px; 
+      background: #fff; border: 1px solid #999;
+      font-size: 24px; font-weight: bold;
+      margin: -1px -1px 0 0; padding: 0;
+      cursor: pointer;
+    }
+    .square:focus { background: #ddd; }
+    .game { display: flex; gap: 20px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="module">
+    import { state, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
+    import { computed } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/addons.min.mjs';
+
+    const root = document.getElementById('root');
+
+    // We will write our code here...
+  </script>
+</body>
+</html>
+```
+
+## Step 2: Define the State
+
+We need a place to store the game state. For a simple board, we need an array of 9 squares.
+
+```javascript
+// 1. Create the state
+const store = state({
+  squares: Array(9).fill(null), // [null, null, null, ...]
+  xIsNext: true                 // 'X' starts first
+});
+```
+
+## Step 3: Render the Board
+
+Now let's display the board. We'll use `effect()` to render the HTML whenever the state changes.
+
+```javascript
+// 2. Render the board
+effect(() => {
+  const status = `Next player: ${store.xIsNext ? 'X' : 'O'}`;
+
+  root.innerHTML = `
+    <div class="status">${status}</div>
+    <div class="board">
+      ${[0, 1, 2].map(row => `
+        <div class="board-row">
+          ${[0, 1, 2].map(col => {
+            const i = row * 3 + col;
+            return `<button class="square" data-index="${i}">${store.squares[i] || ''}</button>`;
+          }).join('')}
+        </div>
+      `).join('')}
+    </div>
+  `;
+});
+```
+
+Open `index.html` in your browser. You should see the empty grid.
+
+## Step 4: Handle Clicks
+
+We need to update the state when a user clicks a square. We'll use **Event Delegation** (attaching one listener to the root) for better performance.
+
+```javascript
+// 3. Handle clicks
+root.addEventListener('click', (e) => {
+  // Only care if a .square was clicked
+  if (!e.target.matches('.square')) return;
+  
+  const i = parseInt(e.target.dataset.index);
+  
+  // If square is already filled, ignore
+  if (store.squares[i]) return;
+
+  // IMPORTANT: Create a COPY of the array (Immutability)
+  const nextSquares = [...store.squares];
+  
+  // Update the copy
+  nextSquares[i] = store.xIsNext ? 'X' : 'O';
+  
+  // Save back to state
+  store.squares = nextSquares;
+  store.xIsNext = !store.xIsNext;
+});
+```
+
+Try clicking the squares now. They should fill with X and O!
+
+## Step 5: Determine a Winner
+
+We need a helper function to check for a winner.
+
+```javascript
+function calculateWinner(squares) {
+  const lines = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Cols
+    [0, 4, 8], [2, 4, 6]             // Diagonals
+  ];
+  for (let line of lines) {
+    const [a, b, c] = line;
+    if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
+      return squares[a];
+    }
+  }
+  return null;
 }
 ```
 
-Imported from `lume-js/addons`.
+Now, let's use `computed()` to automatically track the winner.
 
-## Returns
+```javascript
+// 4. Computed values
+const winner = computed(() => calculateWinner(store.squares));
 
-An object with:
-- `add(fn)` — Registers a cleanup function. Non-functions are silently ignored.
-- `dispose()` — Calls all registered cleanup functions in reverse order, then clears the group.
+// Update our effect to show the winner
+effect(() => {
+  let statusText;
+  if (winner.value) {
+    statusText = `Winner: ${winner.value}`;
+  } else {
+    statusText = `Next player: ${store.xIsNext ? 'X' : 'O'}`;
+  }
 
-## Description
-
-`createCleanupGroup` solves the problem of tracking many cleanup functions across a component or view lifecycle. Each Lume primitive returns an unsubscribe/cleanup function — `bindDom`, `effect`, `watch`, `computed`, `store.$subscribe`. Instead of keeping references to each individually, add them to a group and call `dispose()` once.
-
-```js
-import { state, bindDom, effect } from 'lume-js';
-import { createCleanupGroup, watch } from 'lume-js/addons';
-
-const store = state({ name: 'World', count: 0 });
-const group = createCleanupGroup();
-
-group.add(bindDom(document.body, store));
-group.add(effect(() => { store.doubled = store.count * 2; }));
-group.add(watch(store, 'count', val => localStorage.setItem('count', val)));
-
-// Later — dispose everything at once
-group.dispose();
+  // ... rest of render code ...
+});
 ```
 
-## Component teardown
+And update the click handler to stop the game if someone won:
 
-The most common use case is tearing down all reactivity when a view or component is removed:
-
-```js
-function mountUserCard(container, store) {
-  const group = createCleanupGroup();
-
-  group.add(bindDom(container, store));
-  group.add(store.$subscribe('profile', render));
-
-  return () => group.dispose(); // return teardown function
-}
-
-const teardown = mountUserCard(el, store);
-// When the component unmounts:
-teardown();
+```javascript
+root.addEventListener('click', (e) => {
+  // ...
+  // Check if winner exists
+  if (store.squares[i] || winner.value) return;
+  // ...
+});
 ```
 
-## Error handling
+## Step 6: Adding Time Travel (History)
 
-Errors thrown by individual cleanup functions are caught and swallowed so that one broken cleanup does not prevent the others from running.
+To support "Undo", we need to store the entire history of the game, not just the current squares.
 
-## See also
+Let's change our state structure:
 
-- [effect()](../core/effect.md)
-- [watch()](watch.md)
-- [bindDom()](../core/bindDom.md)
-- [Cleanup & Disposal guide](../../guides/cleanup-and-dispose.md)
+```javascript
+const store = state({
+  history: [
+    { squares: Array(9).fill(null) }
+  ],
+  stepNumber: 0,
+  xIsNext: true
+});
+```
+
+## Step 7: Updating Computed Values
+
+Now that the board state lives inside `history`, we derive the current squares from the active step number:
+
+```javascript
+const currentSquares = computed(() => store.history[store.stepNumber].squares);
+const winner = computed(() => calculateWinner(currentSquares.value));
+```
+
+## Step 8: Updating the Click Handler for History
+
+When clicking, we now add to history instead of just replacing `squares`.
+
+```javascript
+root.addEventListener('click', (e) => {
+  if (!e.target.matches('.square')) return;
+  const i = parseInt(e.target.dataset.index);
+
+  // If we went back in time, discard "future" history
+  const history = store.history.slice(0, store.stepNumber + 1);
+  const current = history[history.length - 1];
+  const squares = current.squares;
+
+  if (calculateWinner(squares) || squares[i]) return;
+
+  const nextSquares = [...squares];
+  nextSquares[i] = store.xIsNext ? 'X' : 'O';
+
+  store.history = [...history, { squares: nextSquares }];
+  store.stepNumber = history.length;
+  store.xIsNext = !store.xIsNext;
+});
+```
+
+## Step 9: Rendering the History List
+
+Finally, let's render the list of past moves.
+
+```javascript
+// Jump to any past move
+window.jumpTo = (step) => {
+  store.stepNumber = step;
+  store.xIsNext = (step % 2) === 0;
+};
+
+effect(() => {
+  const squares = currentSquares.value;
+
+  // Build the history button list
+  const moves = store.history.map((step, move) => {
+    const desc = move ? `Go to move #${move}` : 'Go to game start';
+    const isCurrent = move === store.stepNumber;
+    return `
+      <li>
+        <button onclick="jumpTo(${move})" style="${isCurrent ? 'font-weight: bold' : ''}">
+          ${desc}
+        </button>
+      </li>
+    `;
+  }).join('');
+
+  // Render board + history together
+  root.innerHTML = `
+    <div class="game">
+      <div class="game-board">
+        <div class="status">${winner.value ? 'Winner: ' + winner.value : 'Next player: ' + (store.xIsNext ? 'X' : 'O')}</div>
+        <div class="board">
+          ${[0, 1, 2].map(row => `
+            <div class="board-row">
+              ${[0, 1, 2].map(col => {
+                const i = row * 3 + col;
+                return \`<button class="square" data-index="\${i}">\${squares[i] || ''}</button>\`;
+              }).join('')}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div class="game-info">
+        <ol>${moves}</ol>
+      </div>
+    </div>
+  `;
+});
+```
+
+## Final Code
+
+<details>
+<summary>Click to see the full working code</summary>
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lume Tic-Tac-Toe</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    .game { display: flex; gap: 20px; }
+    .board-row { display: flex; }
+    .square { 
+      width: 60px; height: 60px; 
+      background: #fff; border: 1px solid #999;
+      font-size: 24px; font-weight: bold;
+      margin: -1px -1px 0 0; padding: 0;
+      cursor: pointer;
+    }
+    .square:focus { background: #ddd; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="module">
+    import { state, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
+    import { computed } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/addons.min.mjs';
+
+    // --- Logic ---
+    function calculateWinner(squares) {
+      const lines = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8],
+        [0, 3, 6], [1, 4, 7], [2, 5, 8],
+        [0, 4, 8], [2, 4, 6]
+      ];
+      for (let line of lines) {
+        const [a, b, c] = line;
+        if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
+          return squares[a];
+        }
+      }
+      return null;
+    }
+
+    // --- State ---
+    const store = state({
+      history: [{ squares: Array(9).fill(null) }],
+      stepNumber: 0,
+      xIsNext: true
+    });
+
+    // --- Computed ---
+    const currentSquares = computed(() => store.history[store.stepNumber].squares);
+    const winner = computed(() => calculateWinner(currentSquares.value));
+    const status = computed(() => {
+      if (winner.value) return `Winner: ${winner.value}`;
+      return `Next player: ${store.xIsNext ? 'X' : 'O'}`;
+    });
+
+    // --- Actions ---
+    window.jumpTo = (step) => {
+      store.stepNumber = step;
+      store.xIsNext = (step % 2) === 0;
+    };
+
+    const root = document.getElementById('root');
+
+    root.addEventListener('click', (e) => {
+      if (!e.target.matches('.square')) return;
+      
+      const i = parseInt(e.target.dataset.index);
+      const history = store.history.slice(0, store.stepNumber + 1);
+      const current = history[history.length - 1];
+      const squares = current.squares;
+
+      if (calculateWinner(squares) || squares[i]) return;
+
+      const nextSquares = [...squares];
+      nextSquares[i] = store.xIsNext ? 'X' : 'O';
+
+      store.history = [...history, { squares: nextSquares }];
+      store.stepNumber = history.length;
+      store.xIsNext = !store.xIsNext;
+    });
+
+    // --- Render ---
+    effect(() => {
+      const squares = currentSquares.value;
+      
+      const moves = store.history.map((step, move) => {
+        const desc = move ? `Go to move #${move}` : 'Go to game start';
+        const isCurrent = move === store.stepNumber;
+        return `
+          <li>
+            <button onclick="jumpTo(${move})" style="${isCurrent ? 'font-weight: bold' : ''}">
+              ${desc}
+            </button>
+          </li>
+        `;
+      }).join('');
+
+      root.innerHTML = `
+        <div class="game">
+          <div class="game-board">
+            <div class="status">${status.value}</div>
+            <div class="board">
+              ${[0, 1, 2].map(row => `
+                <div class="board-row">
+                  ${[0, 1, 2].map(col => {
+                    const i = row * 3 + col;
+                    return \`<button class="square" data-index="\${i}">\${squares[i] || ''}</button>\`;
+                  }).join('')}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          <div class="game-info">
+            <ol>\${moves}</ol>
+          </div>
+        </div>
+      `;
+    });
+  </script>
+</body>
+</html>
+```
+</details>
 
 ---
 
-**← Previous: [persist()](persist.md)** | **Next: [hydrateState()](hydrateState.md) →**
+**← Previous: [Build a Todo app](build-todo-app.md)** | **Next: [Working with Arrays](working-with-arrays.md) →**
 
 
 ========================================================================
-FILE: docs/api/addons/debug.md
+FILE: docs/tutorials/working-with-arrays.md
 ========================================================================
 
-# createDebugPlugin(options)
+# Working with Arrays in Lume.js
 
-`createDebugPlugin` logs every read, write, and notification on a store to the console. Use it during development to see exactly which state changes triggered which updates — and which keys are being read more than you expect.
+If you are coming from Vue 2 or older frameworks, you might be used to modifying arrays directly:
+```javascript
+// ❌ THIS WILL NOT WORK IN LUME
+store.items.push(newItem);
+```
 
-## Import
+In Lume.js, **you must update arrays immutably**. This guide explains why and how.
+
+## The Golden Rule
+
+> **Always create a new array when you want to trigger an update.**
 
 ```javascript
-import { state } from 'lume-js';
-import { withPlugins, createDebugPlugin, debug } from 'lume-js/addons';
+// ✅ CORRECT
+store.items = [...store.items, newItem];
 ```
 
-## createDebugPlugin(options)
+## Why?
 
-Creates a debug plugin object. Wrap it with `withPlugins()` to apply it to a store.
+Lume.js uses **Reference Equality** (`===`) to detect changes.
 
-### Signature
-
-```typescript
-function createDebugPlugin(options?: DebugPluginOptions): Plugin;
-
-interface DebugPluginOptions {
-  label?: string;       // Label for log messages (default: 'store')
-  logGet?: boolean;     // Log property reads (default: false)
-  logSet?: boolean;     // Log property writes (default: true)
-  logNotify?: boolean;  // Log subscriber notifications (default: true)
-  trace?: boolean;      // Show stack trace for SET operations (default: false)
-}
-```
-
-### Example
-
-```javascript
-import { state } from 'lume-js';
-import { withPlugins, createDebugPlugin } from 'lume-js/addons';
-
-const store = withPlugins(state({ count: 0 }), [
-  createDebugPlugin({ 
-    label: 'counter',
-    logGet: true,
-    logSet: true,
-    logNotify: true,
-    trace: true  // Show stack traces for debugging
-  })
-]);
-
-store.count++;
-// Console: [counter] SET count: 0 → 1
-// Console: [counter] Stack trace for count (if trace: true)
-```
-
-### Dynamic Options
-
-Options can use getters for runtime toggling:
-
-```javascript
-const config = { logGet: false };
-
-const store = withPlugins(state({ count: 0 }), [
-  createDebugPlugin({ 
-    label: 'myStore',
-    get logGet() { return config.logGet; }
-  })
-]);
-
-// Toggle at runtime
-config.logGet = true;  // Now GET operations will log
-```
-
-## debug (Global Controls)
-
-`debug` is a global object that controls all active debug plugins at once. Use it to toggle logging, filter by key name, or inspect operation counts without touching each store individually.
-
-### Methods
-
-| Method | Description |
-|--------|-------------|
-| `debug.enable()` | Enable debug logging globally |
-| `debug.disable()` | Disable debug logging globally |
-| `debug.isEnabled()` | Check if logging is enabled |
-| `debug.filter(pattern)` | Filter by key (string, RegExp, or null) |
-| `debug.getFilter()` | Get current filter pattern |
-| `debug.stats()` | Get statistics data (silent) |
-| `debug.logStats()` | Log statistics to console with table |
-| `debug.resetStats()` | Clear all statistics |
-
-### Example
-
-```javascript
-import { debug } from 'lume-js/addons';
-
-debug.enable();           // Turn on logging
-debug.filter('count');    // Only log keys containing 'count'
-debug.filter(/^user/);    // Only log keys starting with 'user'
-debug.filter(null);       // Clear filter
-
-const stats = debug.stats();  // Get stats data (silent)
-debug.logStats();             // Log stats to console with formatting
-debug.resetStats();           // Clear stats
-```
-
-## Statistics
-
-The debug addon tracks operation counts for each store:
-
-```javascript
-const stats = debug.stats();
-// {
-//   counter: {
-//     gets: { count: 5 },
-//     sets: { count: 3 },
-//     notifies: { count: 3 }
-//   },
-//   user: {
-//     gets: { name: 2, age: 1 },
-//     sets: { name: 1 },
-//     notifies: { name: 1 }
-//   }
-// }
-```
-
-## Console Output
-
-Debug logs use colored output:
-- **GET** (green): Property reads
-- **SET** (orange): Property writes  
-- **NOTIFY** (pink): Subscriber notifications
-- **SUBSCRIBE** (purple): New subscriptions
-
----
-
-**← Previous: [hydrateState()](hydrateState.md)** | **Next: [withPlugins()](withPlugins.md) →**
-
-
-========================================================================
-FILE: docs/api/addons/withPlugins.md
-========================================================================
-
-# withPlugins API
-
-> **Version:** 2.0.0+ **Status:** Stable
-
-The plugin system lets you extend Lume state with custom behaviors — logging, validation, persistence, transformation, and more. Plugins intercept state operations through a small set of hooks.
-
-Plugins are applied via `withPlugins()`, an addon wrapper. The core `state()` function has no plugin support — this keeps the core minimal and fast.
-
-## Table of Contents
-
-- [Quick Start](#quick-start)
-- [Plugin Interface](#plugin-interface)
-- [Hook Execution Order](#hook-execution-order)
-- [Chain Pattern](#chain-pattern)
-- [Best Practices](#best-practices)
-- [Common Patterns](#common-patterns)
-- [Performance](#performance)
-
-## Quick Start
-
-```javascript
-import { state } from 'lume-js';
-import { withPlugins } from 'lume-js/addons';
-
-const debugPlugin = {
-  name: 'debug',
-  onGet: (key, value) => {
-    console.log(`GET ${key}:`, value);
-    return value;
-  },
-  onSet: (key, newValue, oldValue) => {
-    console.log(`SET ${key}:`, oldValue, '→', newValue);
-    return newValue;
-  }
-};
-
-const store = withPlugins(state({ count: 0 }), [debugPlugin]);
-```
-
-## Plugin Interface
-
-A plugin is a plain object with a `name` property and optional hook functions:
-
-```typescript
-interface Plugin {
-  name: string;                                                    // Required: unique identifier
-  onInit?: () => void;                                             // Called when state is created
-  onGet?: (key: string, value: any) => any;                       // Intercept reads
-  onSet?: (key: string, newValue: any, oldValue: any) => any;     // Intercept writes
-  onSubscribe?: (key: string) => void;                             // Called when a subscriber is added
-  onNotify?: (key: string, value: any) => void;                   // Before subscribers are notified
-}
-```
-
-> **Plugin objects are frozen after registration.** Once `withPlugins()` returns, `Object.freeze()` has been applied to each plugin — hooks cannot be swapped afterwards, and writes to plugin properties fail silently. Mutable plugin state (a history stack, a cache) must live in a closure variable next to the plugin, not on the plugin object itself. `onInit` runs before the freeze, so one-time setup on the object is still possible there.
-
-### Hook: `onInit()`
-
-Called synchronously when the state object is created.
-
-**Use cases:** initialize plugin state, set up external connections, register global handlers.
-
-```javascript
-const plugin = {
-  name: 'logger',
-  onInit: () => {
-    console.log('State initialized at', new Date());
-  }
-};
-```
-
-### Hook: `onGet(key, value)`
-
-Called when a property is accessed, before the value is returned.
-
-**Parameters:**
-- `key` — Property key being accessed.
-- `value` — Current value (possibly transformed by earlier plugins in the chain).
-
-**Returns:** Transformed value, or the original `value` to pass it through unchanged.
-
-**Use cases:** transform values on read, log access, implement computed properties, lazy loading.
-
-```javascript
-const transformPlugin = {
-  name: 'transform',
-  onGet: (key, value) => {
-    if (key === 'name' && typeof value === 'string') {
-      return value.toUpperCase();
-    }
-    return value;
-  }
-};
-```
-
-### Hook: `onSet(key, newValue, oldValue)`
-
-Called when a property is updated, before subscribers are notified.
-
-**Parameters:**
-- `key` — Property key being updated.
-- `newValue` — New value (possibly transformed by earlier plugins).
-- `oldValue` — Previous value.
-
-**Returns:** The value to store. Return `oldValue` to reject the change.
-
-**Use cases:** validate input, transform values on write, prevent updates, track history.
-
-```javascript
-const validationPlugin = {
-  name: 'validation',
-  onSet: (key, newValue, oldValue) => {
-    if (key === 'age' && (newValue < 0 || newValue > 150)) {
-      console.warn('Invalid age, keeping old value');
-      return oldValue; // Reject change
-    }
-    return newValue; // Accept change
-  }
-};
-```
-
-### Hook: `onSubscribe(key)`
-
-Called when a new subscriber is added to a property.
-
-**Parameters:**
-- `key` — Property key being subscribed to.
-
-**Use cases:** track active subscriptions, lazy load data, initialize watchers.
-
-```javascript
-const trackPlugin = {
-  name: 'tracker',
-  onSubscribe: (key) => {
-    console.log(`New subscriber for "${key}"`);
-  }
-};
-```
-
-### Hook: `onNotify(key, value)`
-
-Called during microtask flush, before subscribers are notified. This is the right place for side effects.
-
-**Parameters:**
-- `key` — Property key that changed.
-- `value` — New value being notified.
-
-**Use cases:** log notifications, sync with external systems, trigger side effects.
-
-```javascript
-const syncPlugin = {
-  name: 'sync',
-  onNotify: (key, value) => {
-    localStorage.setItem(key, JSON.stringify(value));
-  }
-};
-```
-
-## Hook Execution Order
-
-### Property access (get)
-
-```
-1. Property accessed: store.count
-2. onGet hooks run (all plugins, in registration order)
-3. Transformed value returned to caller
-```
-
-### Property update (set)
-
-```
-1. Property set: store.count = 5
-2. onSet hooks run (all plugins, in registration order)
-3. Final value stored
-4. Change queued for microtask
---- microtask boundary ---
-5. onNotify hooks run (all plugins, in registration order)
-6. Subscribers notified
-7. Effects re-run
-```
-
-### Diagram
-
-```
-store.count = 5
-    ↓
-  onSet (plugin1)
-    ↓
-  onSet (plugin2)
-    ↓
-  value stored
-    ↓
-  microtask scheduled
-    ↓
-  --- wait for microtask ---
-    ↓
-  onNotify (plugin1)
-    ↓
-  onNotify (plugin2)
-    ↓
-  subscribers called
-    ↓
-  effects run
-```
-
-## Chain Pattern
-
-When multiple plugins are registered, each plugin receives the output of the previous one.
-
-### Get chain
-
-```javascript
-const plugin1 = {
-  name: 'double',
-  onGet: (key, value) => typeof value === 'number' ? value * 2 : value
-};
-
-const plugin2 = {
-  name: 'add10',
-  onGet: (key, value) => typeof value === 'number' ? value + 10 : value
-};
-
-const store = withPlugins(state({ count: 5 }), [plugin1, plugin2]);
-
-console.log(store.count); // (5 * 2) + 10 = 20
-```
-
-### Set chain
-
-```javascript
-const plugin1 = {
-  name: 'clamp',
-  onSet: (key, value) => {
-    if (key === 'age') return Math.max(0, Math.min(150, value));
-    return value;
-  }
-};
-
-const plugin2 = {
-  name: 'round',
-  onSet: (key, value) => {
-    if (key === 'age') return Math.round(value);
-    return value;
-  }
-};
-
-const store = withPlugins(state({ age: 0 }), [plugin1, plugin2]);
-
-store.age = 175.7;
-console.log(store.age); // Math.round(Math.min(150, 175.7)) = 150
-```
-
-## Best Practices
-
-### Keep plugins focused
-
-Each plugin should do one thing well.
-
-```javascript
-// Good: Single responsibility
-const validationPlugin = { name: 'validation', onSet: validateData };
-const loggingPlugin    = { name: 'logging',    onGet: logAccess };
-
-// Avoid: Mixed responsibilities in one plugin
-const godPlugin = {
-  name: 'everything',
-  onGet: (key, value) => { /* validate + log + transform + … */ }
-};
-```
-
-### Return early for non-applicable keys
-
-```javascript
-const ageValidator = {
-  name: 'age-validator',
-  onSet: (key, newValue, oldValue) => {
-    if (key !== 'age') return newValue;
-    if (newValue < 0 || newValue > 150) return oldValue;
-    return newValue;
-  }
-};
-```
-
-### Handle errors gracefully
-
-Lume catches errors in plugin hooks and logs them, but your plugin should handle expected errors:
-
-```javascript
-const safePlugin = {
-  name: 'safe',
-  onGet: (key, value) => {
-    try {
-      return JSON.parse(value);
-    } catch (e) {
-      console.warn(`Failed to parse ${key}:`, e);
-      return value;
-    }
-  }
-};
-```
-
-### Keep `onGet` pure
-
-`onGet` runs on every property read. Side effects here (fetch calls, writes to other keys) will fire far more often than you expect. Use `onNotify` for side effects instead.
-
-```javascript
-// Good: pure transformation
-const plugin = {
-  name: 'format',
-  onGet: (key, value) => typeof value === 'string' ? value.toUpperCase() : value
-};
-
-// Avoid: side effects in onGet
-const plugin = {
-  name: 'bad',
-  onGet: (key, value) => {
-    fetch('/api/log', { method: 'POST', body: key }); // fires on every read!
-    return value;
-  }
-};
-```
-
-### Use `onNotify` for side effects
-
-```javascript
-const persistPlugin = {
-  name: 'persist',
-  onNotify: (key, value) => {
-    localStorage.setItem(key, JSON.stringify(value));
-  }
-};
-```
+1.  **Performance**: Checking `oldArray === newArray` is instant. Checking every item inside an array is slow.
+2.  **Predictability**: You explicitly tell Lume "I have changed this data" by assigning a new value.
+3.  **Simplicity**: Lume doesn't need to monkey-patch `Array.prototype.push` or wrap arrays in heavy Proxies.
 
 ## Common Patterns
 
-### Validation
+Here is a cheat sheet for common array operations.
+
+### Adding Items
+
+**Don't use:** `push()`, `unshift()`
+
+**Use:** Spread syntax `[...]`
 
 ```javascript
-const validationPlugin = {
-  name: 'validation',
-  onSet: (key, newValue, oldValue) => {
-    const rules = {
-      email: (v) => typeof v === 'string' && v.includes('@'),
-      age:   (v) => typeof v === 'number' && v >= 0 && v <= 150
-    };
+// Add to end (push)
+store.items = [...store.items, newItem];
 
-    if (rules[key] && !rules[key](newValue)) {
-      console.error(`Validation failed for ${key}`);
-      return oldValue;
-    }
-
-    return newValue;
-  }
-};
+// Add to start (unshift)
+store.items = [newItem, ...store.items];
 ```
 
-### History / Undo-Redo
+### Removing Items
+
+**Don't use:** `splice()`, `pop()`, `shift()`
+
+**Use:** `filter()`
 
 ```javascript
-// Plugin objects are frozen after registration, so mutable plugin state
-// lives in a closure variable — not on the plugin object.
-const historyStack = [];
+// Remove by ID
+store.items = store.items.filter(item => item.id !== targetId);
 
-const historyPlugin = {
-  name: 'history',
-  onSet: (key, newValue, oldValue) => {
-    historyStack.push({ key, value: oldValue });
-    return newValue;
-  }
-};
+// Remove by Index
+store.items = store.items.filter((_, index) => index !== targetIndex);
 
-function undo(store) {
-  if (historyStack.length > 0) {
-    const { key, value } = historyStack.pop();
-    store[key] = value;
-  }
-}
+// Remove last item
+store.items = store.items.slice(0, -1);
 ```
 
-### Persistence
+### Updating Items
+
+**Don't use:** `store.items[i] = newValue`
+
+**Use:** `map()`
 
 ```javascript
-const persistPlugin = {
-  name: 'persist',
-
-  onInit: () => {
-    persistPlugin.loaded = true;
-  },
-
-  onGet: (key, value) => {
-    if (persistPlugin.loaded && value === undefined) {
-      const stored = localStorage.getItem(key);
-      return stored ? JSON.parse(stored) : value;
-    }
-    return value;
-  },
-
-  onNotify: (key, value) => {
-    localStorage.setItem(key, JSON.stringify(value));
-  }
-};
+// Update item with specific ID
+store.items = store.items.map(item => 
+  item.id === targetId 
+    ? { ...item, status: 'done' } // Create new object for the updated item
+    : item                        // Keep other items as-is
+);
 ```
 
-### Transform / Normalize
+### Sorting and Reordering
+
+**Don't use:** `sort()`, `reverse()` (these mutate in place!)
+
+**Use:** Copy then sort
 
 ```javascript
-const normalizePlugin = {
-  name: 'normalize',
-  onSet: (key, newValue) => {
-    if (key === 'email' && typeof newValue === 'string') {
-      return newValue.toLowerCase().trim();
-    }
-    if (key === 'phone' && typeof newValue === 'string') {
-      return newValue.replace(/\D/g, ''); // digits only
-    }
-    return newValue;
-  }
-};
+// Sort by name
+store.items = [...store.items].sort((a, b) => a.name.localeCompare(b.name));
+
+// Reverse
+store.items = [...store.items].reverse();
 ```
 
-## Performance
+## Integration with `repeat`
 
-Plugin hooks add minimal overhead — typically 10–30% per operation depending on complexity. Each hook call is synchronous, and multiple plugins execute sequentially.
-
-**Tips:**
-- Filter early: return immediately for non-applicable keys.
-- Keep hook logic lightweight.
-- Cache computed results when needed.
-- For typical apps, 1–3 plugins is plenty.
-
-Typical overhead on a modern system (M1 Mac):
-
-| Operation | No Plugins | 1 Plugin | 3 Plugins | 10 Plugins |
-|-----------|------------|----------|-----------|------------|
-| Get | 0.001 ms | 0.002 ms | 0.004 ms | 0.010 ms |
-| Set | 0.002 ms | 0.003 ms | 0.006 ms | 0.015 ms |
-
-For the vast majority of applications, plugin overhead is negligible.
-
-## Error Handling
-
-Plugin errors are caught and logged but do not crash the application:
+When using the `repeat` addon, immutable updates are essential. `repeat` compares the new array to the old one to decide what DOM elements to add, remove, or update.
 
 ```javascript
-const buggyPlugin = {
-  name: 'buggy',
-  onGet: (key, value) => {
-    throw new Error('Oops!');
+// Pattern 1: Simple (render only)
+repeat(list, store, 'items', {
+  key: item => item.id,
+  render: (item, el) => {
+    el.textContent = item.name;  // Called on every update
   }
-};
+});
 
-const store = withPlugins(state({ count: 0 }), [buggyPlugin]);
-
-store.count; // Logs error, returns original value
-// Console: [Lume.js] Plugin "buggy" error in onGet: Error: Oops!
+// Pattern 2: Clean separation (recommended)
+repeat(list, store, 'items', {
+  key: item => item.id,
+  create: (item, el) => { /* DOM structure once */ },
+  update: (item, el) => { /* Data binding on updates */ }
+});
 ```
 
-## TypeScript Support
+If you mutate the array in place (`push`), `repeat` won't know anything happened because the array reference hasn't changed.
 
-Full TypeScript definitions are provided:
+## Common Mistakes
 
-```typescript
-import { state } from 'lume-js';
-import { withPlugins, Plugin } from 'lume-js/addons';
-
-const myPlugin: Plugin = {
-  name: 'example',
-  onGet: (key: string, value: unknown): unknown => {
-    return value;
+### Mistake 1: Mutating inside `map`
+```javascript
+// ❌ WRONG: Mutating the object inside map
+store.items = store.items.map(item => {
+  if (item.id === 1) {
+    item.done = true; // Mutates existing object!
+    return item;
   }
-};
+  return item;
+});
 
-const store = withPlugins(state({ count: 0 }), [myPlugin]);
+// ✅ CORRECT: Return a new object
+store.items = store.items.map(item => {
+  if (item.id === 1) {
+    return { ...item, done: true }; // New object
+  }
+  return item;
+});
 ```
 
-## See also
+### Mistake 2: Using `sort()` directly
+```javascript
+// ❌ WRONG: sort() mutates in place
+store.items.sort(); // Returns the SAME array, no update triggered
 
-- [Design Decisions](../../design/design-decisions.md) — Why plugins work this way
-- [State API](../core/state.md) — Core state documentation
-- [addons/debug](./debug.md) — Built-in debug plugin using withPlugins
+// ✅ CORRECT: Copy then sort
+store.items = [...store.items].sort(); // New array
+```
+
+## Summary
+
+- **Read** arrays however you want.
+- **Write** arrays by creating new ones.
+- Use `map`, `filter`, and `[...spread]` instead of `push`, `splice`, and loops.
+
+## Using Helper Libraries (e.g., Immer)
+
+If you prefer writing mutable-style code, you can use libraries like [Immer](https://immerjs.github.io/immer/).
+
+Immer takes your current state, lets you "mutate" a draft, and then produces a **new immutable state**. This works perfectly with Lume because Lume sees the new reference and triggers the update.
+
+```javascript
+import { produce } from 'immer';
+
+// ✅ WORKS: Immer returns a new array reference
+store.items = produce(store.items, draft => {
+  draft.push(newItem);
+  draft[0].done = true;
+});
+```
+
+Any library that follows the **Immutable Update Pattern** (Redux toolkit, etc.) is compatible with Lume.js.
 
 ---
 
-**← Previous: [createDebugPlugin](debug.md)** | **Next: [isReactive()](isReactive.md) →**
-
-
-========================================================================
-FILE: docs/api/addons/isReactive.md
-========================================================================
-
-# isReactive(value)
-
-Returns `true` if the value is a Lume reactive proxy created by `state()`.
-
-> **Import path changed in v2.0.0:** `isReactive` moved from `lume-js` to `lume-js/addons`.
-
-## Signature
-
-```ts
-function isReactive(value: any): boolean;
-```
-
-## Parameters
-
-- `value` — The value to check.
-
-## Returns
-
-`true` if the value carries the Lume reactive brand (a registry symbol stamped by `state()`), or — as a compatibility fallback — has a `$subscribe` method. `false` otherwise.
-
-## Example
-
-```js
-import { state } from 'lume-js';
-import { isReactive } from 'lume-js/addons';
-
-const store = state({ count: 0 });
-
-isReactive(store); // true
-isReactive({});    // false
-```
-
-This is useful when writing utilities or addons that need to accept either a raw object or an already-reactive store without double-wrapping it.
-
-## Note
-
-Detection checks the shared brand symbol first (`Symbol.for('lume.reactive')`, checked with the `in` operator so it never registers an effect dependency), then falls back to duck-typing (`typeof obj.$subscribe === 'function'`) for stores created by older lume-js versions. The brand is a type tag, not a security boundary — any code can stamp it.
+> **Deep Dive:** Why does Lume require immutable updates? Read the [Design Decision](../design/design-decisions.md#why-no-loop-rendering-in-core-v-for-x-for).
 
 ---
 
-**← Previous: [withPlugins()](withPlugins.md)** | **Next: [Handlers API](../core/handlers.md) →**
+**← Previous: [Build Tic-Tac-Toe](build-tic-tac-toe.md)** | **Next: [Migrating from 1.x](../guides/migration.md) →**
 
 
 ========================================================================
@@ -6900,6 +6708,26 @@ bindDom(root, store, {
 
 ---
 
+## Tooling Decisions
+
+### Why Docs Facts and Navigation Are Generated (docs:sync)
+
+**Decision:** Facts that change with every build (version, gzipped sizes, test count, browser floor) live in exactly one generated file, `docs/metrics.json` (`scripts/build-metrics.js`, never hand-edited). Structure that changes when pages are added or reordered (nav order, the `docs/README.md` index, the `llms.txt`/`llms-full.txt` bundle order) lives in exactly one authored file, `docs/manifest.json`. `scripts/sync-docs.js` rewrites `<!-- lume:* -->` marker regions embedded directly in the real files — README badges, guide prose, nav footers — from those two sources; `npm run docs:check` fails CI when running the sync would produce a diff.
+
+**Reasoning:**
+- Every one of these had shipped as a real bug at some point: the FAQ claiming "2.x is in beta" a year after stable, README and the installation guide quoting three different sizes for the same bundle, `build-llms.js`'s hardcoded section list pointing at two API pages that didn't exist while omitting all eight handler pages, a tutorial with two contradictory prev/next footers, and a version bump in `package.json` that left `llms.txt`'s `Version:` line stale. All of these are the same failure mode — a fact or a link typed as a literal in more than one place — and a CI gate that only checks *some* of the copies will always miss the others.
+- Markers live inside the real files rather than a separate template tree so there is no second copy to keep in sync with the first: each file is simultaneously the template and the rendered output.
+- An unrecognized `lume:` marker key is a hard build error, not a silently-ignored no-op — a typo in a marker name is exactly the kind of drift this exists to catch.
+- `docs/design/design-decisions.md` (this file), `CHANGELOG.md`, and `CLAUDE.md`/`AGENTS.md` are deliberately excluded from marker management — they are historical or hand-authored-by-contract documents (see the "amend, never rewrite" convention already in force here), not facts that should be silently overwritten by a build script.
+
+**Alternatives considered:**
+- *A single hand-maintained checklist* ("update these N places when X changes") — this is what existed before, and it is exactly what kept failing; checklists rely on someone remembering to run them.
+- *A separate template directory rendered into the docs tree* — rejected because it doubles the files a contributor has to look at to understand what a page says, and markdown-in-markdown templating adds a build step of its own for very little benefit over inline markers.
+
+**Tradeoff:** Every fact-bearing sentence in a managed file now carries a pair of HTML comments, which is visible noise in the raw markdown (and, in a few code-fence examples, in the rendered output too — see `docs/guides/installation.md`'s version-pin example). Traded for: it is no longer possible for these specific facts to silently disagree with each other across the repo.
+
+---
+
 ## Future Considerations
 
 **Features We Might Add Later:**
@@ -6938,4 +6766,196 @@ We're open to change, but will prioritize **simplicity and standards** over feat
 
 ---
 
-**← Previous: [FAQ](../guides/faq.md)**
+**← Previous: [Working with Arrays](../tutorials/working-with-arrays.md)**
+
+
+========================================================================
+FILE: docs/guides/migration.md
+========================================================================
+
+# Migrating from 1.x to 2.x
+
+Lume 2.0 is a near-complete rewrite. The internals are faster and the architecture is cleaner — but the core API is fully backward compatible, so migrating is straightforward.
+
+## Breaking changes
+
+**Bump the version in `package.json`:**
+
+```diff
+   "dependencies": {
+-    "lume-js": "^1.0.0"
++    "lume-js": "^2.0.0"
+   }
+```
+
+**`isReactive` moved to `lume-js/addons`:**
+
+```diff
+- import { state, isReactive } from 'lume-js';
++ import { state } from 'lume-js';
++ import { isReactive } from 'lume-js/addons';
+```
+
+Everything else continues to work without modification.
+
+## New in 2.x
+
+- `watch(store, key, fn)` — explicit single-key watcher; fires immediately on subscribe with the current value
+- `computed()` — derived value with auto-tracking and `.dispose()`
+- `effect()` — reactive side-effect with optional explicit deps
+- `isReactive()` — detect a reactive proxy (import from `lume-js/addons`)
+- `data-show` attribute (via `show` handler) — conditional visibility, positive counterpart to `data-hidden`
+- `data-class-*` attributes (via `classToggle()` factory) — per-class CSS toggle (e.g. `data-class-active`)
+- `show`, `classToggle()`, `stringAttr`, `boolAttr`, `ariaAttr` handlers — import from `lume-js/handlers`
+- `withPlugins(store, plugins)` — apply plugins (logging, validation, transforms) to a store, import from `lume-js/addons`
+- `createDebugPlugin` / `debug` — developer logging addon (import from `lume-js/addons`)
+
+## Unchanged
+
+- `state(obj)` — same API, same contract
+- `bindDom(root, store, { handlers })` — same API
+- `data-bind`, `data-hidden`, `data-disabled`, `data-checked` attribute names
+- Zero dependencies, no build step required
+
+---
+
+**← Previous: [Working with Arrays](../tutorials/working-with-arrays.md)** | **Next: [FAQ](faq.md) →**
+
+
+========================================================================
+FILE: docs/guides/faq.md
+========================================================================
+
+# FAQ
+
+## Is Lume.js production-ready?
+
+Yes. Lume 2.x is stable — the current release on npm is v2.3.1 (`npm install lume-js`), backed by 457 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
+
+## Does Lume work without a build step?
+
+Yes — that's one of its main advantages. Import from a CDN and write plain JavaScript:
+
+```html
+<script type="module">
+  import { state, bindDom, effect } from 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs';
+</script>
+```
+
+No bundler, no npm, no config.
+
+## Does Lume support TypeScript?
+
+Yes. Types are included in the package. No `@types/` install needed.
+
+## Can I use Lume with an existing server-rendered page?
+
+Yes — that's a primary use case. Attach `bindDom` to any element on the page and the rest of the page is untouched:
+
+```js
+const store = state({ open: false });
+bindDom(document.getElementById('nav'), store);
+```
+
+## How does Lume compare to Alpine.js?
+
+Both work inline with server-rendered HTML. Lume uses standard `data-*` attributes; Alpine uses `x-*` directives with a custom expression syntax. Lume is smaller (2.66 KB vs ~15 KB gzipped — 1.46 KB for the DOM-free kernel) and has no custom expression evaluator — logic lives in plain JS, not attribute strings.
+
+## How does Lume compare to Vue 3's reactivity?
+
+Lume's core reactivity (`state`, `effect`, `watch`, `computed`) is conceptually similar to Vue's `reactive`/`watchEffect`/`watch`/`computed`. The main difference is that Lume has no component model or template compiler — it binds directly to the DOM via `data-*` attributes.
+
+## Can I use `Map` or `Set` in state?
+
+No. The Proxy only intercepts plain object and array operations. Use plain arrays instead of `Set`, and objects with string keys instead of `Map`.
+
+```js
+// Not reactive
+const store = state({ tags: new Set(['js', 'css']) });
+
+// Use an array
+const store = state({ tags: ['js', 'css'] });
+```
+
+## Why does my effect run more than I expect?
+
+Effects re-run for every key they read. If you read `store.a` and `store.b` inside one effect, it re-runs when either changes. Use `watch(store, 'key', fn)` when you need to react to exactly one key, or use `computed` to derive a single value that the effect reads.
+
+## How do I do conditional rendering?
+
+The simplest way is `data-show` or `data-hidden`. Note that `data-show` requires opting in to the `show` handler — it is not built into `bindDom` by default:
+
+```js
+import { state, bindDom } from 'lume-js';
+import { show } from 'lume-js/handlers';
+
+const store = state({ isLoggedIn: false });
+bindDom(document.body, store, { handlers: [show] });
+```
+
+```html
+<div data-show="isLoggedIn">Welcome back!</div>
+<div data-hidden="isLoggedIn">Please log in.</div>
+```
+
+For replacing entire sections, assign `innerHTML` inside an `effect` — but only with markup you wrote yourself, never with user-supplied data (Lume's own bindings use `textContent` exactly to avoid HTML injection):
+
+```js
+effect(() => {
+  outlet.innerHTML = store.page === 'home' ? homeHTML : aboutHTML;
+});
+```
+
+## Does Lume support async effects?
+
+`effect` itself is synchronous — it runs its function immediately and tracks dependencies. For async work, trigger it from a `watch` callback:
+
+```js
+watch(store, 'userId', async (id) => {
+  const user = await fetch(`/api/users/${id}`).then(r => r.json());
+  store.userName = user.name;
+});
+```
+
+## How do I share state between multiple `bindDom` calls?
+
+Pass the same store object to each call:
+
+```js
+const store = state({ count: 0, theme: 'light' });
+
+bindDom(document.getElementById('header'), store);
+bindDom(document.getElementById('main'), store);
+bindDom(document.getElementById('footer'), store);
+```
+
+All three subtrees share the same reactive store. A write in one subtree updates all of them.
+
+## Can I have multiple independent stores?
+
+Yes — create as many `state()` objects as you need:
+
+```js
+const userStore = state({ name: 'Ada', role: 'admin' });
+const cartStore = state({ items: [], total: 0 });
+
+bindDom(document.getElementById('user-panel'), userStore);
+bindDom(document.getElementById('cart'), cartStore);
+```
+
+## How do I clean up when removing a component?
+
+Call the cleanup function returned by `bindDom` and dispose any effects:
+
+```js
+const cleanup = bindDom(el, store);
+const stopEffect = effect(() => { /* … */ });
+
+// When tearing down:
+cleanup();
+stopEffect();
+```
+
+---
+
+**← Previous: [Migrating from 1.x](migration.md)**

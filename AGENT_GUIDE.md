@@ -29,8 +29,8 @@ store.count++;                          // DOM + title update on next microtask
 
 | Import | Size (gz) | Gives you | Use in |
 |---|---|---|---|
-| `lume-js` | 2.66 KB | `state`, `effect`, `bindDom`, `batch`, `withReadObserver` | browsers |
-| `lume-js/state` | 1.46 KB | `state`, `batch`, `withReadObserver` (no DOM code) | Node, workers, CLI, SSR |
+| `lume-js` | <!-- lume:size-index -->2.66<!-- /lume:size-index --> KB | `state`, `effect`, `bindDom`, `batch`, `withReadObserver` | browsers |
+| `lume-js/state` | <!-- lume:size-state -->1.46<!-- /lume:size-state --> KB | `state`, `batch`, `withReadObserver` (no DOM code) | Node, workers, CLI, SSR |
 | `lume-js/addons` | pay per import | `computed`, `watch`, `repeat`, `persist`, `hydrateState`, `createCleanupGroup`, `debug` | optional patterns |
 | `lume-js/handlers` | pay per import | `show`, `classToggle`, `boolAttr`, `ariaAttr`, `stringAttr`, `className`, `on`, `htmlAttrs`, presets | extra `data-*` attributes |
 
@@ -215,7 +215,7 @@ group.add(watch(store, 'query', async (q) => {
 
 ## SSR / no-DOM environments
 
-Import `state`/`batch` from `lume-js/state` (1.46 KB, zero DOM references) in Node/workers/CLI. For server-rendered pages, inline initial state as `<script type="application/json">` and hydrate with `hydrateState()` (`lume-js/addons`), then call `bindDom` as usual.
+Import `state`/`batch` from `lume-js/state` (<!-- lume:size-state -->1.46<!-- /lume:size-state --> KB, zero DOM references) in Node/workers/CLI. For server-rendered pages, inline initial state as `<script type="application/json">` and hydrate with `hydrateState()` (`lume-js/addons`), then call `bindDom` as usual.
 
 ## Keeping agents up to date
 

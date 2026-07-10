@@ -206,4 +206,6 @@ repeat(listEl, filtered, 'value', {
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [computed()](computed.md)** | **Next: [persist()](persist.md) →**
+<!-- /lume:nav -->

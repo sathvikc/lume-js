@@ -481,4 +481,6 @@ const store = withPlugins(state({ count: 0 }), [myPlugin]);
 
 ---
 
-**← Previous: [createDebugPlugin](debug.md)** | **Next: [isReactive()](isReactive.md) →**
+<!-- lume:nav -->
+**← Previous: [createDebugPlugin() / debug](debug.md)** | **Next: [isReactive()](isReactive.md) →**
+<!-- /lume:nav -->

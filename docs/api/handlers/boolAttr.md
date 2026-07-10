@@ -84,4 +84,6 @@ import { formHandlers } from 'lume-js/handlers';
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [className](className.md)** | **Next: [ariaAttr](ariaAttr.md) →**
+<!-- /lume:nav -->

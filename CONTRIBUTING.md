@@ -94,6 +94,7 @@ Every pull request must pass these automated checks:
 | TypeScript | `npm run typecheck` | Zero type errors |
 | Cognitive Complexity | `npm run lint` | All functions ≤ 15 (sonarjs/cognitive-complexity) |
 | Cyclomatic & MI | `node scripts/complexity.js` | Max CC ≤ 10 per function, MI ≥ 50 per file |
+| Docs Freshness | `npm run docs:check` | `docs/metrics.json`, marker regions, and `llms.txt`/`llms-full.txt` all match the docs tree |
 
 Run everything locally before pushing:
 
@@ -101,7 +102,7 @@ Run everything locally before pushing:
 npm run validate
 ```
 
-This runs: build → size check → complexity → lint → typecheck → coverage.
+This runs: build → size check → complexity → lint → typecheck → coverage → docs check.
 
 ## Contribution Guidelines
 
@@ -120,6 +121,7 @@ Documentation is as important as code.
 - If you add a feature, add a guide or API doc in `docs/`.
 - If you fix a bug, check if the docs need clarification.
 - Keep examples simple and copy-paste friendly.
+- If your change touches a version number, bundle size, test count, browser floor, or the docs nav (`docs/manifest.json`), run `npm run docs:sync` and commit the result — it rewrites every `<!-- lume:* -->` marker region from `docs/metrics.json`/`docs/manifest.json` and regenerates the `llms.txt`/`llms-full.txt` bundles. `npm run docs:check` (part of `npm run validate`) fails the PR on drift.
 
 ### 3. Commit Messages
 

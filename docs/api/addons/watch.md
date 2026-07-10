@@ -99,4 +99,6 @@ watch(store, 'count', (val) => {
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [batch()](../core/batch.md)** | **Next: [computed()](computed.md) →**
+<!-- /lume:nav -->

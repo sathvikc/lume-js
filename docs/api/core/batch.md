@@ -89,4 +89,6 @@ Single-store updates are already batched by the microtask scheduler — `batch()
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [effect()](effect.md)** | **Next: [watch()](../addons/watch.md) →**
+<!-- /lume:nav -->

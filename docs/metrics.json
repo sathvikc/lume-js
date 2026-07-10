@@ -1,0 +1,23 @@
+{
+  "version": "2.3.1",
+  "tests": 457,
+  "sizes": {
+    "state": "1.46",
+    "index": "2.66",
+    "handlers": "1.23",
+    "addons": "4.68",
+    "global": "7.44"
+  },
+  "budgets": {
+    "state": "1.75",
+    "index": "3.00",
+    "handlers": "2.00",
+    "addons": "6.00"
+  },
+  "browserFloor": {
+    "chrome": "80+",
+    "firefox": "74+",
+    "safari": "13.1+",
+    "edge": "80+"
+  }
+}

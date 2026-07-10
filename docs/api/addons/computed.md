@@ -94,4 +94,6 @@ c.dispose();
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [watch()](watch.md)** | **Next: [repeat()](repeat.md) →**
+<!-- /lume:nav -->

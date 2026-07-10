@@ -1,6 +1,6 @@
 # The Universal Core (`lume-js/state`)
 
-Lume's kernel — `state()`, `batch()`, `withReadObserver()` — has no DOM dependency at all. The `lume-js/state` entry ships exactly that kernel: **1.46 KB gzipped**, runs in Node, Deno, Bun, workers, CLI tools, and browsers alike.
+Lume's kernel — `state()`, `batch()`, `withReadObserver()` — has no DOM dependency at all. The `lume-js/state` entry ships exactly that kernel: **<!-- lume:size-state -->1.46<!-- /lume:size-state --> KB gzipped**, runs in Node, Deno, Bun, workers, CLI tools, and browsers alike.
 
 ```js
 import { state, batch } from 'lume-js/state';
@@ -9,7 +9,9 @@ import { state, batch } from 'lume-js/state';
 If you're building for the browser and want DOM binding, use the full core instead — same `state`, plus `bindDom` and `effect`:
 
 ```js
+<!-- lume:comment-size-index -->
 import { state, bindDom, effect, batch } from 'lume-js';   // 2.66 KB
+<!-- /lume:comment-size-index -->
 ```
 
 Both entries share one implementation — `lume-js/state` is not a fork, it's a smaller slice of the same modules.
@@ -85,7 +87,7 @@ assert.deepStrictEqual(audit, [0, 42]);
 | `effect` | auto-tracking is a UI-leaning pattern; in server code, explicit `$subscribe` is usually clearer | `lume-js` |
 | addons (`computed`, `watch`, `persist`, …) | optional patterns | `lume-js/addons` |
 
-Note that `watch()` and `computed()` from `lume-js/addons` are themselves DOM-free and work fine in Node — they're just not part of the 1.46 KB kernel. (`computed` pulls in `effect` internally.)
+Note that `watch()` and `computed()` from `lume-js/addons` are themselves DOM-free and work fine in Node — they're just not part of the <!-- lume:size-state -->1.46<!-- /lume:size-state --> KB kernel. (`computed` pulls in `effect` internally.)
 
 ## Building reactive primitives on the kernel
 
@@ -117,8 +119,8 @@ console.log(sum, deps);   // 3, ['a', 'b']
 
 | Entry | Gzipped | CI budget |
 |-------|---------|-----------|
-| `lume-js/state` (`dist/state.min.mjs`) | 1.46 KB | ≤ 1.75 KB |
-| `lume-js` (`dist/index.min.mjs`) | 2.66 KB | ≤ 3 KB |
+| `lume-js/state` (`dist/state.min.mjs`) | <!-- lume:size-state -->1.46<!-- /lume:size-state --> KB | ≤ <!-- lume:budget-state -->1.75<!-- /lume:budget-state --> KB |
+| `lume-js` (`dist/index.min.mjs`) | <!-- lume:size-index -->2.66<!-- /lume:size-index --> KB | ≤ <!-- lume:budget-index -->3.00<!-- /lume:budget-index --> KB |
 
 Both numbers are enforced by `scripts/check-size.js` on every CI run — they can't silently drift.
 
@@ -130,4 +132,6 @@ Both numbers are enforced by `scripts/check-size.js` on every CI run — they ca
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [How reactivity works](reactivity.md)** | **Next: [Choosing reactive primitives](choosing-reactive-primitives.md) →**
+<!-- /lume:nav -->

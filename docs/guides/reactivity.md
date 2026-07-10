@@ -116,4 +116,6 @@ cleanup(); // removes ALL bindings inside root
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Core concepts](core-concepts.md)** | **Next: [Universal core (Node, CLI, workers)](universal-core.md) →**
+<!-- /lume:nav -->

@@ -342,4 +342,6 @@ Now refresh the page. Your todos are still there!
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [htmlAttrs](../api/handlers/htmlAttrs.md)** | **Next: [Build Tic-Tac-Toe](build-tic-tac-toe.md) →**
+<!-- /lume:nav -->

@@ -91,4 +91,6 @@ persist(cartStore, 'app:cart', { keys: ['items'] });
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [repeat()](repeat.md)** | **Next: [createCleanupGroup()](createCleanupGroup.md) →**
+<!-- /lume:nav -->

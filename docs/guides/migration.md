@@ -44,4 +44,6 @@ Everything else continues to work without modification.
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Working with Arrays](../tutorials/working-with-arrays.md)** | **Next: [FAQ](faq.md) →**
+<!-- /lume:nav -->
