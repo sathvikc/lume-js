@@ -35,6 +35,7 @@ const SECTIONS = [
   {
     title: 'Guides',
     files: [
+      ['docs/guides/installation.md', 'CDN, npm, and import options'],
       ['docs/guides/quick-start.md', 'First app in five minutes'],
       ['docs/guides/core-concepts.md', 'Stores, effects, bindings'],
       ['docs/guides/reactivity.md', 'How the Proxy, tracking, and microtask flush work'],
@@ -69,9 +70,20 @@ const SECTIONS = [
       ['docs/api/core/effect.md', 'effect() auto-tracking and explicit deps'],
       ['docs/api/core/bindDom.md', 'bindDom() DOM binding'],
       ['docs/api/core/batch.md', 'batch() cross-store write grouping'],
-      ['docs/api/core/handlers.md', 'Handler system'],
-      ['docs/api/core/plugins.md', 'State extension system'],
-      ['docs/api/core/isReactive.md', 'Reactive brand detection'],
+      ['docs/api/core/handlers.md', 'Handler system — the { attr, apply } extension contract'],
+    ],
+  },
+  {
+    title: 'API reference — handlers',
+    files: [
+      ['docs/api/handlers/show.md', 'Conditional visibility'],
+      ['docs/api/handlers/className.md', 'Full class attribute from state'],
+      ['docs/api/handlers/boolAttr.md', 'Boolean attributes (disabled, hidden, …)'],
+      ['docs/api/handlers/ariaAttr.md', 'ARIA attributes from state'],
+      ['docs/api/handlers/classToggle.md', 'Toggle a single class'],
+      ['docs/api/handlers/stringAttr.md', 'String attributes (href, src, title, …)'],
+      ['docs/api/handlers/on.md', 'Declarative event wiring via data-on*'],
+      ['docs/api/handlers/htmlAttrs.md', 'Preset bundle of common attributes'],
     ],
   },
   {
@@ -84,6 +96,8 @@ const SECTIONS = [
       ['docs/api/addons/hydrateState.md', 'SSR hydration'],
       ['docs/api/addons/createCleanupGroup.md', 'Grouped disposal'],
       ['docs/api/addons/debug.md', 'Write/flush logging'],
+      ['docs/api/addons/withPlugins.md', 'State extension system'],
+      ['docs/api/addons/isReactive.md', 'Reactive brand detection'],
     ],
   },
   {
@@ -97,7 +111,7 @@ const SECTIONS = [
 const HEADER = `# Lume.js
 
 > Minimal reactive state management using only standard JavaScript and HTML —
-> no custom syntax, no build step, no framework lock-in. 1.45 KB universal
+> no custom syntax, no build step, no framework lock-in. 1.46 KB universal
 > core (state/batch), 2.66 KB with DOM binding (bindDom/effect). Reactivity
 > that follows web standards: stores are Proxies over plain objects, DOM
 > binding is declarative via valid data-* attributes, updates are
