@@ -217,7 +217,11 @@ jobs:
         run: npm ci
 
       - name: Check docs facts, manifest markers, and llms bundles are in sync
-        run: npm run docs:check || { echo "::error::Stale docs: run 'npm run docs:sync' and commit the result."; exit 1; }
+        run: |-
+          npm run docs:check || {
+            echo "::error::Stale docs: run 'npm run docs:sync' and commit the result."
+            exit 1
+          }
 
   # ── Unified PR Report ───────────────────────────────────────────────────────
   report:
