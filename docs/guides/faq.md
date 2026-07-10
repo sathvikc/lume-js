@@ -2,7 +2,7 @@
 
 ## Is Lume.js production-ready?
 
-Lume 2.x is currently in beta. The core API (`state`, `bindDom`, `effect`) and all addons (`watch`, `computed`, `repeat`) are stable. The 1.x series is also stable and used in production.
+Yes. Lume 2.x is stable — the current release on npm is v2.3.1 (`npm install lume-js`), backed by 439 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
 
 ## Does Lume work without a build step?
 
@@ -31,7 +31,7 @@ bindDom(document.getElementById('nav'), store);
 
 ## How does Lume compare to Alpine.js?
 
-Both work inline with server-rendered HTML. Lume uses standard `data-*` attributes; Alpine uses `x-*` directives with a custom expression syntax. Lume is smaller (~2.44 KB vs ~15 KB gzipped) and has no custom expression evaluator — logic lives in plain JS, not attribute strings.
+Both work inline with server-rendered HTML. Lume uses standard `data-*` attributes; Alpine uses `x-*` directives with a custom expression syntax. Lume is smaller (2.66 KB vs ~15 KB gzipped — 1.46 KB for the DOM-free kernel) and has no custom expression evaluator — logic lives in plain JS, not attribute strings.
 
 ## How does Lume compare to Vue 3's reactivity?
 
@@ -70,7 +70,7 @@ bindDom(document.body, store, { handlers: [show] });
 <div data-hidden="isLoggedIn">Please log in.</div>
 ```
 
-For replacing entire sections, assign `innerHTML` inside an `effect`:
+For replacing entire sections, assign `innerHTML` inside an `effect` — but only with markup you wrote yourself, never with user-supplied data (Lume's own bindings use `textContent` exactly to avoid HTML injection):
 
 ```js
 effect(() => {
