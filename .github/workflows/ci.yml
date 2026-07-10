@@ -387,13 +387,12 @@ jobs:
 
               const grade = g => g === 'A' ? '🟢 A' : g === 'B' ? '🟡 B' : '🔴 C';
               const d = (val, base, decimals = 0) => {
-                if (base == null) return decimals > 0 ? val.toFixed(decimals) : String(val);
-                const diff = val - base;
-                if (diff === 0) return decimals > 0 ? val.toFixed(decimals) : String(val);
-                const sign = diff > 0 ? '+' : '';
-                const diffStr = decimals > 0 ? diff.toFixed(decimals) : String(diff);
-                const valStr  = decimals > 0 ? val.toFixed(decimals) : String(val);
-                return `${valStr} (${sign}${diffStr})`;
+                const num = n => n.toFixed(decimals);
+                if (base == null) return num(val);
+                const diffStr = num(val - base);
+                if (/^-?0(\.0+)?$/.test(diffStr)) return num(val);
+                const sign = diffStr.startsWith('-') ? '' : '+';
+                return `${num(val)} (${sign}${diffStr})`;
               };
 
               body += `| File | LOC | Funcs | Max CC | Avg CC | MI | Grade | Status |\n`;
@@ -401,7 +400,7 @@ jobs:
               for (const f of data.files) {
                 const bf = baseFileMap[f.file];
                 const st = f.overBudget ? '❌' : (f.exemptions?.length || f.miExempt) ? '⚠️ known' : '✅';
-                body += `| \`${f.file}\` | ${d(f.loc, bf?.loc)} | ${d(f.funcs, bf?.funcs)} | ${d(f.maxCC, bf?.maxCC)} | ${d(f.avgCC, bf?.avgCC, 1)} | ${d(f.mi, bf?.mi)} | ${grade(f.grade)} | ${st} |\n`;
+                body += `| \`${f.file}\` | ${d(f.loc, bf?.loc)} | ${d(f.funcs, bf?.funcs)} | ${d(f.maxCC, bf?.maxCC)} | ${d(f.avgCC, bf?.avgCC, 1)} | ${d(f.mi, bf?.mi, 1)} | ${grade(f.grade)} | ${st} |\n`;
                 for (const v of (f.violations || [])) {
                   body += `| ↳ \`${v.name}\` (line ${v.line}) | | | **${v.cc}** | | | | ❌ CC>${data.thresholds.maxCC} |\n`;
                 }
