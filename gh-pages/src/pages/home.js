@@ -21,9 +21,9 @@ export function renderHome() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
           </a>
           <button class="inline-flex items-center justify-center gap-2 px-[18px] py-[13px] rounded-[14px] font-medium text-sm border border-border cursor-pointer transition-all bg-bg-raised text-fg hover:border-border-strong hover:bg-bg-sunken active:scale-[0.98] w-full sm:w-auto"
-                  onclick="copyToClipboard('npm i lume-js@next', this)">
+                  onclick="copyToClipboard('npm i lume-js', this)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-            <code class="font-mono text-[12.5px] opacity-80 pointer-events-none">npm i lume-js@next</code>
+            <code class="font-mono text-[12.5px] opacity-80 pointer-events-none">npm i lume-js</code>
           </button>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-8 pt-6 border-t border-dashed border-border mt-4">
@@ -160,9 +160,9 @@ export function renderHome() {
           <div class="border border-border rounded-2xl bg-bg-raised p-8">
             <div class="font-mono text-[11px] text-fg-subtle uppercase tracking-widest">NPM · bundler</div>
             <h3 class="font-serif font-medium text-[22px] tracking-[-0.01em] mt-1.5 mb-4">Install with your package manager</h3>
-<pre class="m-0 px-4 py-3.5 bg-bg-code border border-border rounded-[10px] text-[13px] overflow-x-auto"><code class="language-bash">npm install lume-js@next
-# or pnpm add lume-js@next
-# or yarn add lume-js@next</code></pre>
+<pre class="m-0 px-4 py-3.5 bg-bg-code border border-border rounded-[10px] text-[13px] overflow-x-auto"><code class="language-bash">npm install lume-js
+# or pnpm add lume-js
+# or yarn add lume-js</code></pre>
             <p class="text-fg-muted text-[13.5px] mt-3.5 mb-0">
               Ships ES modules, TypeScript types, and subpath exports for
               <code class="font-mono">/handlers</code> and <code class="font-mono">/addons</code>.
