@@ -84,4 +84,6 @@ bindDom(root, store, { handlers: [classToggle('is-open')] });
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [ariaAttr](ariaAttr.md)** | **Next: [stringAttr](stringAttr.md) →**
+<!-- /lume:nav -->

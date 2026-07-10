@@ -43,4 +43,6 @@ test('updates DOM', async () => {
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Animations](animations.md)** | **Next: [Performance](performance.md) →**
+<!-- /lume:nav -->

@@ -99,4 +99,6 @@ bindDom(root, store, { handlers: formHandlers });
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Lists & repeat](lists.md)** | **Next: [Routing](routing.md) →**
+<!-- /lume:nav -->

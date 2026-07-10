@@ -128,4 +128,6 @@ Debug logs use colored output:
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [hydrateState()](hydrateState.md)** | **Next: [withPlugins()](withPlugins.md) →**
+<!-- /lume:nav -->

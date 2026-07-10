@@ -57,4 +57,6 @@ Your server must return the same HTML file for all routes so that a direct visit
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Forms](forms.md)** | **Next: [Animations](animations.md) →**
+<!-- /lume:nav -->

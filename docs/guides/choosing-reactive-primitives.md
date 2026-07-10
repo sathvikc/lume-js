@@ -131,4 +131,6 @@ By default `watch` fires immediately with the current value (same as `$subscribe
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Universal core (Node, CLI, workers)](universal-core.md)** | **Next: [Handlers](handlers.md) →**
+<!-- /lume:nav -->

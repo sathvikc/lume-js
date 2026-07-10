@@ -70,4 +70,6 @@ Errors thrown by individual cleanup functions are caught and swallowed so that o
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [persist()](persist.md)** | **Next: [hydrateState()](hydrateState.md) →**
+<!-- /lume:nav -->

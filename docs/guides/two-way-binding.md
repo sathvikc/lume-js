@@ -74,4 +74,6 @@ To set an HTML attribute (like `href` or `src`) reactively, use the [`stringAttr
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Handlers](handlers.md)** | **Next: [Lists & repeat](lists.md) →**
+<!-- /lume:nav -->

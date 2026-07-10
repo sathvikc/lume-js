@@ -78,4 +78,6 @@ bindDom(root, store, {
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [classToggle](classToggle.md)** | **Next: [on](on.md) →**
+<!-- /lume:nav -->

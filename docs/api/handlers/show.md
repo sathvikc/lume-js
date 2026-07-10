@@ -63,4 +63,6 @@ Use `data-show` when the condition is already in "visible" form (`isLoggedIn`, `
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Handlers API](../core/handlers.md)** | **Next: [className](className.md) →**
+<!-- /lume:nav -->

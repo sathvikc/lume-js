@@ -2,7 +2,7 @@
 
 **Lume.js** is a lightweight reactive state library built on standard JavaScript and HTML. Drop it into any page via a CDN `<script>` tag and get reactive bindings in minutes — no build tool, no custom syntax, no framework required.
 
-> **Version:** 2.3.1 · **Core:** 1.46 KB gzipped (universal) / 2.66 KB gzipped (+ DOM) · **Tests:** 439 · **Dependencies:** 0
+> **Version:** <!-- lume:version -->2.3.1<!-- /lume:version --> · **Core:** <!-- lume:size-state -->1.46<!-- /lume:size-state --> KB gzipped (universal) / <!-- lume:size-index -->2.66<!-- /lume:size-index --> KB gzipped (+ DOM) · **Tests:** <!-- lume:tests -->457<!-- /lume:tests --> · **Dependencies:** 0
 
 ## Why Lume.js?
 
@@ -10,7 +10,7 @@
 |--|---------|----------------------|
 | Build step | None required | Required |
 | Custom syntax | None — plain `data-*` attrs | Templates / JSX / `.svelte` |
-| Bundle size | 1.46–2.66 KB gzipped | 40 KB+ |
+| Bundle size | <!-- lume:size-state -->1.46<!-- /lume:size-state -->–<!-- lume:size-index -->2.66<!-- /lume:size-index --> KB gzipped | 40 KB+ |
 | Learning curve | ~15 min | Days |
 | Virtual DOM | No — direct DOM | Yes |
 
@@ -104,12 +104,13 @@ console.log(total.value);  // cached until items changes
 | Import | Contents |
 |--------|----------|
 | `lume-js` | `state`, `bindDom`, `effect`, `batch` |
-| `lume-js/state` | `state`, `batch`, `withReadObserver` — DOM-free universal kernel (1.46 KB) |
+| `lume-js/state` | `state`, `batch`, `withReadObserver` — DOM-free universal kernel (<!-- lume:size-state -->1.46<!-- /lume:size-state --> KB) |
 | `lume-js/addons` | `watch`, `computed`, `repeat`, `persist`, `withPlugins`, `createDebugPlugin`, `debug`, `isReactive`, `createCleanupGroup`, `hydrateState`, `defaultFocusPreservation`, `defaultScrollPreservation` |
 | `lume-js/handlers` | `show`, `boolAttr`, `ariaAttr`, `classToggle`, `stringAttr`, `on`, `formHandlers`, `a11yHandlers`, `htmlAttrs` |
 
 ## Documentation
 
+<!-- lume:doc-index -->
 ### Getting started
 - [Installation](guides/installation.md)
 - [Quick start](guides/quick-start.md)
@@ -127,7 +128,7 @@ console.log(total.value);  // cached until items changes
 - [Animations](guides/animations.md)
 - [Testing](guides/testing.md)
 - [Performance](guides/performance.md)
-- [Cleanup & Disposal](guides/cleanup-and-dispose.md)
+- [Cleanup & Dispose](guides/cleanup-and-dispose.md)
 - [SSR & Hydration](guides/ssr-hydration.md)
 
 ### API — Core
@@ -139,7 +140,7 @@ console.log(total.value);  // cached until items changes
 ### API — Addons
 - [watch()](api/addons/watch.md)
 - [computed()](api/addons/computed.md)
-- [repeat()](api/addons/repeat.md) — incl. template mode
+- [repeat()](api/addons/repeat.md)
 - [persist()](api/addons/persist.md)
 - [createCleanupGroup()](api/addons/createCleanupGroup.md)
 - [hydrateState()](api/addons/hydrateState.md)
@@ -148,7 +149,7 @@ console.log(total.value);  // cached until items changes
 - [isReactive()](api/addons/isReactive.md)
 
 ### API — Handlers
-- [Handlers API](api/core/handlers.md) — the `{ attr, apply }` extension contract
+- [Handlers API](api/core/handlers.md)
 - [show](api/handlers/show.md)
 - [className](api/handlers/className.md)
 - [boolAttr](api/handlers/boolAttr.md)
@@ -167,8 +168,9 @@ console.log(total.value);  // cached until items changes
 - [Design decisions](design/design-decisions.md)
 
 ### Reference
-- [FAQ](guides/faq.md)
 - [Migrating from 1.x](guides/migration.md)
+- [FAQ](guides/faq.md)
+<!-- /lume:doc-index -->
 - [Changelog](../CHANGELOG.md)
 
 ### AI agents
@@ -177,4 +179,6 @@ console.log(total.value);  // cached until items changes
 
 ---
 
+<!-- lume:nav -->
 **Next: [Installation](guides/installation.md) →**
+<!-- /lume:nav -->

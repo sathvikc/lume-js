@@ -173,4 +173,6 @@ Any library that follows the **Immutable Update Pattern** (Redux toolkit, etc.) 
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Build Tic-Tac-Toe](build-tic-tac-toe.md)** | **Next: [Migrating from 1.x](../guides/migration.md) →**
+<!-- /lume:nav -->

@@ -45,7 +45,10 @@
     "typecheck": "tsc --noEmit",
     "llms": "node scripts/build-llms.js",
     "llms:check": "node scripts/build-llms.js --check",
-    "validate": "npm run build && node scripts/check-size.js && node scripts/complexity.js && npm run lint && npm run typecheck && npm run coverage && node scripts/build-llms.js --check",
+    "docs:metrics": "npm run build && node scripts/build-metrics.js",
+    "docs:sync": "npm run docs:metrics && node scripts/sync-docs.js && node scripts/build-llms.js",
+    "docs:check": "npm run docs:metrics && node scripts/sync-docs.js --check && node scripts/build-llms.js --check",
+    "validate": "npm run build && node scripts/check-size.js && node scripts/complexity.js && npm run lint && npm run typecheck && npm run coverage && npm run docs:check",
     "prepublishOnly": "npm run validate"
   },
   "files": [

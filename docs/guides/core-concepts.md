@@ -103,4 +103,6 @@ No virtual DOM, no component tree, no build step required.
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Quick start](quick-start.md)** | **Next: [How reactivity works](reactivity.md) →**
+<!-- /lume:nav -->

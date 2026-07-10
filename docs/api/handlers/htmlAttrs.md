@@ -82,4 +82,6 @@ bindDom(root, store, {
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [on](on.md)** | **Next: [Build a Todo app](../../tutorials/build-todo-app.md) →**
+<!-- /lume:nav -->

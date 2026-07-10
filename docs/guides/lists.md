@@ -82,4 +82,6 @@ When the new array is set, `repeat` diffs by key and performs minimal DOM operat
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Two-way binding](two-way-binding.md)** | **Next: [Forms](forms.md) →**
+<!-- /lume:nav -->

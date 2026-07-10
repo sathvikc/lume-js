@@ -99,4 +99,6 @@ import { a11yHandlers } from 'lume-js/handlers';
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [boolAttr](boolAttr.md)** | **Next: [classToggle](classToggle.md) →**
+<!-- /lume:nav -->

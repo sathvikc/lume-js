@@ -57,4 +57,6 @@ No build step needed. Open the HTML file directly. Type in the input — the hea
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Installation](installation.md)** | **Next: [Core concepts](core-concepts.md) →**
+<!-- /lume:nav -->

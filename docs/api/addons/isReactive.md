@@ -38,4 +38,6 @@ Detection checks the shared brand symbol first (`Symbol.for('lume.reactive')`, c
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [withPlugins()](withPlugins.md)** | **Next: [Handlers API](../core/handlers.md) →**
+<!-- /lume:nav -->

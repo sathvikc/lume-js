@@ -68,4 +68,6 @@ store.settings.theme = 'light'; // notifies subscribers of 'theme'
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [SSR & Hydration](../../guides/ssr-hydration.md)** | **Next: [bindDom()](bindDom.md) →**
+<!-- /lume:nav -->

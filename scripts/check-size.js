@@ -41,7 +41,7 @@ const isJson = process.argv.includes('--json');
 
 // ── Budgets (gzipped bytes) ──────────────────────────────────────────────────
 
-const BUDGETS = {
+export const BUDGETS = {
   'index.min.mjs':    3 * 1024,     // 3 KB    — CDN core, self-contained
   'state.min.mjs':    1.75 * 1024,  // 1.75 KB — universal kernel (state+batch, DOM-free)
   'addons.min.mjs':   6 * 1024,     // 6 KB    — CDN addons, self-contained
@@ -61,22 +61,25 @@ function bar(used, budget, width = 20) {
   return '█'.repeat(filled) + '░'.repeat(width - filled);
 }
 
-// ── Main ─────────────────────────────────────────────────────────────────────
+// ── Measurement ──────────────────────────────────────────────────────────────
 
-async function main() {
+/**
+ * Measures gzipped size of every dist entry point. Shared by this script's
+ * CLI and scripts/build-metrics.js, so the numbers can never diverge.
+ */
+export async function measureSizes(dir = distDir) {
   let files;
   try {
-    const entries = await readdir(distDir);
+    const entries = await readdir(dir);
     files = entries.filter(f => !SKIP.test(f) && (f.endsWith('.mjs') || f.endsWith('.js')));
   } catch {
-    console.error('❌ dist/ not found. Run `npm run build` first.');
-    process.exit(1);
+    throw new Error('dist/ not found. Run `npm run build` first.');
   }
 
   const results = [];
 
   for (const file of files.sort()) {
-    const content = await readFile(resolve(distDir, file));
+    const content = await readFile(resolve(dir, file));
     const gz = await gzipAsync(content);
     const budget = BUDGETS[file] ?? null;
     const overBudget = budget != null && gz.length > budget;
@@ -90,7 +93,19 @@ async function main() {
     });
   }
 
-  const anyFailed = results.some(r => r.overBudget);
+  return { results, anyFailed: results.some(r => r.overBudget) };
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────────
+
+async function main() {
+  let results, anyFailed;
+  try {
+    ({ results, anyFailed } = await measureSizes());
+  } catch (err) {
+    console.error(`❌ ${err.message}`);
+    process.exit(1);
+  }
 
   // ── JSON output (for CI diffing) ─────────────────────────────────────────
 
@@ -156,4 +171,6 @@ async function main() {
   process.exit(anyFailed ? 1 : 0);
 }
 
-main();
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
+}

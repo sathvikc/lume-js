@@ -5,18 +5,26 @@
   <p>
     Minimal reactive state management using only standard JavaScript and HTML.<br>
     No custom syntax &nbsp;·&nbsp; No build step &nbsp;·&nbsp; No framework lock-in.<br>
-    <strong>1.46 KB universal core</strong> &nbsp;·&nbsp; <strong>2.66 KB with DOM</strong>
+    <strong><!-- lume:size-state -->1.46<!-- /lume:size-state --> KB universal core</strong> &nbsp;·&nbsp; <strong><!-- lume:size-index -->2.66<!-- /lume:size-index --> KB with DOM</strong>
   </p>
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
     &nbsp;
+<!-- lume:badge-version -->
     <a href="package.json"><img src="https://img.shields.io/badge/version-2.3.1-orange.svg" alt="v2.3.1"></a>
+<!-- /lume:badge-version -->
     &nbsp;
-    <a href="tests/"><img src="https://img.shields.io/badge/tests-439%20passing-brightgreen.svg" alt="439 tests"></a>
+<!-- lume:badge-tests -->
+    <a href="tests/"><img src="https://img.shields.io/badge/tests-457%20passing-brightgreen.svg" alt="457 tests"></a>
+<!-- /lume:badge-tests -->
     &nbsp;
+<!-- lume:badge-size-state -->
     <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/universal%20core-1.46KB-blue.svg" alt="universal core 1.46KB"></a>
+<!-- /lume:badge-size-state -->
     &nbsp;
+<!-- lume:badge-size-index -->
     <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core%20%2B%20DOM-2.66KB-blue.svg" alt="core + DOM 2.66KB"></a>
+<!-- /lume:badge-size-index -->
   </p>
   <p><code>npm install lume-js</code></p>
   <p><a href="https://sathvikc.github.io/lume-js/"><strong>Docs & live examples →</strong></a></p>
@@ -30,7 +38,7 @@
 |---------|---------|-----------|-----|-------|
 | Custom Syntax | ❌ No | ✅ `x-data` | ✅ `v-bind` | ✅ JSX |
 | Build Step | ❌ Optional | ❌ Optional | ⚠️ Recommended | ✅ Required |
-| Bundle Size | 1.46–2.66KB | ~15KB | ~35KB | ~45KB |
+| Bundle Size | <!-- lume:size-state -->1.46<!-- /lume:size-state -->–<!-- lume:size-index -->2.66<!-- /lume:size-index -->KB | ~15KB | ~35KB | ~45KB |
 | HTML Validation | ✅ Pass | ⚠️ Warnings | ⚠️ Warnings | ❌ JSX |
 | Extensible Handlers | ✅ | ❌ Built-in only | ❌ Built-in only | N/A |
 
@@ -44,8 +52,8 @@
 
 | Entry | Size (gz) | Contents | For |
 |-------|-----------|----------|-----|
-| `lume-js/state` | **1.46 KB** | `state`, `batch`, `withReadObserver` | Node, Deno, Bun, workers, CLI — anywhere without a DOM |
-| `lume-js` | **2.66 KB** | + `bindDom`, `effect` | Browsers |
+| `lume-js/state` | **<!-- lume:size-state -->1.46<!-- /lume:size-state --> KB** | `state`, `batch`, `withReadObserver` | Node, Deno, Bun, workers, CLI — anywhere without a DOM |
+| `lume-js` | **<!-- lume:size-index -->2.66<!-- /lume:size-index --> KB** | + `bindDom`, `effect` | Browsers |
 | `lume-js/addons` | pay per import | `computed`, `watch`, `repeat`, `persist`, … | Optional patterns |
 | `lume-js/handlers` | pay per import | `show`, `classToggle`, `on`, … | Extra reactive attributes |
 
@@ -73,7 +81,9 @@ npm install lume-js
 
 ```javascript
 import { state, bindDom } from 'lume-js';        // browser: full core
+<!-- lume:comment-size-state -->
 import { state, batch } from 'lume-js/state';    // Node/CLI/workers: 1.46 KB kernel
+<!-- /lume:comment-size-state -->
 ```
 
 > **→ Using Lume without a DOM?** See the [Universal core guide](docs/guides/universal-core.md).
@@ -83,10 +93,10 @@ import { state, batch } from 'lume-js/state';    // Node/CLI/workers: 1.46 KB ke
 
 | Browser | Minimum version |
 |---------|-----------------|
-| Chrome  | 80+             |
-| Firefox | 74+             |
-| Safari  | 13.1+           |
-| Edge    | 80+             |
+| Chrome  | <!-- lume:browser-chrome -->80+<!-- /lume:browser-chrome -->             |
+| Firefox | <!-- lume:browser-firefox -->74+<!-- /lume:browser-firefox -->             |
+| Safari  | <!-- lume:browser-safari -->13.1+<!-- /lume:browser-safari -->           |
+| Edge    | <!-- lume:browser-edge -->80+<!-- /lume:browser-edge -->             |
 | IE11    | ❌ Not supported |
 
 The floor comes from optional chaining / nullish coalescing (ES2020) used in the source — shipped un-transpiled, true to no-build. IE11 cannot be polyfilled regardless: Lume uses `Proxy`.

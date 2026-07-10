@@ -188,4 +188,6 @@ Handlers are applied in the order you pass them. If two handlers share the same 
 
 ---
 
+<!-- lume:nav -->
 **← Previous: [Choosing reactive primitives](choosing-reactive-primitives.md)** | **Next: [Two-way binding](two-way-binding.md) →**
+<!-- /lume:nav -->

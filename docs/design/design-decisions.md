@@ -913,6 +913,26 @@ bindDom(root, store, {
 
 ---
 
+## Tooling Decisions
+
+### Why Docs Facts and Navigation Are Generated (docs:sync)
+
+**Decision:** Facts that change with every build (version, gzipped sizes, test count, browser floor) live in exactly one generated file, `docs/metrics.json` (`scripts/build-metrics.js`, never hand-edited). Structure that changes when pages are added or reordered (nav order, the `docs/README.md` index, the `llms.txt`/`llms-full.txt` bundle order) lives in exactly one authored file, `docs/manifest.json`. `scripts/sync-docs.js` rewrites `<!-- lume:* -->` marker regions embedded directly in the real files — README badges, guide prose, nav footers — from those two sources; `npm run docs:check` fails CI when running the sync would produce a diff.
+
+**Reasoning:**
+- Every one of these had shipped as a real bug at some point: the FAQ claiming "2.x is in beta" a year after stable, README and the installation guide quoting three different sizes for the same bundle, `build-llms.js`'s hardcoded section list pointing at two API pages that didn't exist while omitting all eight handler pages, a tutorial with two contradictory prev/next footers, and a version bump in `package.json` that left `llms.txt`'s `Version:` line stale. All of these are the same failure mode — a fact or a link typed as a literal in more than one place — and a CI gate that only checks *some* of the copies will always miss the others.
+- Markers live inside the real files rather than a separate template tree so there is no second copy to keep in sync with the first: each file is simultaneously the template and the rendered output.
+- An unrecognized `lume:` marker key is a hard build error, not a silently-ignored no-op — a typo in a marker name is exactly the kind of drift this exists to catch.
+- `docs/design/design-decisions.md` (this file), `CHANGELOG.md`, and `CLAUDE.md`/`AGENTS.md` are deliberately excluded from marker management — they are historical or hand-authored-by-contract documents (see the "amend, never rewrite" convention already in force here), not facts that should be silently overwritten by a build script.
+
+**Alternatives considered:**
+- *A single hand-maintained checklist* ("update these N places when X changes") — this is what existed before, and it is exactly what kept failing; checklists rely on someone remembering to run them.
+- *A separate template directory rendered into the docs tree* — rejected because it doubles the files a contributor has to look at to understand what a page says, and markdown-in-markdown templating adds a build step of its own for very little benefit over inline markers.
+
+**Tradeoff:** Every fact-bearing sentence in a managed file now carries a pair of HTML comments, which is visible noise in the raw markdown (and, in a few code-fence examples, in the rendered output too — see `docs/guides/installation.md`'s version-pin example). Traded for: it is no longer possible for these specific facts to silently disagree with each other across the repo.
+
+---
+
 ## Future Considerations
 
 **Features We Might Add Later:**
@@ -951,4 +971,4 @@ We're open to change, but will prioritize **simplicity and standards** over feat
 
 ---
 
-**← Previous: [FAQ](../guides/faq.md)**
+**← Previous: [Working with Arrays](../tutorials/working-with-arrays.md)**
