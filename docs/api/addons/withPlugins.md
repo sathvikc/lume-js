@@ -1,7 +1,6 @@
 # withPlugins API
 
-> **Version:** 2.0.0+
-> **Status:** Stable
+> **Version:** 2.0.0+ **Status:** Stable
 
 The plugin system lets you extend Lume state with custom behaviors — logging, validation, persistence, transformation, and more. Plugins intercept state operations through a small set of hooks.
 

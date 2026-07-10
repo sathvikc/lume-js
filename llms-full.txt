@@ -248,9 +248,7 @@ Import `state`/`batch` from `lume-js/state` (1.46 KB, zero DOM references) in No
 
 `llms.txt` and `llms-full.txt` are regenerated from this guide plus the docs tree by `npm run llms`, and CI fails when they drift — whatever version of `lume-js` is installed, the bundled files match its actual behavior. In a consuming project, add one line to your agent config (`CLAUDE.md`, `.cursorrules`, `AGENTS.md`, …):
 
-> Before writing any code that uses lume-js, read
-> `node_modules/lume-js/AGENT_GUIDE.md`. For API details beyond the guide,
-> consult `node_modules/lume-js/llms-full.txt`.
+> Before writing any code that uses lume-js, read `node_modules/lume-js/AGENT_GUIDE.md`. For API details beyond the guide, consult `node_modules/lume-js/llms-full.txt`.
 
 
 ========================================================================
@@ -755,8 +753,7 @@ Prefer to keep things tidy? Use `addEventListener` and keep the store in a closu
 
 No build step needed. Open the HTML file directly. Type in the input — the heading updates live. Click the button — the counter increments. That's the complete reactive loop.
 
-> **This is all you need for most apps.**
-> Lists, conditionals, classes, styles, and custom attributes are opt-in additions on top of this base.
+> **This is all you need for most apps.** Lists, conditionals, classes, styles, and custom attributes are opt-in additions on top of this base.
 
 ## What's next
 
@@ -1307,8 +1304,7 @@ When the new array is set, `repeat` diffs by key and performs minimal DOM operat
 - **Keys must be unique.** Duplicate keys log a warning and cause two items to share one DOM element, which produces incorrect rendering.
 - **Each rendered item must have exactly one root element.** Wrap multi-element fragments in a `<li>` or `<div>`.
 
-> **See it running →**
-> [Todo app tutorial](../tutorials/build-todo-app.md) and [Tic-Tac-Toe tutorial](../tutorials/build-tic-tac-toe.md) both use `repeat`.
+> **See it running →** [Todo app tutorial](../tutorials/build-todo-app.md) and [Tic-Tac-Toe tutorial](../tutorials/build-tic-tac-toe.md) both use `repeat`.
 
 ## See also
 
@@ -5454,8 +5450,7 @@ FILE: docs/api/addons/withPlugins.md
 
 # withPlugins API
 
-> **Version:** 2.0.0+
-> **Status:** Stable
+> **Version:** 2.0.0+ **Status:** Stable
 
 The plugin system lets you extend Lume state with custom behaviors — logging, validation, persistence, transformation, and more. Plugins intercept state operations through a small set of hooks.
 

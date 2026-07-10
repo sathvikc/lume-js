@@ -72,8 +72,7 @@ When the new array is set, `repeat` diffs by key and performs minimal DOM operat
 - **Keys must be unique.** Duplicate keys log a warning and cause two items to share one DOM element, which produces incorrect rendering.
 - **Each rendered item must have exactly one root element.** Wrap multi-element fragments in a `<li>` or `<div>`.
 
-> **See it running →**
-> [Todo app tutorial](../tutorials/build-todo-app.md) and [Tic-Tac-Toe tutorial](../tutorials/build-tic-tac-toe.md) both use `repeat`.
+> **See it running →** [Todo app tutorial](../tutorials/build-todo-app.md) and [Tic-Tac-Toe tutorial](../tutorials/build-tic-tac-toe.md) both use `repeat`.
 
 ## See also
 

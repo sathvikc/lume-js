@@ -47,8 +47,7 @@ Prefer to keep things tidy? Use `addEventListener` and keep the store in a closu
 
 No build step needed. Open the HTML file directly. Type in the input — the heading updates live. Click the button — the counter increments. That's the complete reactive loop.
 
-> **This is all you need for most apps.**
-> Lists, conditionals, classes, styles, and custom attributes are opt-in additions on top of this base.
+> **This is all you need for most apps.** Lists, conditionals, classes, styles, and custom attributes are opt-in additions on top of this base.
 
 ## What's next
 

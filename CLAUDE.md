@@ -1,8 +1,6 @@
 # CLAUDE.md — Lume.js
 
-> Agent onboarding: what this project is and how to navigate it.
-> The **process contract** (artifact matrix, quality gates, commit rules) lives in
-> [`AGENTS.md`](AGENTS.md) — read it before making ANY change. This file doesn't repeat it.
+> Agent onboarding: what this project is and how to navigate it. The **process contract** (artifact matrix, quality gates, commit rules) lives in [`AGENTS.md`](AGENTS.md) — read it before making ANY change. This file doesn't repeat it.
 
 ## What this is
 
