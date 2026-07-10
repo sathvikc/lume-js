@@ -913,24 +913,10 @@ bindDom(root, store, {
 
 ---
 
-## Hardening Updates (v2.3)
-
-Small behavior changes ratified alongside the features above:
-
-- **Subscriber cap applies to effects too, and fails loudly.** The per-key 1000-listener cap (v2.2.1) only guarded `$subscribe`; effect subscriptions bypassed it. Both paths now share one registration helper, and hitting the cap logs a `console.error` stating the listener will NOT receive updates — a protection that silently breaks the 1001st legitimate listener is indistinguishable from an app bug.
-- **The reactive brand is a real, shared symbol.** `Symbol.for('lume.reactive')` at module level (previously a unique symbol per store that nothing could read), stamped non-enumerably so `{ ...store }` copies are not branded. `isReactive()` checks the brand first via the `in` operator (no proxy `get` trap — calling it inside an effect creates no dependency), with `$subscribe` duck-typing kept as a fallback for older stores. The brand is a type tag, not a security boundary.
-
-### Amendment (2026-07-08, v2.3.1): `stringAttr` scheme guard matches the URL parser
-
-The v2.2.1 dangerous-scheme guard in `stringAttr()` compared the raw string against `/^(javascript|vbscript|data\s*:\s*text\/html)/i`. Two defects: it did not require the scheme colon (blocking legitimate relative URLs such as `javascript-tutorial.html`), and it missed values the browser URL parser still executes — parsers strip C0 controls, space, and tab/newline before reading the scheme, so `"\tjavascript:alert(1)"` and `"java\nscript:alert(1)"` sailed through. The guard now normalizes the value the way the parser does (strip `[\u0000-\u0020\u007F]`, lowercase) and requires the colon (`javascript:` / `vbscript:` / `data:text/html`). Checked only for URI attributes (`href`, `src`, `action`, `srcset`, `poster`, `formaction`), unchanged for all others.
-
----
-
 ## Future Considerations
 
 **Features We Might Add Later:**
 
-**After v1.0 stable:**
 - Array-based checkbox bindings (if clean solution found)
 - `contenteditable` support with cursor position handling
 - Debounced input binding option
@@ -962,50 +948,6 @@ If you think a decision should be reconsidered:
 3. **Propose implementation** (code or pseudocode)
 
 We're open to change, but will prioritize **simplicity and standards** over features!
-
----
-
-## Document History
-
-- **2026-07-08:**
-  - Amended the v2.3 hardening notes with the `stringAttr` scheme-guard fix
-    (URL-parser-equivalent normalization; colon required)
-
-- **2026-06-11:**
-  - Added `batch()` kernel decision (incl. the documented path to making it optional later, additive-only)
-  - Added explicit-deps coalescing, template-mode `repeat()`, `persist()`, and `lume-js/state` packaging decisions
-  - Amended the event-handling decision with the `data-on*` ruling; refined the "Will NOT add" wording
-  - Added v2.3 hardening notes (subscriber-cap parity, shared reactive brand)
-  - Fixed stale `repeat` status (was "@experimental v0.5.0")
-  - Test coverage now 425 tests / 100%
-
-- **2026-02-28:**
-  - Updated reactive data-* attributes section: now reflects handler system architecture
-  - Documented handler contract, composability, and tree-shaking
-  - Updated resolved/deferred lists (show, classToggle, stringAttr now implemented)
-  - Added handler system design decision rationale
-  - Updated test coverage to 231 tests
-- **2026-01-23:**
-  - Added reactive data-* attributes design decision
-  - Documented DOM properties vs setAttribute for boolean attrs
-  - Added ARIA handling rationale
-  - Updated supported/deferred attribute lists
-- **2026-01-14:**
-  - Added explicit effect dependencies decision (auto-tracking vs explicit tradeoff)
-  - Added debug addon design decision (why in addons, why stats tracking)
-- **2026-01-12:**
-  - Added `create`/`update` API design rationale
-  - Added reference + index optimization reasoning
-  - Updated test coverage to 162 tests
-- **2025-12-19:**
-  - Added plugin system rationale (v2.0)
-  - Updated test coverage to 148 tests
-- **2025-11-28:** 
-  - Added `repeat` addon decision and immutable array update reasoning
-  - Updated examples count and test coverage stats (114 tests)
-- **2025-11-20:** 
-  - Initial version documenting core decisions
-  - Added reactive identity (`isReactive`) decision and `$` meta method tracking exclusion
 
 ---
 
