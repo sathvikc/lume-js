@@ -6611,7 +6611,7 @@ store.$subscribe('text', (value) => {
 - ❌ Virtual DOM → Adds complexity, size, and abstractions
 - ❌ Template compilation → Requires build step
 
-**Tradeoff:** Large lists (1000+ items) may be slower than virtual DOM frameworks. For those cases, use pagination or virtualization libraries.
+**Tradeoff:** Reorder-heavy updates on very large lists (1000+ rows) may move more DOM nodes than minimal-move virtual DOM diffing — `repeat()` reconciles in a single forward pass, not with an LIS-style algorithm. For ordinary updates this is not a penalty: keyed element reuse plus the same-reference/same-index skip make the work proportional to what actually changed, with no vnode allocation at all. For very large lists, prefer pagination or virtualization — as you would with any framework.
 
 ---
 
