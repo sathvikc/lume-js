@@ -2,7 +2,7 @@
 
 **Lume.js** is a lightweight reactive state library built on standard JavaScript and HTML. Drop it into any page via a CDN `<script>` tag and get reactive bindings in minutes — no build tool, no custom syntax, no framework required.
 
-> **Version:** 2.3.0 · **Core:** 1.45 KB gzipped (universal) / 2.66 KB gzipped (+ DOM) · **Tests:** 425 · **Dependencies:** 0
+> **Version:** 2.3.0 · **Core:** 1.46 KB gzipped (universal) / 2.66 KB gzipped (+ DOM) · **Tests:** 439 · **Dependencies:** 0
 
 ## Why Lume.js?
 
@@ -10,7 +10,7 @@
 |--|---------|----------------------|
 | Build step | None required | Required |
 | Custom syntax | None — plain `data-*` attrs | Templates / JSX / `.svelte` |
-| Bundle size | 1.45–2.66 KB gzipped | 40 KB+ |
+| Bundle size | 1.46–2.66 KB gzipped | 40 KB+ |
 | Learning curve | ~15 min | Days |
 | Virtual DOM | No — direct DOM | Yes |
 
@@ -104,7 +104,7 @@ console.log(total.value);  // cached until items changes
 | Import | Contents |
 |--------|----------|
 | `lume-js` | `state`, `bindDom`, `effect`, `batch` |
-| `lume-js/state` | `state`, `batch`, `withReadObserver` — DOM-free universal kernel (1.45 KB) |
+| `lume-js/state` | `state`, `batch`, `withReadObserver` — DOM-free universal kernel (1.46 KB) |
 | `lume-js/addons` | `watch`, `computed`, `repeat`, `persist`, `withPlugins`, `createDebugPlugin`, `debug`, `isReactive`, `createCleanupGroup`, `hydrateState`, `defaultFocusPreservation`, `defaultScrollPreservation` |
 | `lume-js/handlers` | `show`, `boolAttr`, `ariaAttr`, `classToggle`, `stringAttr`, `on`, `formHandlers`, `a11yHandlers`, `htmlAttrs` |
 

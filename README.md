@@ -5,16 +5,16 @@
   <p>
     Minimal reactive state management using only standard JavaScript and HTML.<br>
     No custom syntax &nbsp;·&nbsp; No build step &nbsp;·&nbsp; No framework lock-in.<br>
-    <strong>1.45 KB universal core</strong> &nbsp;·&nbsp; <strong>2.66 KB with DOM</strong>
+    <strong>1.46 KB universal core</strong> &nbsp;·&nbsp; <strong>2.66 KB with DOM</strong>
   </p>
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
     &nbsp;
     <a href="package.json"><img src="https://img.shields.io/badge/version-2.3.0-orange.svg" alt="v2.3.0"></a>
     &nbsp;
-    <a href="tests/"><img src="https://img.shields.io/badge/tests-437%20passing-brightgreen.svg" alt="437 tests"></a>
+    <a href="tests/"><img src="https://img.shields.io/badge/tests-439%20passing-brightgreen.svg" alt="439 tests"></a>
     &nbsp;
-    <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/universal%20core-1.45KB-blue.svg" alt="universal core 1.45KB"></a>
+    <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/universal%20core-1.46KB-blue.svg" alt="universal core 1.46KB"></a>
     &nbsp;
     <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core%20%2B%20DOM-2.66KB-blue.svg" alt="core + DOM 2.66KB"></a>
   </p>
@@ -30,7 +30,7 @@
 |---------|---------|-----------|-----|-------|
 | Custom Syntax | ❌ No | ✅ `x-data` | ✅ `v-bind` | ✅ JSX |
 | Build Step | ❌ Optional | ❌ Optional | ⚠️ Recommended | ✅ Required |
-| Bundle Size | 1.45–2.66KB | ~15KB | ~35KB | ~45KB |
+| Bundle Size | 1.46–2.66KB | ~15KB | ~35KB | ~45KB |
 | HTML Validation | ✅ Pass | ⚠️ Warnings | ⚠️ Warnings | ❌ JSX |
 | Extensible Handlers | ✅ | ❌ Built-in only | ❌ Built-in only | N/A |
 
@@ -44,7 +44,7 @@
 
 | Entry | Size (gz) | Contents | For |
 |-------|-----------|----------|-----|
-| `lume-js/state` | **1.45 KB** | `state`, `batch`, `withReadObserver` | Node, Deno, Bun, workers, CLI — anywhere without a DOM |
+| `lume-js/state` | **1.46 KB** | `state`, `batch`, `withReadObserver` | Node, Deno, Bun, workers, CLI — anywhere without a DOM |
 | `lume-js` | **2.66 KB** | + `bindDom`, `effect` | Browsers |
 | `lume-js/addons` | pay per import | `computed`, `watch`, `repeat`, `persist`, … | Optional patterns |
 | `lume-js/handlers` | pay per import | `show`, `classToggle`, `on`, … | Extra reactive attributes |
@@ -73,7 +73,7 @@ npm install lume-js
 
 ```javascript
 import { state, bindDom } from 'lume-js';        // browser: full core
-import { state, batch } from 'lume-js/state';    // Node/CLI/workers: 1.45 KB kernel
+import { state, batch } from 'lume-js/state';    // Node/CLI/workers: 1.46 KB kernel
 ```
 
 > **→ Using Lume without a DOM?** See the [Universal core guide](docs/guides/universal-core.md).

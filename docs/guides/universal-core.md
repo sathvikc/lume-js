@@ -2,7 +2,7 @@
 
 Lume's kernel — `state()`, `batch()`, `withReadObserver()` — has no DOM
 dependency at all. The `lume-js/state` entry ships exactly that kernel:
-**1.45 KB gzipped**, runs in Node, Deno, Bun, workers, CLI tools, and
+**1.46 KB gzipped**, runs in Node, Deno, Bun, workers, CLI tools, and
 browsers alike.
 
 ```js
@@ -93,7 +93,7 @@ assert.deepStrictEqual(audit, [0, 42]);
 | addons (`computed`, `watch`, `persist`, …) | optional patterns | `lume-js/addons` |
 
 Note that `watch()` and `computed()` from `lume-js/addons` are themselves
-DOM-free and work fine in Node — they're just not part of the 1.45 KB
+DOM-free and work fine in Node — they're just not part of the 1.46 KB
 kernel. (`computed` pulls in `effect` internally.)
 
 ## Building reactive primitives on the kernel
@@ -129,7 +129,7 @@ console.log(sum, deps);   // 3, ['a', 'b']
 
 | Entry | Gzipped | CI budget |
 |-------|---------|-----------|
-| `lume-js/state` (`dist/state.min.mjs`) | 1.45 KB | ≤ 1.75 KB |
+| `lume-js/state` (`dist/state.min.mjs`) | 1.46 KB | ≤ 1.75 KB |
 | `lume-js` (`dist/index.min.mjs`) | 2.66 KB | ≤ 3 KB |
 
 Both numbers are enforced by `scripts/check-size.js` on every CI run — they
