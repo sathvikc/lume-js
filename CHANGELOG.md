@@ -4,18 +4,7 @@
 
 ### Added
 
-- **Agent-ready documentation shipped in the package:** `AGENT_GUIDE.md`
-  (distilled rules, pitfalls, and patterns for AI coding agents using Lume),
-  plus generated `llms.txt` / `llms-full.txt` ([llmstxt.org](https://llmstxt.org))
-  bundling every guide, tutorial, and API page. Regenerated via
-  `npm run llms` from the docs tree; a CI job (`agent-docs`) fails when they
-  drift, so the bundled docs always match the installed version. Consumers
-  point their agent config at `node_modules/lume-js/AGENT_GUIDE.md`.
-- **`lume-js/state` entry — the universal, DOM-free kernel (1.45 KB gz):**
-  `state` + `batch` + `withReadObserver` for Node, Deno, Bun, workers, and
-  CLI tools, published as `dist/state.mjs` (npm) and `dist/state.min.mjs`
-  (self-contained CDN build) with its own CI size budget (≤ 1.75 KB). The
-  full `lume-js` entry is unchanged — this is purely additive.
+- **Agent-ready documentation shipped in the package:** `AGENT_GUIDE.md` (distilled rules, pitfalls, and patterns for AI coding agents using Lume), plus generated `llms.txt` / `llms-full.txt` ([llmstxt.org](https://llmstxt.org)) bundling every guide, tutorial, and API page. Regenerated via `npm run llms` from the docs tree; a CI job (`agent-docs`) fails when they drift, so the bundled docs always match the installed version. Consumers point their agent config at `node_modules/lume-js/AGENT_GUIDE.md`.
 
 ### Security
 
@@ -25,54 +14,33 @@
 
 - **Type declarations caught up with shipped APIs** (audit findings): `RepeatOptions` was missing `remove` and the documented cleanup-function return of `create` (TS users got excess-property errors for valid options); `hydrateState` was missing its optional `validate` parameter (shipped in 2.2.1); `withPlugins` now declares the `$dispose()` method its returned proxy actually exposes.
 
-- **`lume-js/state` types are now genuinely DOM-free:** the universal
-  entry's `.d.ts` re-exported from `index.d.ts`, whose `bindDom`/`Handler`
-  declarations reference `HTMLElement` — Node/worker consumers with
-  `lib: ["ES2020"]` and `skipLibCheck: false` got type errors from the very
-  entry built for them (review finding). The dependency is now inverted:
-  `state.d.ts` is the self-contained kernel source of truth (verified to
-  type-check with no DOM lib) and `index.d.ts` re-exports it, adding the
-  DOM-flavored API on top — mirroring the runtime module graph.
+- **`lume-js/state` types are now genuinely DOM-free:** the universal entry's `.d.ts` re-exported from `index.d.ts`, whose `bindDom`/`Handler` declarations reference `HTMLElement` — Node/worker consumers with `lib: ["ES2020"]` and `skipLibCheck: false` got type errors from the very entry built for them (review finding). The dependency is now inverted: `state.d.ts` is the self-contained kernel source of truth (verified to type-check with no DOM lib) and `index.d.ts` re-exports it, adding the DOM-flavored API on top — mirroring the runtime module graph.
 
-- **`persist()` — explicit `keys: []` respected; duplicate-entry warning:**
-  an explicit empty allowlist fell back to persisting the entire store
-  (review finding) — an explicit array is now honored as-is, including
-  empty. And because two `persist()` instances on one storage entry
-  silently overwrite each other's data, the second registration now logs
-  a warning (per storage object; ownership released on dispose).
+- **`persist()` — default storage survives blocked environments:** the default storage resolved via `globalThis.localStorage`, which (a) made `globalThis` the newest API the source requires and (b) crashed at `persist()` setup in cookie-blocked iframes and privacy modes, where merely touching `localStorage` throws a `SecurityError`. The default now resolves through a typeof-checked, try/catch-guarded helper and degrades to the documented "no storage available" warning path instead of throwing.
 
-- **`repeat()` — cleanup no longer uses `replaceChildren`:** the call is
-  Chrome 86+/Safari 14+, above the documented Chrome 80/Safari 13.1 floor —
-  cleanup would throw a TypeError on claimed-supported browsers (pre-existing
-  on main; surfaced by review against the corrected support table). Manual
-  child removal also stops cleanup from re-parenting a source `<template>`
-  the user moved elsewhere (or resurrecting a deleted one).
+- **`persist()` — explicit `keys: []` respected; duplicate-entry warning:** an explicit empty allowlist fell back to persisting the entire store (review finding) — an explicit array is now honored as-is, including empty. And because two `persist()` instances on one storage entry silently overwrite each other's data, the second registration now logs a warning (per storage object; ownership released on dispose).
 
-- **`state()` — subscriber write-backs to already-notified keys were lost:**
-  the flush iterated the live pending-notification Map and cleared it after
-  delivery, so a subscriber writing back to a key delivered earlier in the
-  same pass updated an in-flight entry that was then destroyed — the new
-  value was never delivered (e.g. self-clamping subscribers diverged from
-  their store). The same mechanism let a `batch()` opened inside a
-  subscriber re-deliver in-flight notifications. Notifications are now
-  drained before delivery on both flush paths; write-backs queue for the
-  next iteration/wave. Found by adversarial review with executable probes.
+- **`repeat({ template })` — the source `<template>` is preserved:** the first reconciliation treated an in-container `<template>` as a stale row and removed it — silently deleting the user's markup and making any later re-bind with `template: true` throw "template not found". Reconciliation and cleanup now skip the container child that is (or contains) the source template, covering both direct children and templates nested in wrapper elements.
+
+- **`repeat()` — cleanup no longer uses `replaceChildren`:** the call is Chrome 86+/Safari 14+, above the documented Chrome 80/Safari 13.1 floor — cleanup would throw a TypeError on claimed-supported browsers (pre-existing on main; surfaced by review against the corrected support table). Manual child removal also stops cleanup from re-parenting a source `<template>` the user moved elsewhere (or resurrecting a deleted one).
+
+- **`state()` — subscriber write-backs to already-notified keys were lost:** the flush iterated the live pending-notification Map and cleared it after delivery, so a subscriber writing back to a key delivered earlier in the same pass updated an in-flight entry that was then destroyed — the new value was never delivered (e.g. self-clamping subscribers diverged from their store). The same mechanism let a `batch()` opened inside a subscriber re-deliver in-flight notifications. Notifications are now drained before delivery on both flush paths; write-backs queue for the next iteration/wave. Found by adversarial review with executable probes.
 
 ### Documentation
 
 - **Installation paths no longer point at the 2.0 alpha:** the installation guide's CDN examples, import map, and npm commands — and the docs-site homepage's copy-to-clipboard button — all used `lume-js@next`, an npm dist-tag that still resolves to `2.0.0-alpha.2`. Everyone following the install docs got a year-old pre-release. All now install the latest stable (with `@2.3.0` shown for version pinning).
 - **`withPlugins` docs describe the freeze:** plugin objects are frozen at registration (a 2.2.1 hardening) — now documented on the API page, and the History/Undo example no longer stores its stack on the (frozen) plugin object, which silently broke it.
 - **`AGENT_GUIDE.md` debug example used a nonexistent API** (`debug(store, opts)`) — corrected to `withPlugins(store, [createDebugPlugin(opts)])` + `debug.enable()`.
+- **Browser support table corrected:** the README and installation guide claimed Chrome 49+/Firefox 18+/Safari 10+, but the source has shipped un-transpiled ES2020 (`?.`, `??`) since before v2.2.1 — the real floor is **Chrome 80+, Firefox 74+, Safari 13.1+, Edge 80+**. Found in review; the enforced floor is now written into AGENTS.md so it can't drift again.
+- **`examples/batch/` is now a live, measured benchmark:** 500 stores, per-run operation counters (writes, effect reads, effect executions), main-thread work time reported separately from wall clock, and a computed improvement factor — instead of the previous 3-store teaching demo.
 
 ### Tests
 
-- **437 tests passing** (from 425 in v2.3.0) | 12 new tests | 100% coverage maintained
-  - Cross-store tracking, explicit-deps coalescing, subscriber-cap parity, brand/`isReactive` (`effect.test.js`, `state.test.js`, `addons/index.test.js`)
-  - `batch()` suite incl. write-back delivery and re-entrancy — 18 tests (`core/batch.test.js`)
-  - `lume-js/state` universal entry, run in plain Node — 5 tests (`state-entry.test.js`)
-  - Template mode incl. source-template preservation — 18 tests (`addons/repeat.test.js`)
-  - `on()` handler — 6 tests (`handlers/index.test.js`)
-  - `persist()` suite incl. blocked/absent storage, `keys: []`, duplicate-entry warning — 19 tests (`addons/persist.test.js`)
+- **439 tests passing** (from 425 in v2.3.0) | 14 new tests | 100% coverage maintained
+  - Notification drain — 4 regression tests from the review's reproduction sketches, covering write-backs to already-delivered keys and `batch()` re-entrancy on both flush paths (`core/state.test.js`, `core/batch.test.js`)
+  - `repeat()` — source-template preservation ×3 and template-relocation cleanup ×1 (`addons/repeat.test.js`)
+  - `persist()` — absent/blocked storage ×2, `keys: []` + duplicate-entry ownership ×2 (`addons/persist.test.js`)
+  - `stringAttr()` — scheme guard bypass attempts (tab/newline/leading-space obfuscation) ×1 and legitimate `javascript-*.html` URLs allowed ×1 (`handlers/index.test.js`)
 
 ---
 
@@ -139,23 +107,15 @@
   store silently never re-ran the effect. Tracking is now keyed per store proxy
   (`WeakMap<proxy, Set<key>>`).
 
-### Documentation
-
-- **Browser support table corrected:** the README and installation guide
-  claimed Chrome 49+/Firefox 18+/Safari 10+, but the source has shipped
-  un-transpiled ES2020 (`?.`, `??`) since before v2.2.1 — the real floor is
-  **Chrome 80+, Firefox 74+, Safari 13.1+, Edge 80+**. Found in review; the
-  enforced floor is now written into AGENTS.md so it can't drift again.
-
 ### Tests
 
-- **437 tests passing** (from 355 in v2.2.1) | 82 new tests | 100% coverage maintained
+- **425 tests passing** (from 355 in v2.2.1) | 70 new tests | 100% coverage maintained
   - Cross-store tracking, explicit-deps coalescing, subscriber-cap parity, brand/`isReactive` (`effect.test.js`, `state.test.js`, `addons/index.test.js`)
-  - `batch()` suite incl. write-back delivery and re-entrancy — 18 tests (`core/batch.test.js`)
+  - `batch()` suite — 16 tests (`core/batch.test.js`)
   - `lume-js/state` universal entry, run in plain Node — 5 tests (`state-entry.test.js`)
-  - Template mode incl. source-template preservation — 18 tests (`addons/repeat.test.js`)
+  - Template mode — 14 tests (`addons/repeat.test.js`)
   - `on()` handler — 6 tests (`handlers/index.test.js`)
-  - `persist()` suite incl. blocked/absent storage, `keys: []`, duplicate-entry warning — 19 tests (`addons/persist.test.js`)
+  - `persist()` suite — 15 tests (`addons/persist.test.js`)
 
 ---
 
