@@ -921,6 +921,10 @@ Small behavior changes ratified alongside the features above:
 - **Subscriber cap applies to effects too, and fails loudly.** The per-key 1000-listener cap (v2.2.1) only guarded `$subscribe`; effect subscriptions bypassed it. Both paths now share one registration helper, and hitting the cap logs a `console.error` stating the listener will NOT receive updates — a protection that silently breaks the 1001st legitimate listener is indistinguishable from an app bug.
 - **The reactive brand is a real, shared symbol.** `Symbol.for('lume.reactive')` at module level (previously a unique symbol per store that nothing could read), stamped non-enumerably so `{ ...store }` copies are not branded. `isReactive()` checks the brand first via the `in` operator (no proxy `get` trap — calling it inside an effect creates no dependency), with `$subscribe` duck-typing kept as a fallback for older stores. The brand is a type tag, not a security boundary.
 
+### Amendment (2026-07-08, v2.3.1): `stringAttr` scheme guard matches the URL parser
+
+The v2.2.1 dangerous-scheme guard in `stringAttr()` compared the raw string against `/^(javascript|vbscript|data\s*:\s*text\/html)/i`. Two defects: it did not require the scheme colon (blocking legitimate relative URLs such as `javascript-tutorial.html`), and it missed values the browser URL parser still executes — parsers strip C0 controls, space, and tab/newline before reading the scheme, so `"\tjavascript:alert(1)"` and `"java\nscript:alert(1)"` sailed through. The guard now normalizes the value the way the parser does (strip `[\u0000-\u0020\u007F]`, lowercase) and requires the colon (`javascript:` / `vbscript:` / `data:text/html`). Checked only for URI attributes (`href`, `src`, `action`, `srcset`, `poster`, `formaction`), unchanged for all others.
+
 ---
 
 ## Future Considerations
@@ -963,6 +967,10 @@ We're open to change, but will prioritize **simplicity and standards** over feat
 ---
 
 ## Document History
+
+- **2026-07-08:**
+  - Amended the v2.3 hardening notes with the `stringAttr` scheme-guard fix
+    (URL-parser-equivalent normalization; colon required)
 
 - **2026-06-11:**
   - Added `batch()` kernel decision (incl. the documented path to making it optional later, additive-only)

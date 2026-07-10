@@ -17,6 +17,10 @@
   (self-contained CDN build) with its own CI size budget (≤ 1.75 KB). The
   full `lume-js` entry is unchanged — this is purely additive.
 
+### Security
+
+- **`stringAttr()` — scheme guard now matches how browsers parse URLs:** the v2.2.1 dangerous-scheme check tested the raw string, so values the URL parser still executes slipped through (`"\tjavascript:alert(1)"`, `"java\nscript:alert(1)"` — parsers strip C0 controls, space, and tab/newline before reading the scheme). It also matched the bare word `javascript` without a colon, blocking legitimate relative URLs like `javascript-tutorial.html`. The value is now normalized the way the URL parser does before matching, and the colon is required. Applies to the URI attributes only (`href`, `src`, `action`, `srcset`, `poster`, `formaction`).
+
 ### Fixed
 
 - **`lume-js/state` types are now genuinely DOM-free:** the universal

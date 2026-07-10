@@ -6,7 +6,13 @@
  * @returns {{ attr: string, apply: function }}
  */
 
-const DANGEROUS_SCHEME = /^(javascript|vbscript|data\s*:\s*text\/html)/i;
+// Matched against a normalized copy of the value (C0 controls, space, and
+// DEL stripped; lowercased) because the browser URL parser ignores those
+// characters when determining the scheme — "java\tscript:alert(1)" and
+// " javascript:alert(1)" both execute. The colon is required so legitimate
+// relative URLs like "javascript-tutorial.html" are not blocked.
+const DANGEROUS_SCHEME = /^(?:javascript:|vbscript:|data:text\/html)/;
+const IGNORED_URL_CHARS = /[\u0000-\u0020\u007F]/g;
 const URI_ATTRS = new Set(['href', 'src', 'action', 'srcset', 'poster', 'formaction']);
 
 export function stringAttr(name) {
@@ -18,7 +24,8 @@ export function stringAttr(name) {
         return;
       }
       const strVal = String(val);
-      if (URI_ATTRS.has(name) && DANGEROUS_SCHEME.test(strVal)) {
+      if (URI_ATTRS.has(name) &&
+          DANGEROUS_SCHEME.test(strVal.replace(IGNORED_URL_CHARS, '').toLowerCase())) {
         el.removeAttribute(name);
         return;
       }

@@ -375,6 +375,42 @@ describe('handlers module', () => {
       cleanup();
     });
 
+    it('blocks dangerous schemes hidden by whitespace/control characters', async () => {
+      const root = setupDOM(`<div><a data-href="url">Link</a></div>`);
+      const store = state({ url: 'https://example.com' });
+
+      const cleanup = bindDom(root, store, { handlers: [stringAttr('href')] });
+      const link = root.querySelector('a');
+
+      // The URL parser strips tab/newline/leading controls before reading
+      // the scheme, so these all execute if set — the guard must catch them.
+      store.url = '\tjavascript:alert(1)';
+      await Promise.resolve();
+      expect(link.hasAttribute('href')).toBe(false);
+
+      store.url = 'java\nscript:alert(1)';
+      await Promise.resolve();
+      expect(link.hasAttribute('href')).toBe(false);
+
+      store.url = ' JaVaScRiPt:alert(1)';
+      await Promise.resolve();
+      expect(link.hasAttribute('href')).toBe(false);
+
+      cleanup();
+    });
+
+    it('does not block legitimate URLs that merely start with a scheme word', async () => {
+      const root = setupDOM(`<div><a data-href="url">Link</a></div>`);
+      const store = state({ url: 'javascript-tutorial.html' });
+
+      const cleanup = bindDom(root, store, { handlers: [stringAttr('href')] });
+      const link = root.querySelector('a');
+
+      expect(link.getAttribute('href')).toBe('javascript-tutorial.html');
+
+      cleanup();
+    });
+
     it('allows data:image URLs on src attributes', async () => {
       const root = setupDOM(`<div><img data-src="img" /></div>`);
       const store = state({ img: 'data:image/png;base64,abc123' });
