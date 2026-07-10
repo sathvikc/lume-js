@@ -240,8 +240,12 @@ group.add(watch(store, 'query', async (q) => {
 
 ## Debugging & testing
 
-- `import { debug } from 'lume-js/addons'` — `debug(store, { label: 'cart' })`
-  logs every write and flush to the console; returns a disposer.
+- Write/read logging is a plugin:
+  ```javascript
+  import { withPlugins, createDebugPlugin, debug } from 'lume-js/addons';
+  const store = withPlugins(state({ count: 0 }), [createDebugPlugin({ label: 'cart' })]);
+  debug.enable();          // global on/off switch; also debug.filter('key'), debug.stats()
+  ```
 - Nothing updates? Check, in order: (1) mutated an array/nested object in
   place (rule 1/2), (2) asserted synchronously before the microtask flush
   (rule 3), (3) the read happened after an `await` inside an effect (rule 4),
