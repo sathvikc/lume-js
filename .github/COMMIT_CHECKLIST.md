@@ -2,6 +2,8 @@
 
 Run through this before every commit. CI catches most of these, but catching them locally is faster.
 
+> The full process contract (artifact matrix — which change types require tests/types/docs/changelog entries) lives in [`AGENTS.md`](../AGENTS.md). This checklist is the mechanical pre-commit pass; AGENTS.md decides *what* a complete commit contains.
+
 ---
 
 ## Quick check (every commit)
@@ -16,7 +18,7 @@ npm run lint         # cognitive complexity ≤ 15
 
 ```bash
 npm run validate
-# Runs: build → size check → complexity → lint → typecheck → coverage
+# Runs: build → size check → complexity → lint → typecheck → coverage → llms freshness check
 ```
 
 Or step by step:
@@ -28,7 +30,10 @@ node scripts/complexity.js     # max CC ≤ 10, MI ≥ 50
 npm run lint                   # sonarjs/cognitive-complexity
 npm run typecheck              # tsc --noEmit
 npm run coverage               # vitest --coverage (100% required)
+npm run llms:check             # llms.txt / llms-full.txt match the docs tree
 ```
+
+Touched `README.md`, `AGENT_GUIDE.md`, `package.json` (version), or anything under `docs/`? Run `npm run llms` and commit the regenerated `llms.txt` / `llms-full.txt` in the same commit — the CI `agent-docs` job fails the PR on drift.
 
 ---
 
@@ -43,6 +48,11 @@ Optional body explaining WHY (not what — the diff shows what).
 
 Optional footer: BREAKING CHANGE: ..., Closes #123
 ```
+
+Body rules:
+
+- Never hard-wrap the body at a fixed column — one paragraph or list item per line, however long (same rule as all repo prose; see CLAUDE.md).
+- No AI model names or tool signatures in commit messages (see AGENTS.md) — commits are authored by the human who ships them.
 
 ### Types
 
@@ -87,8 +97,9 @@ ci: add cognitive complexity gate via eslint-plugin-sonarjs
 ## Pre-commit: what to look for
 
 - **New source code** — has tests? coverage still 100%?
-- **New public API** — `src/index.d.ts` updated?
+- **New public API** — the matching handwritten `.d.ts` updated in the same commit? (`src/state.d.ts` is the kernel source of truth; `src/index.d.ts` re-exports it; addons/handlers have their own `index.d.ts`.)
 - **New handler or addon** — exported from barrel (`src/handlers/index.js` or `src/addons/index.js`)?
+- **Docs / README / AGENT_GUIDE touched** — `npm run llms` re-run and bundles committed?
 - **Complex function** — cognitive complexity ≤ 15? If not, can you simplify? If intentional, add inline disable comment with justification.
 - **Large function** — cyclomatic CC ≤ 10? If pre-existing exception needed, add to `KNOWN_EXCEPTIONS` in `scripts/complexity.js`.
 - **Size-sensitive change** — run `npm run size` and check the budget bars.
