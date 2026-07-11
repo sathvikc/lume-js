@@ -2,7 +2,7 @@
 
 ## Is Lume.js production-ready?
 
-Yes. Lume 2.x is stable — the current release on npm is v<!-- lume:version -->2.3.1<!-- /lume:version --> (`npm install lume-js`), backed by <!-- lume:tests -->457<!-- /lume:tests --> tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
+Yes. Lume 2.x is stable — the current release on npm is v<!-- lume:version -->2.3.1<!-- /lume:version --> (`npm install lume-js`), backed by <!-- lume:tests -->461<!-- /lume:tests --> tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
 
 ## Does Lume work without a build step?
 
@@ -31,7 +31,7 @@ bindDom(document.getElementById('nav'), store);
 
 ## How does Lume compare to Alpine.js?
 
-Both work inline with server-rendered HTML. Lume uses standard `data-*` attributes; Alpine uses `x-*` directives with a custom expression syntax. Lume is smaller (<!-- lume:size-index -->2.66<!-- /lume:size-index --> KB vs ~15 KB gzipped — <!-- lume:size-state -->1.46<!-- /lume:size-state --> KB for the DOM-free kernel) and has no custom expression evaluator — logic lives in plain JS, not attribute strings.
+Both work inline with server-rendered HTML. Lume uses standard `data-*` attributes; Alpine uses `x-*` directives with a custom expression syntax. Lume is smaller (<!-- lume:size-index -->2.73<!-- /lume:size-index --> KB vs ~15 KB gzipped — <!-- lume:size-state -->1.46<!-- /lume:size-state --> KB for the DOM-free kernel) and has no custom expression evaluator — logic lives in plain JS, not attribute strings.
 
 ## How does Lume compare to Vue 3's reactivity?
 

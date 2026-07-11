@@ -2,7 +2,7 @@
 
 **Lume.js** is a lightweight reactive state library built on standard JavaScript and HTML. Drop it into any page via a CDN `<script>` tag and get reactive bindings in minutes — no build tool, no custom syntax, no framework required.
 
-> **Version:** <!-- lume:version -->2.3.1<!-- /lume:version --> · **Core:** <!-- lume:size-state -->1.46<!-- /lume:size-state --> KB gzipped (universal) / <!-- lume:size-index -->2.66<!-- /lume:size-index --> KB gzipped (+ DOM) · **Tests:** <!-- lume:tests -->457<!-- /lume:tests --> · **Dependencies:** 0
+> **Version:** <!-- lume:version -->2.3.1<!-- /lume:version --> · **Core:** <!-- lume:size-state -->1.46<!-- /lume:size-state --> KB gzipped (universal) / <!-- lume:size-index -->2.73<!-- /lume:size-index --> KB gzipped (+ DOM) · **Tests:** <!-- lume:tests -->461<!-- /lume:tests --> · **Dependencies:** 0
 
 ## Why Lume.js?
 
@@ -10,7 +10,7 @@
 |--|---------|----------------------|
 | Build step | None required | Required |
 | Custom syntax | None — plain `data-*` attrs | Templates / JSX / `.svelte` |
-| Bundle size | <!-- lume:size-state -->1.46<!-- /lume:size-state -->–<!-- lume:size-index -->2.66<!-- /lume:size-index --> KB gzipped | 40 KB+ |
+| Bundle size | <!-- lume:size-state -->1.46<!-- /lume:size-state -->–<!-- lume:size-index -->2.73<!-- /lume:size-index --> KB gzipped | 40 KB+ |
 | Learning curve | ~15 min | Days |
 | Virtual DOM | No — direct DOM | Yes |
 
