@@ -68,12 +68,14 @@
     .fps-bad { color: var(--bad); }
 
     #board {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
-      gap: 4px;
+      position: relative; /* tiles are placed by transform; JS sets the height */
     }
     #board .tile {
-      aspect-ratio: 1;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: var(--tile, 30px);
+      height: var(--tile, 30px);
       border-radius: 7px;
       background: hsl(var(--h, 200) 74% 58%);
       color: rgb(255 255 255 / 0.85);
@@ -92,7 +94,7 @@
 <body>
   <h1>repeat(): animated keyed grid</h1>
   <p class="sub">
-    Every tile below is one keyed item in a single <code>repeat()</code> call. Reordering the array moves the <em>same</em> DOM nodes (no teardown, no re-creation), which is what lets a FLIP transition glide each tile from its old position to its new one. The library does the keyed reconciliation; the animation is a small layer of standard JavaScript on top.
+    Every tile below is one keyed item in a single <code>repeat()</code> call. Reordering the array moves the <em>same</em> DOM nodes (no teardown, no re-creation), and because the board is a uniform grid, a tile's position is pure math on its index: a reorder hands every moved tile a new transform to glide to. The library does the keyed reconciliation; the animation is a small layer of standard JavaScript on top.
   </p>
 
   <div class="card">
@@ -121,15 +123,14 @@
     <details>
       <summary>How the animation works</summary>
       <p>
-        <code>repeat()</code> keys each element by tile id, so a reorder is applied with <code>insertBefore</code> on the existing nodes. That identity is what FLIP needs: record where each tile was, change the array, then (after the reconcile, before the browser paints) apply the inverted delta as a transform and let it transition back to zero.
+        <code>repeat()</code> keys each element by tile id, so a reorder is applied with <code>insertBefore</code> on the existing nodes. That identity is what makes the animation trivial: tiles are absolutely positioned and placed with <code>transform: translate()</code> computed from their index, so after the reconcile each moved node just transitions from the transform it holds to the one its new index says — the browser never re-derives grid boxes, and an interrupting change retargets mid-flight tiles natively.
       </p>
-      <pre><code>const before = indexByTile(board);   // old index of every node
-store.tiles = shuffle(store.tiles);  // repeat() reorders the same nodes
+      <pre><code>store.tiles = shuffle(store.tiles);  // repeat() reorders the same nodes
 await Promise.resolve();             // reconcile runs in Lume's flush
-invert(board, before);               // transform: translate(old - new)
-releaseInWaves();                    // transition back to transform: none</code></pre>
+for (const [el, i] of movedTiles())  // index diff, no DOM reads
+  glideOrSnap(el, translateOf(i));   // transition to the new transform</code></pre>
       <p class="footnote">
-        Transforms animate on the compositor, so a thousand tiles glide at once without layout work per frame. Three details keep it honest on slow CPUs (try DevTools' 20x throttle): positions come from grid index math (three rect reads instead of two per tile, and no forced layout after the reconcile), transitions start in a few rAF waves instead of all in one frame, and an adaptive budget glides an evenly sampled subset when the measured per-tile cost says the CPU can't animate every tile — the reorder still covers all of them, and the "tiles animated" readout reports the real number. New tiles scale in; the count slider, add, and remove reconcile through the same keyed path. The whole page runs on <code>lume-js</code> + the <code>repeat</code> addon, no build step, valid HTML.
+        Transforms animate on the compositor, and with position being index math a reorder involves no layout at all — under DevTools' 20x CPU throttle the browser's own grid relayout of 2,000 moved tiles used to cost about a second per change before this. What remains is honest: <code>repeat()</code> really reorders the DOM (order always matches what you see), transitions start in rAF waves sized by their measured per-start cost, and an adaptive budget glides an evenly sampled subset when the measured costs say the CPU can't animate every tile — the reorder still covers all of them, and the "tiles animated" readout reports the real number. New tiles scale in; the count slider, add, and remove reconcile through the same keyed path. The whole page runs on <code>lume-js</code> + the <code>repeat</code> addon, no build step, valid HTML.
       </p>
     </details>
   </div>
