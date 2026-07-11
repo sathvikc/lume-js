@@ -1,153 +1,140 @@
 import { state, effect, bindDom, batch } from 'lume-js';
 
-const STORES = 500;
-const BURSTS = 100;
-
-// 500 independent stores — one per dashboard cell, as separate widgets/modules would have
-const stores = Array.from({ length: STORES }, () => state({ value: 50 }));
-
 // UI store for the readouts (data-bind targets)
 const ui = state({
-  sum: 0, avg: '0.0', min: 0, max: 0,
-  worstFrame: '…',
-  plainTime: '—', plainWall: '—', plainAgg: '—', plainCell: '—', plainOps: '—',
-  batchTime: '—', batchWall: '—', batchAgg: '—', batchCell: '—', batchOps: '—',
-  ratio: '',
+  fps: '—',
+  worst: '—',
+  aggPerFrame: '—',
+  storeLabel: '',
+  sum: '—', avg: '—', min: '—', max: '—',
 });
 bindDom(document.body, ui);
 
-const fmt = n => n.toLocaleString('en-US');
-
-// ── Fine-grained layer: one effect per store, driving its own cell ────────
-// These run once per changed store in BOTH modes — batch() never makes
-// granular updates coarser.
 const grid = document.getElementById('grid');
-let cellRuns = 0;
-for (const s of stores) {
-  const cell = document.createElement('div');
-  cell.className = 'cell';
-  grid.appendChild(cell);
-  effect(() => {
-    const v = s.value;
-    cellRuns++;
-    cell.style.setProperty('--h', String(Math.round(v * 1.2 + 60)));
-  });
-}
+const fpsEl = document.getElementById('fps');
+const dot = document.getElementById('dot');
+const startBtn = document.getElementById('start');
+const batchToggle = document.getElementById('use-batch');
+const storesSlider = document.getElementById('stores');
 
-// ── Cross-store layer: ONE aggregate effect reading all 500 stores ────────
-// This is the dashboard summary — and the thing per-store batching runs
-// once per mutated store, but batch() runs once per burst.
+// ── Store setup (rebuilt when the slider moves) ────────────────────────────
+let stores = [];
+let disposers = [];
 let aggRuns = 0;
-effect(() => {
-  let sum = 0;
-  let min = Infinity;
-  let max = -Infinity;
-  for (let i = 0; i < STORES; i++) {
-    const v = stores[i].value;
-    sum += v;
-    if (v < min) min = v;
-    if (v > max) max = v;
+
+function setup(count) {
+  for (const dispose of disposers) dispose();
+  disposers = [];
+  grid.textContent = '';
+
+  // One independent store per cell, as separate widgets/modules would have.
+  stores = Array.from({ length: count }, () => state({ value: Math.random() * 100 }));
+  ui.storeLabel = count.toLocaleString('en-US');
+
+  // Keep the grid roughly 2:1 regardless of store count.
+  grid.style.gridTemplateColumns = `repeat(${Math.ceil(Math.sqrt(count * 2))}, 1fr)`;
+
+  // Fine-grained layer: one effect per store, driving its own cell's hue.
+  // These run once per changed store in BOTH modes; batch() never makes
+  // granular updates coarser.
+  for (const s of stores) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    grid.appendChild(cell);
+    disposers.push(effect(() => {
+      cell.style.setProperty('--h', String(Math.round(s.value * 3.3)));
+    }));
   }
-  aggRuns++;
-  ui.sum = Math.round(sum);
-  ui.avg = (sum / STORES).toFixed(1);
-  ui.min = Math.round(min);
-  ui.max = Math.round(max);
-});
 
-// ── The benchmark ──────────────────────────────────────────────────────────
-// One burst = a random-walk write to every store (think: a tick of live
-// market/sensor data hitting every widget at once).
-function burst() {
-  for (let i = 0; i < STORES; i++) {
-    const s = stores[i];
-    s.value = Math.max(0, Math.min(100, s.value + (Math.random() * 10 - 5)));
-  }
-}
-
-// Event-like cadence between bursts; identical in both modes so scheduling
-// overhead cancels out and only effect work differs.
-const nextTick = () => new Promise(resolve => setTimeout(resolve));
-
-const buttons = [...document.querySelectorAll('button')];
-let running = false;
-let plainOpsTotal = 0;
-let batchOpsTotal = 0;
-
-async function run(useBatch) {
-  if (running) return;
-  running = true;
-  buttons.forEach(b => { b.disabled = true; });
-
-  const agg0 = aggRuns;
-  const cell0 = cellRuns;
-  const wall0 = performance.now();
-  let work = 0;
-
-  for (let b = 0; b < BURSTS; b++) {
-    const t0 = performance.now();
-    if (useBatch) {
-      batch(burst);    // one synchronous flush: aggregate runs ONCE
-    } else {
-      burst();         // per-store flushes: aggregate runs once per store
+  // Cross-store layer: ONE aggregate effect reading every store. Per-store
+  // flushing runs this once per mutated store; batch() runs it once per frame.
+  disposers.push(effect(() => {
+    let sum = 0;
+    let min = Infinity;
+    let max = -Infinity;
+    for (let i = 0; i < stores.length; i++) {
+      const v = stores[i].value;
+      sum += v;
+      if (v < min) min = v;
+      if (v > max) max = v;
     }
-    // Without batch, each store flushes in its own microtask queued during
-    // burst(); awaiting a resolved promise queues this continuation AFTER
-    // those flushes, so `work` captures the effect work in both modes.
-    await Promise.resolve();
-    work += performance.now() - t0;
-    await nextTick();
-  }
-
-  const wall = performance.now() - wall0;
-  const aggDelta = aggRuns - agg0;
-  const cellDelta = cellRuns - cell0;
-  // writes + reads performed by effects (aggregate reads all stores per run,
-  // each cell effect reads its one store) + effect executions
-  const totalOps =
-    STORES * BURSTS +
-    aggDelta * STORES + cellDelta +
-    aggDelta + cellDelta;
-
-  if (useBatch) {
-    ui.batchTime = `${work.toFixed(0)} ms`;
-    ui.batchWall = `${wall.toFixed(0)} ms`;
-    ui.batchAgg = fmt(aggDelta);
-    ui.batchCell = fmt(cellDelta);
-    ui.batchOps = fmt(totalOps);
-    batchOpsTotal = totalOps;
-  } else {
-    ui.plainTime = `${work.toFixed(0)} ms`;
-    ui.plainWall = `${wall.toFixed(0)} ms`;
-    ui.plainAgg = fmt(aggDelta);
-    ui.plainCell = fmt(cellDelta);
-    ui.plainOps = fmt(totalOps);
-    plainOpsTotal = totalOps;
-  }
-  if (plainOpsTotal && batchOpsTotal) {
-    ui.ratio = `${Math.round(plainOpsTotal / batchOpsTotal)}× fewer operations with batch()`;
-  }
-
-  buttons.forEach(b => { b.disabled = false; });
-  running = false;
+    aggRuns++;
+    ui.sum = Math.round(sum).toLocaleString('en-US');
+    ui.avg = (sum / stores.length).toFixed(1);
+    ui.min = String(Math.round(min));
+    ui.max = String(Math.round(max));
+  }));
 }
 
-document.getElementById('run-plain').addEventListener('click', () => run(false));
-document.getElementById('run-batch').addEventListener('click', () => run(true));
+// ── The write burst: one new value per store, every frame ─────────────────
+function burst() {
+  for (let i = 0; i < stores.length; i++) {
+    const s = stores[i];
+    let v = s.value + (Math.random() * 24 - 12);
+    if (v < 0) v = -v;
+    if (v > 100) v = 200 - v;
+    s.value = v;
+  }
+}
 
-// ── Frame-health meter ─────────────────────────────────────────────────────
-// Worst frame-to-frame gap over the last second; a blocked main thread
-// shows up here (and in the CSS pulse stuttering) immediately.
+// ── Main loop + frame instrumentation ──────────────────────────────────────
+let running = false;
+
+let frames = 0;
+let worstGap = 0;
 let lastFrame = performance.now();
-let worst = 0;
+let lastSample = performance.now();
+let aggMark = 0;
+
 function onFrame(now) {
-  const delta = now - lastFrame;
+  const gap = now - lastFrame;
   lastFrame = now;
-  if (delta > worst) worst = delta;
+  if (gap > worstGap) worstGap = gap;
+  frames++;
+
+  // JS-driven dot: positioned from here, every frame. Unlike a CSS animation
+  // (which the compositor keeps running), this visibly freezes when the main
+  // thread stalls.
+  dot.style.transform = `translateX(${(Math.sin(now / 300) + 1) * 51}px)`;
+
+  if (running) {
+    if (batchToggle.checked) {
+      batch(burst); // all stores flush together: aggregate runs ONCE
+    } else {
+      burst(); // per-store flushes: aggregate runs once per store
+    }
+    // Without batch, the flushes are microtasks queued during burst(); they
+    // run after this callback but before the next frame, so the frame-gap
+    // meter above captures their full cost either way.
+  }
+
+  const elapsed = now - lastSample;
+  if (elapsed >= 1000) {
+    ui.fps = String(Math.round((frames * 1000) / elapsed));
+    ui.worst = `${worstGap.toFixed(0)} ms`;
+    ui.aggPerFrame = running
+      ? Math.round((aggRuns - aggMark) / frames).toLocaleString('en-US')
+      : '0';
+    const fps = (frames * 1000) / elapsed;
+    fpsEl.className = `v ${fps >= 50 ? 'fps-good' : fps >= 30 ? 'fps-mid' : 'fps-bad'}`;
+    frames = 0;
+    worstGap = 0;
+    aggMark = aggRuns;
+    lastSample = now;
+  }
+
   requestAnimationFrame(onFrame);
 }
+
+// ── Controls ───────────────────────────────────────────────────────────────
+startBtn.addEventListener('click', () => {
+  running = !running;
+  startBtn.textContent = running ? 'Stop' : 'Start';
+});
+
+storesSlider.addEventListener('change', () => {
+  setup(Number(storesSlider.value));
+});
+
+setup(Number(storesSlider.value));
 requestAnimationFrame(onFrame);
-setInterval(() => {
-  ui.worstFrame = `${worst.toFixed(0)} ms`;
-  worst = 0;
-}, 1000);
