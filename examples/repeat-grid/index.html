@@ -92,7 +92,7 @@
 <body>
   <h1>repeat(): animated keyed grid</h1>
   <p class="sub">
-    Every tile below is one keyed item in a single <code>repeat()</code> call. Reordering the array moves the <em>same</em> DOM nodes (no teardown, no re-creation), which is what lets a FLIP transition glide each tile from its old position to its new one. The library does the keyed reconciliation; the animation is ~20 lines of standard JavaScript on top.
+    Every tile below is one keyed item in a single <code>repeat()</code> call. Reordering the array moves the <em>same</em> DOM nodes (no teardown, no re-creation), which is what lets a FLIP transition glide each tile from its old position to its new one. The library does the keyed reconciliation; the animation is a small layer of standard JavaScript on top.
   </p>
 
   <div class="card">
@@ -121,15 +121,15 @@
     <details>
       <summary>How the animation works</summary>
       <p>
-        <code>repeat()</code> keys each element by tile id, so a reorder is applied with <code>insertBefore</code> on the existing nodes. That identity is what FLIP needs: measure every tile's position, change the array, measure again after the reconcile (still before the browser paints), then apply the inverted delta as a transform and let it transition back to zero.
+        <code>repeat()</code> keys each element by tile id, so a reorder is applied with <code>insertBefore</code> on the existing nodes. That identity is what FLIP needs: record where each tile was, change the array, then (after the reconcile, before the browser paints) apply the inverted delta as a transform and let it transition back to zero.
       </p>
-      <pre><code>const first = measure(board);        // old positions
+      <pre><code>const before = indexByTile(board);   // old index of every node
 store.tiles = shuffle(store.tiles);  // repeat() reorders the same nodes
 await Promise.resolve();             // reconcile runs in Lume's flush
-const moved = invert(board, first);  // transform: translate(old - new)
-play(moved);                         // transition back to transform: none</code></pre>
+invert(board, before);               // transform: translate(old - new)
+releaseInWaves();                    // transition back to transform: none</code></pre>
       <p class="footnote">
-        Transforms animate on the compositor, so a thousand tiles glide at once without layout work per frame. New tiles scale in; the count slider, add, and remove reconcile through the same keyed path. The whole page runs on <code>lume-js</code> + the <code>repeat</code> addon, no build step, valid HTML.
+        Transforms animate on the compositor, so a thousand tiles glide at once without layout work per frame. Three details keep it honest on slow CPUs (try DevTools' 20x throttle): positions come from grid index math (three rect reads instead of two per tile, and no forced layout after the reconcile), transitions start in a few rAF waves instead of all in one frame, and an adaptive budget glides an evenly sampled subset when the measured per-tile cost says the CPU can't animate every tile — the reorder still covers all of them, and the "tiles animated" readout reports the real number. New tiles scale in; the count slider, add, and remove reconcile through the same keyed path. The whole page runs on <code>lume-js</code> + the <code>repeat</code> addon, no build step, valid HTML.
       </p>
     </details>
   </div>
