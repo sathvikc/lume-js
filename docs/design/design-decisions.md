@@ -644,6 +644,25 @@ store.$subscribe('text', (value) => {
 
 ---
 
+### Why Effects Reuse Their Subscriptions Across Runs (v2.3, 2026-07)
+
+**Decision:** Auto-tracked effects keep their dependencies in a persistent per-effect registry (store → key → subscription record). A re-run stamps each dependency it reads with the run's generation; a dependency that already has a record makes no new subscription, and records not stamped by a completed run are swept (unsubscribed) afterwards. Runs that read nothing and runs that throw keep every subscription, so the effect stays reactive. Tracking semantics are unchanged: conditional dependencies attach on first read and drop when a completed run stops reading them.
+
+**Reasoning:**
+- The previous implementation tore down and rebuilt every subscription on every run: N unsubscribes (indexOf + splice on listener arrays), N re-subscribes, and ~2N closure allocations per run, even when the read set was identical — and the read set is identical for almost every re-run in practice.
+- The cost scales with dependency width, exactly where effects are most useful: an aggregate effect reading 3,000 stores re-ran 7.5x faster after the change (23.8ms → 3.2ms per run in Chrome under a matched CPU throttle; both measurements on the same rig, verified with a busy-loop probe).
+- `computed()` is built on `effect()`, so derived values inherit the gain with no changes.
+- The old error path also leaked: it discarded the unsubscribe functions of subscriptions made before the throw, leaving listeners that could never be removed. Keeping the records makes the throwing path leak-free with less code, not more.
+
+**Alternatives considered:**
+- ❌ Keep teardown/rebuild → simplest, but pays O(deps) churn for the common no-change case and O(1) savings only in the rare shrink case.
+- ❌ Version-tagged global epochs (Vue/Preact-signals style doubly-linked dependency lists) → the churn win without the sweep walk, but substantially more code and pointer bookkeeping than this library's size budget justifies.
+- ❌ Never drop stale dependencies → cheapest, but a conditional dependency would keep re-running the effect forever (correctness regression, and a memory leak for dynamic reads).
+
+**Tradeoff:** The sweep is O(total dependencies) when a run drops something (unchanged from before, minus the rebuild), and each effect holds strong references to the store proxies it reads via the registry Map — the same lifetime the old unsubscribe closures already implied. Dependency records cost one small object each, allocated once instead of once per run.
+
+---
+
 ### Why No Computed Properties in Core?
 
 **Decision:** Move `computed()` to addons, not core.
