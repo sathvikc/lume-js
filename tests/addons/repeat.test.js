@@ -1156,6 +1156,127 @@ describe('repeat', () => {
     });
   });
 
+  describe('Minimal DOM moves', () => {
+    const order = () => Array.from(container.children).map(el => el.textContent).join(',');
+    const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+
+    function mount(n) {
+      const store = state({ items: Array.from({ length: n }, (_, i) => ({ id: i + 1 })) });
+      repeat(container, store, 'items', {
+        key: item => item.id,
+        render: (item, el) => { el.textContent = String(item.id); }
+      });
+      return store;
+    }
+
+    it('moves only the swapped nodes on a far swap', async () => {
+      const store = mount(100);
+      const insertSpy = vi.spyOn(container, 'insertBefore');
+
+      const next = store.items.slice();
+      const tmp = next[3];
+      next[3] = next[90];
+      next[90] = tmp;
+      store.items = next;
+      await flush();
+
+      // A 2-item change must not cascade into the ~87 nodes between them.
+      expect(insertSpy.mock.calls.length).toBeLessThanOrEqual(2);
+      expect(container.children.length).toBe(100);
+      expect(container.children[3].textContent).toBe('91');
+      expect(container.children[90].textContent).toBe('4');
+      insertSpy.mockRestore();
+    });
+
+    it('does not move surviving nodes when items are removed', async () => {
+      const store = mount(50);
+      const insertSpy = vi.spyOn(container, 'insertBefore');
+      const removeSpy = vi.spyOn(container, 'removeChild');
+
+      store.items = store.items.filter((_, i) => i !== 0 && i !== 25);
+      await flush();
+
+      expect(insertSpy).not.toHaveBeenCalled();
+      expect(removeSpy.mock.calls.length).toBe(2);
+      expect(container.children.length).toBe(48);
+      expect(container.children[0].textContent).toBe('2');
+      insertSpy.mockRestore();
+      removeSpy.mockRestore();
+    });
+
+    it('inserts only the new nodes on scattered inserts', async () => {
+      const store = mount(20);
+      const insertSpy = vi.spyOn(container, 'insertBefore');
+
+      const next = store.items.slice();
+      next.splice(10, 0, { id: 102 });
+      next.splice(0, 0, { id: 101 });
+      store.items = next;
+      await flush();
+
+      expect(insertSpy.mock.calls.length).toBe(2);
+      expect(container.children.length).toBe(22);
+      expect(order()).toBe(next.map(x => String(x.id)).join(','));
+      insertSpy.mockRestore();
+    });
+
+    it('keeps node identity and exact order through a full permutation', async () => {
+      const store = mount(30);
+      const el7 = Array.from(container.children).find(el => el.textContent === '7');
+
+      // Deterministic permutation: id * 7 mod 30 is a bijection on 0..29.
+      const next = store.items.slice().sort((a, b) => ((a.id * 7) % 30) - ((b.id * 7) % 30));
+      store.items = next;
+      await flush();
+
+      expect(order()).toBe(next.map(x => String(x.id)).join(','));
+      expect(Array.from(container.children).find(el => el.textContent === '7')).toBe(el7);
+    });
+
+    it('lands exact order on a full reverse (worst case for stability)', async () => {
+      const store = mount(10);
+      store.items = store.items.slice().reverse();
+      await flush();
+
+      expect(order()).toBe('10,9,8,7,6,5,4,3,2,1');
+    });
+
+    it('preserves the source template and stays minimal in template mode', async () => {
+      container.innerHTML = '<template><li data-bind="$item"></li></template>';
+      const store = state({ items: [1, 2, 3, 4, 5, 6, 7, 8] });
+      repeat(container, store, 'items', { key: x => x, template: true });
+      const tpl = container.querySelector('template');
+      const insertSpy = vi.spyOn(container, 'insertBefore');
+
+      const next = store.items.slice();
+      const tmp = next[1];
+      next[1] = next[6];
+      next[6] = tmp;
+      store.items = next;
+      await flush();
+
+      expect(container.querySelector('template')).toBe(tpl);
+      expect(insertSpy.mock.calls.length).toBeLessThanOrEqual(2);
+      const rows = Array.from(container.querySelectorAll('li')).map(el => el.textContent).join(',');
+      expect(rows).toBe('1,7,3,4,5,6,2,8');
+      insertSpy.mockRestore();
+    });
+
+    it('handles add, remove, and reorder in a single update', async () => {
+      const store = mount(12);
+
+      const next = store.items.slice(2);
+      const tmp = next[0];
+      next[0] = next[5];
+      next[5] = tmp;
+      next.push({ id: 200 });
+      store.items = next;
+      await flush();
+
+      expect(order()).toBe(next.map(x => String(x.id)).join(','));
+    });
+  });
+
   describe('Error Handling', () => {
     it('warns if container not found', () => {
       const store = state({ items: [] });
