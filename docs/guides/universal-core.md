@@ -10,7 +10,7 @@ If you're building for the browser and want DOM binding, use the full core inste
 
 ```js
 <!-- lume:comment-size-index -->
-import { state, bindDom, effect, batch } from 'lume-js';   // 2.66 KB
+import { state, bindDom, effect, batch } from 'lume-js';   // 2.73 KB
 <!-- /lume:comment-size-index -->
 ```
 
@@ -120,7 +120,7 @@ console.log(sum, deps);   // 3, ['a', 'b']
 | Entry | Gzipped | CI budget |
 |-------|---------|-----------|
 | `lume-js/state` (`dist/state.min.mjs`) | <!-- lume:size-state -->1.46<!-- /lume:size-state --> KB | ≤ <!-- lume:budget-state -->1.75<!-- /lume:budget-state --> KB |
-| `lume-js` (`dist/index.min.mjs`) | <!-- lume:size-index -->2.66<!-- /lume:size-index --> KB | ≤ <!-- lume:budget-index -->3.00<!-- /lume:budget-index --> KB |
+| `lume-js` (`dist/index.min.mjs`) | <!-- lume:size-index -->2.73<!-- /lume:size-index --> KB | ≤ <!-- lume:budget-index -->3.00<!-- /lume:budget-index --> KB |
 
 Both numbers are enforced by `scripts/check-size.js` on every CI run — they can't silently drift.
 

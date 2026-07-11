@@ -28,6 +28,9 @@ import { logError } from '../utils/log.js';
  *
  * Features:
  * - Automatic dependency collection via withReadObserver scope (default)
+ * - Subscriptions persist across runs: a re-run with the same reads makes
+ *   zero subscribe/unsubscribe calls and zero allocations; dependencies the
+ *   effect stopped reading are swept by run generation
  * - Explicit dependencies for side-effects
  * - Explicit-deps notifications are coalesced: one run per microtask,
  *   no matter how many tracked keys (or stores) changed in the same tick
@@ -39,6 +42,102 @@ import { logError } from '../utils/log.js';
 let currentEffect = null;
 
 // withReadObserver is used below to scope read tracking to synchronous effect execution.
+
+/**
+ * Auto-tracking effect runner with persistent subscriptions.
+ *
+ * Dependencies live in a per-effect registry (proxy -> key -> record) that
+ * survives across runs: a re-run whose reads match the previous run makes
+ * zero subscriptions, zero unsubscriptions, and zero allocations — it only
+ * stamps each record with the current run generation. Records not stamped
+ * by the latest completed run (a dependency the effect stopped reading)
+ * are swept afterwards. Runs that read nothing, and runs that throw, keep
+ * every subscription so the effect stays reactive.
+ *
+ * @param {function} fn - The effect body
+ * @returns {function} Disposer that unsubscribes everything
+ */
+function autoTrackedEffect(fn) {
+  const deps = new Map(); // proxy -> Map<key, { unsub, gen }>
+  let totalDeps = 0;
+  let runGen = 0;
+  let gen = 0;
+  let seen = 0; // existing records re-read this run
+  let added = 0; // new subscriptions made this run
+  let isRunning = false;
+  const context = {}; // identity: attributes reads to this effect, not a nested one
+
+  const onRead = (proxy, key, registerEffect) => {
+    // Only the currently active effect (not a nested one) tracks the read
+    if (currentEffect !== context) return;
+    let byKey = deps.get(proxy);
+    if (!byKey) {
+      byKey = new Map();
+      deps.set(proxy, byKey);
+    }
+    const rec = byKey.get(key);
+    if (rec) {
+      if (rec.gen !== gen) {
+        rec.gen = gen;
+        seen++;
+      }
+      return;
+    }
+    byKey.set(key, { unsub: registerEffect(key, run), gen });
+    added++;
+    totalDeps++;
+  };
+
+  function sweep() {
+    for (const [proxy, byKey] of deps) {
+      for (const [key, rec] of byKey) {
+        if (rec.gen !== gen) {
+          rec.unsub();
+          byKey.delete(key);
+          totalDeps--;
+        }
+      }
+      if (byKey.size === 0) deps.delete(proxy);
+    }
+  }
+
+  function run() {
+    /* v8 ignore next -- defensive guard: synchronous re-entry is unreachable through the public API */
+    if (isRunning) return;
+    gen = ++runGen;
+    seen = 0;
+    added = 0;
+    // Save previous context to support nested effects/computed
+    const previousEffect = currentEffect;
+    currentEffect = context;
+    isRunning = true;
+    try {
+      withReadObserver(onRead, fn);
+    } catch (error) {
+      // Keep every subscription (pre-existing and just-created) so the
+      // effect stays reactive after a throwing run.
+      logError('[Lume.js effect] Error in effect:', error);
+      throw error;
+    } finally {
+      currentEffect = previousEffect;
+      isRunning = false;
+    }
+    // Sweep dropped dependencies — unless nothing was read (early return:
+    // keep the old subscriptions) or every pre-existing record was re-read
+    // (the stable case: nothing to drop, skip the walk entirely).
+    if (seen + added > 0 && seen < totalDeps - added) sweep();
+  }
+
+  run();
+
+  return () => {
+    for (const byKey of deps.values()) {
+      for (const rec of byKey.values()) rec.unsub();
+    }
+    deps.clear();
+    totalDeps = 0;
+  };
+}
 
 /**
  * Creates an effect that runs reactively
@@ -60,10 +159,14 @@ let currentEffect = null;
  *   analytics.log(store.count);  // Won't track store.count automatically
  * }, [[store, 'count']]);        // Explicit: only re-run on store.count
  */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- handles both auto-tracking and explicit-deps modes with cleanup; splitting would require exporting internal state
 export function effect(fn, deps) {
   if (typeof fn !== 'function') {
     throw new Error('effect() requires a function');
+  }
+
+  // AUTO-TRACKING MODE (default): persistent subscriptions, generation sweep
+  if (!Array.isArray(deps)) {
+    return autoTrackedEffect(fn);
   }
 
   const cleanups = [];
@@ -87,118 +190,52 @@ export function effect(fn, deps) {
     }
   };
 
-  // EXPLICIT DEPS MODE: deps array provided
-  if (Array.isArray(deps)) {
-    // Coalesce notifications: when several tracked keys change in the same
-    // flush (or several stores flush in the same tick), run the effect once
-    // per microtask instead of once per changed key. This matches the
-    // dedupe guarantee auto-tracking mode gets from the per-state effect queue.
-    let scheduled = false;
-    let disposed = false;
-    cleanups.push(() => { disposed = true; });
+  // EXPLICIT DEPS MODE: subscribe to the given [store, key1, key2, ...] tuples.
+  // Coalesce notifications: when several tracked keys change in the same
+  // flush (or several stores flush in the same tick), run the effect once
+  // per microtask instead of once per changed key. This matches the
+  // dedupe guarantee auto-tracking mode gets from the per-state effect queue.
+  let scheduled = false;
+  let disposed = false;
+  cleanups.push(() => { disposed = true; });
 
-    const scheduleExecute = () => {
-      if (scheduled) return;
-      scheduled = true;
-      queueMicrotask(() => {
-        scheduled = false;
-        if (disposed) return;
-        // execute() logs and re-throws; swallow here so a throwing effect
-        // doesn't become an uncaught error inside the microtask (same
-        // containment the state flush loop provides for subscribers).
-        try { execute(); } catch { /* already logged by execute() */ }
-      });
-    };
+  const scheduleExecute = () => {
+    if (scheduled) return;
+    scheduled = true;
+    queueMicrotask(() => {
+      scheduled = false;
+      if (disposed) return;
+      // execute() logs and re-throws; swallow here so a throwing effect
+      // doesn't become an uncaught error inside the microtask (same
+      // containment the state flush loop provides for subscribers).
+      try { execute(); } catch { /* already logged by execute() */ }
+    });
+  };
 
-    // Subscribe to each [store, key1, key2, ...] tuple explicitly
-    for (const dep of deps) {
-      if (Array.isArray(dep) && dep.length >= 2) {
-        const [store, ...keys] = dep;
-        if (store && typeof store.$subscribe === 'function') {
-          // Subscribe to each key in this tuple
-          for (const key of keys) {
-            // $subscribe calls immediately, then on changes
-            // We want: call execute immediately once, then on changes
-            let isFirst = true;
-            const unsub = store.$subscribe(key, () => {
-              if (isFirst) {
-                isFirst = false;
-                return; // Skip first call, we'll run execute() below
-              }
-              scheduleExecute();
-            });
-            cleanups.push(unsub);
-          }
+  // Subscribe to each [store, key1, key2, ...] tuple explicitly
+  for (const dep of deps) {
+    if (Array.isArray(dep) && dep.length >= 2) {
+      const [store, ...keys] = dep;
+      if (store && typeof store.$subscribe === 'function') {
+        // Subscribe to each key in this tuple
+        for (const key of keys) {
+          // $subscribe calls immediately, then on changes
+          // We want: call execute immediately once, then on changes
+          let isFirst = true;
+          const unsub = store.$subscribe(key, () => {
+            if (isFirst) {
+              isFirst = false;
+              return; // Skip first call, we'll run execute() below
+            }
+            scheduleExecute();
+          });
+          cleanups.push(unsub);
         }
       }
     }
-    // Run immediately
-    execute();
   }
-  // AUTO-TRACKING MODE: no deps (existing behavior)
-  else {
-    const executeWithTracking = () => {
-      /* v8 ignore next -- defensive guard: synchronous re-entry is unreachable through the public API */
-      if (isRunning) return;
-
-      // Save previous subscriptions instead of cleaning immediately.
-      // If fn() doesn't read any state (early return / error), we restore
-      // them so the effect stays reactive.
-      const oldCleanups = cleanups.splice(0);
-
-      // Tracking is keyed per store proxy (WeakMap<proxy, Set<key>>) so the
-      // same key name on two different stores creates two subscriptions.
-      const myContext = {
-        fn,
-        cleanups,
-        execute: executeWithTracking,
-        tracking: new WeakMap()
-      };
-
-      // Set as current effect (for state.js to detect)
-      // Save previous context to support nested effects/computed
-      const previousEffect = currentEffect;
-      currentEffect = myContext;
-      isRunning = true;
-
-      try {
-        const onRead = (proxy, key, registerEffect) => {
-          // Only the currently active effect (not a nested one) creates subscriptions
-          if (currentEffect !== myContext) return;
-          let keys = myContext.tracking.get(proxy);
-          if (!keys) {
-            keys = new Set();
-            myContext.tracking.set(proxy, keys);
-          }
-          if (keys.has(key)) return;
-          keys.add(key);
-          myContext.cleanups.push(registerEffect(key, myContext.execute));
-        };
-        withReadObserver(onRead, fn);
-      } catch (error) {
-        // On error, restore old subscriptions so the effect stays reactive
-        cleanups.length = 0;
-        cleanups.push(...oldCleanups);
-        logError('[Lume.js effect] Error in effect:', error);
-        throw error;
-      } finally {
-        // Restore previous context (not undefined) to support nesting
-        currentEffect = previousEffect;
-        isRunning = false;
-      }
-
-      // If fn() created new subscriptions, clean old ones.
-      // If it didn't (e.g., early return), keep old subscriptions intact.
-      if (cleanups.length > 0) {
-        for (const cleanup of oldCleanups) cleanup();
-      } else {
-        cleanups.push(...oldCleanups);
-      }
-    };
-
-    // Run immediately to collect initial dependencies
-    executeWithTracking();
-  }
+  // Run immediately
+  execute();
 
   // Return cleanup function
   return () => {

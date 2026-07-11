@@ -29,7 +29,7 @@ store.count++;                          // DOM + title update on next microtask
 
 | Import | Size (gz) | Gives you | Use in |
 |---|---|---|---|
-| `lume-js` | <!-- lume:size-index -->2.66<!-- /lume:size-index --> KB | `state`, `effect`, `bindDom`, `batch`, `withReadObserver` | browsers |
+| `lume-js` | <!-- lume:size-index -->2.73<!-- /lume:size-index --> KB | `state`, `effect`, `bindDom`, `batch`, `withReadObserver` | browsers |
 | `lume-js/state` | <!-- lume:size-state -->1.46<!-- /lume:size-state --> KB | `state`, `batch`, `withReadObserver` (no DOM code) | Node, workers, CLI, SSR |
 | `lume-js/addons` | pay per import | `computed`, `watch`, `repeat`, `persist`, `hydrateState`, `createCleanupGroup`, `debug` | optional patterns |
 | `lume-js/handlers` | pay per import | `show`, `classToggle`, `boolAttr`, `ariaAttr`, `stringAttr`, `className`, `on`, `htmlAttrs`, presets | extra `data-*` attributes |

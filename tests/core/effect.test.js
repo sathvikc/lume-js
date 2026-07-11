@@ -122,6 +122,61 @@ describe('effect', () => {
     errorSpy.mockRestore();
   });
 
+  it('sweeps a dropped key while keeping other keys of the same store', async () => {
+    const store = state({ a: 1, b: 2, mode: 'both' });
+    const runs = [];
+
+    effect(() => {
+      runs.push(store.mode === 'both' ? store.a + store.b : store.a);
+    });
+    expect(runs).toEqual([3]);
+
+    // Stop reading b (a and mode stay tracked on the same store)
+    store.mode = 'only-a';
+    await Promise.resolve();
+    expect(runs).toEqual([3, 1]);
+
+    // b was swept: writing it must not re-run the effect
+    store.b = 99;
+    await Promise.resolve();
+    expect(runs).toEqual([3, 1]);
+
+    // a is still live
+    store.a = 5;
+    await Promise.resolve();
+    expect(runs).toEqual([3, 1, 5]);
+  });
+
+  it('sweeps a store entirely when the effect stops reading it', async () => {
+    const settings = state({ useExternal: true });
+    const external = state({ value: 10 });
+    const runs = [];
+
+    effect(() => {
+      runs.push(settings.useExternal ? external.value : -1);
+    });
+    expect(runs).toEqual([10]);
+
+    // Stop reading the external store altogether
+    settings.useExternal = false;
+    await Promise.resolve();
+    expect(runs).toEqual([10, -1]);
+
+    // external was fully dropped: writes there must not re-run the effect
+    external.value = 20;
+    await Promise.resolve();
+    expect(runs).toEqual([10, -1]);
+
+    // Reading it again re-subscribes
+    settings.useExternal = true;
+    await Promise.resolve();
+    expect(runs).toEqual([10, -1, 20]);
+
+    external.value = 30;
+    await Promise.resolve();
+    expect(runs).toEqual([10, -1, 20, 30]);
+  });
+
   it('should prevent infinite recursion', async () => {
     const store = state({ count: 0 });
     const fn = vi.fn();
