@@ -23,7 +23,7 @@ A dispose function. Call it to stop the effect and free its subscriptions.
 
 ## How it works
 
-`effect` sets a global tracking context, runs `fn`, then clears it. Every store `get` that fires during the run registers the current effect as a subscriber for that key. On any subsequent write to a tracked key, the effect is queued in a microtask and re-runs. Before each re-run, previous subscriptions are torn down and rebuilt from the new read set, so stale dependencies are dropped automatically.
+`effect` sets a global tracking context, runs `fn`, then clears it. Every store `get` that fires during the run registers the current effect as a subscriber for that key. On any subsequent write to a tracked key, the effect is queued in a microtask and re-runs. Subscriptions persist across runs: a re-run that reads the same keys makes no subscribe or unsubscribe calls at all (each dependency is just stamped with the run's generation), and dependencies the run stopped reading are swept afterwards — so stale dependencies are still dropped automatically, without rebuilding the stable ones.
 
 You can also pass an explicit `deps` array of `[store, ...keys]` tuples to skip auto-tracking and subscribe to specific keys only. Explicit-deps notifications are coalesced: however many tracked keys (or stores) change in the same tick, the effect re-runs exactly once, on the next microtask.
 

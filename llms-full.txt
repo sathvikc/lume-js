@@ -56,7 +56,7 @@ store.count++;                          // DOM + title update on next microtask
 
 | Import | Size (gz) | Gives you | Use in |
 |---|---|---|---|
-| `lume-js` | 2.66 KB | `state`, `effect`, `bindDom`, `batch`, `withReadObserver` | browsers |
+| `lume-js` | 2.73 KB | `state`, `effect`, `bindDom`, `batch`, `withReadObserver` | browsers |
 | `lume-js/state` | 1.46 KB | `state`, `batch`, `withReadObserver` (no DOM code) | Node, workers, CLI, SSR |
 | `lume-js/addons` | pay per import | `computed`, `watch`, `repeat`, `persist`, `hydrateState`, `createCleanupGroup`, `debug` | optional patterns |
 | `lume-js/handlers` | pay per import | `show`, `classToggle`, `boolAttr`, `ariaAttr`, `stringAttr`, `className`, `on`, `htmlAttrs`, presets | extra `data-*` attributes |
@@ -262,18 +262,18 @@ FILE: README.md
   <p>
     Minimal reactive state management using only standard JavaScript and HTML.<br>
     No custom syntax &nbsp;·&nbsp; No build step &nbsp;·&nbsp; No framework lock-in.<br>
-    <strong>1.46 KB universal core</strong> &nbsp;·&nbsp; <strong>2.66 KB with DOM</strong>
+    <strong>1.46 KB universal core</strong> &nbsp;·&nbsp; <strong>2.73 KB with DOM</strong>
   </p>
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
     &nbsp;
 <a href="package.json"><img src="https://img.shields.io/badge/version-2.3.1-orange.svg" alt="v2.3.1"></a>
     &nbsp;
-<a href="tests/"><img src="https://img.shields.io/badge/tests-457%20passing-brightgreen.svg" alt="457 tests"></a>
+<a href="tests/"><img src="https://img.shields.io/badge/tests-461%20passing-brightgreen.svg" alt="461 tests"></a>
     &nbsp;
 <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/universal%20core-1.46KB-blue.svg" alt="universal core 1.46KB"></a>
     &nbsp;
-<a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core%20%2B%20DOM-2.66KB-blue.svg" alt="core + DOM 2.66KB"></a>
+<a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core%20%2B%20DOM-2.73KB-blue.svg" alt="core + DOM 2.73KB"></a>
   </p>
   <p><code>npm install lume-js</code></p>
   <p><a href="https://sathvikc.github.io/lume-js/"><strong>Docs & live examples →</strong></a></p>
@@ -287,7 +287,7 @@ FILE: README.md
 |---------|---------|-----------|-----|-------|
 | Custom Syntax | ❌ No | ✅ `x-data` | ✅ `v-bind` | ✅ JSX |
 | Build Step | ❌ Optional | ❌ Optional | ⚠️ Recommended | ✅ Required |
-| Bundle Size | 1.46–2.66KB | ~15KB | ~35KB | ~45KB |
+| Bundle Size | 1.46–2.73KB | ~15KB | ~35KB | ~45KB |
 | HTML Validation | ✅ Pass | ⚠️ Warnings | ⚠️ Warnings | ❌ JSX |
 | Extensible Handlers | ✅ | ❌ Built-in only | ❌ Built-in only | N/A |
 
@@ -302,7 +302,7 @@ FILE: README.md
 | Entry | Size (gz) | Contents | For |
 |-------|-----------|----------|-----|
 | `lume-js/state` | **1.46 KB** | `state`, `batch`, `withReadObserver` | Node, Deno, Bun, workers, CLI — anywhere without a DOM |
-| `lume-js` | **2.66 KB** | + `bindDom`, `effect` | Browsers |
+| `lume-js` | **2.73 KB** | + `bindDom`, `effect` | Browsers |
 | `lume-js/addons` | pay per import | `computed`, `watch`, `repeat`, `persist`, … | Optional patterns |
 | `lume-js/handlers` | pay per import | `show`, `classToggle`, `on`, … | Extra reactive attributes |
 
@@ -1018,7 +1018,7 @@ import { state, batch } from 'lume-js/state';
 If you're building for the browser and want DOM binding, use the full core instead — same `state`, plus `bindDom` and `effect`:
 
 ```js
-import { state, bindDom, effect, batch } from 'lume-js';   // 2.66 KB
+import { state, bindDom, effect, batch } from 'lume-js';   // 2.73 KB
 ```
 
 Both entries share one implementation — `lume-js/state` is not a fork, it's a smaller slice of the same modules.
@@ -1127,7 +1127,7 @@ console.log(sum, deps);   // 3, ['a', 'b']
 | Entry | Gzipped | CI budget |
 |-------|---------|-----------|
 | `lume-js/state` (`dist/state.min.mjs`) | 1.46 KB | ≤ 1.75 KB |
-| `lume-js` (`dist/index.min.mjs`) | 2.66 KB | ≤ 3.00 KB |
+| `lume-js` (`dist/index.min.mjs`) | 2.73 KB | ≤ 3.00 KB |
 
 Both numbers are enforced by `scripts/check-size.js` on every CI run — they can't silently drift.
 
@@ -2477,7 +2477,7 @@ A dispose function. Call it to stop the effect and free its subscriptions.
 
 ## How it works
 
-`effect` sets a global tracking context, runs `fn`, then clears it. Every store `get` that fires during the run registers the current effect as a subscriber for that key. On any subsequent write to a tracked key, the effect is queued in a microtask and re-runs. Before each re-run, previous subscriptions are torn down and rebuilt from the new read set, so stale dependencies are dropped automatically.
+`effect` sets a global tracking context, runs `fn`, then clears it. Every store `get` that fires during the run registers the current effect as a subscriber for that key. On any subsequent write to a tracked key, the effect is queued in a microtask and re-runs. Subscriptions persist across runs: a re-run that reads the same keys makes no subscribe or unsubscribe calls at all (each dependency is just stamped with the run's generation), and dependencies the run stopped reading are swept afterwards — so stale dependencies are still dropped automatically, without rebuilding the stable ones.
 
 You can also pass an explicit `deps` array of `[store, ...keys]` tuples to skip auto-tracking and subscribe to specific keys only. Explicit-deps notifications are coalesced: however many tracked keys (or stores) change in the same tick, the effect re-runs exactly once, on the next microtask.
 
@@ -6423,6 +6423,25 @@ store.$subscribe('text', (value) => {
 
 ---
 
+### Why Effects Reuse Their Subscriptions Across Runs (v2.3, 2026-07)
+
+**Decision:** Auto-tracked effects keep their dependencies in a persistent per-effect registry (store → key → subscription record). A re-run stamps each dependency it reads with the run's generation; a dependency that already has a record makes no new subscription, and records not stamped by a completed run are swept (unsubscribed) afterwards. Runs that read nothing and runs that throw keep every subscription, so the effect stays reactive. Tracking semantics are unchanged: conditional dependencies attach on first read and drop when a completed run stops reading them.
+
+**Reasoning:**
+- The previous implementation tore down and rebuilt every subscription on every run: N unsubscribes (indexOf + splice on listener arrays), N re-subscribes, and ~2N closure allocations per run, even when the read set was identical — and the read set is identical for almost every re-run in practice.
+- The cost scales with dependency width, exactly where effects are most useful: an aggregate effect reading 3,000 stores re-ran 7.5x faster after the change (23.8ms → 3.2ms per run in Chrome under a matched CPU throttle; both measurements on the same rig, verified with a busy-loop probe).
+- `computed()` is built on `effect()`, so derived values inherit the gain with no changes.
+- The old error path also leaked: it discarded the unsubscribe functions of subscriptions made before the throw, leaving listeners that could never be removed. Keeping the records makes the throwing path leak-free with less code, not more.
+
+**Alternatives considered:**
+- ❌ Keep teardown/rebuild → simplest, but pays O(deps) churn for the common no-change case and O(1) savings only in the rare shrink case.
+- ❌ Version-tagged global epochs (Vue/Preact-signals style doubly-linked dependency lists) → the churn win without the sweep walk, but substantially more code and pointer bookkeeping than this library's size budget justifies.
+- ❌ Never drop stale dependencies → cheapest, but a conditional dependency would keep re-running the effect forever (correctness regression, and a memory leak for dynamic reads).
+
+**Tradeoff:** The sweep is O(total dependencies) when a run drops something (unchanged from before, minus the rebuild), and each effect holds strong references to the store proxies it reads via the registry Map — the same lifetime the old unsubscribe closures already implied. Dependency records cost one small object each, allocated once instead of once per run.
+
+---
+
 ### Why No Computed Properties in Core?
 
 **Decision:** Move `computed()` to addons, not core.
@@ -6830,7 +6849,7 @@ FILE: docs/guides/faq.md
 
 ## Is Lume.js production-ready?
 
-Yes. Lume 2.x is stable — the current release on npm is v2.3.1 (`npm install lume-js`), backed by 457 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
+Yes. Lume 2.x is stable — the current release on npm is v2.3.1 (`npm install lume-js`), backed by 461 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
 
 ## Does Lume work without a build step?
 
@@ -6859,7 +6878,7 @@ bindDom(document.getElementById('nav'), store);
 
 ## How does Lume compare to Alpine.js?
 
-Both work inline with server-rendered HTML. Lume uses standard `data-*` attributes; Alpine uses `x-*` directives with a custom expression syntax. Lume is smaller (2.66 KB vs ~15 KB gzipped — 1.46 KB for the DOM-free kernel) and has no custom expression evaluator — logic lives in plain JS, not attribute strings.
+Both work inline with server-rendered HTML. Lume uses standard `data-*` attributes; Alpine uses `x-*` directives with a custom expression syntax. Lume is smaller (2.73 KB vs ~15 KB gzipped — 1.46 KB for the DOM-free kernel) and has no custom expression evaluator — logic lives in plain JS, not attribute strings.
 
 ## How does Lume compare to Vue 3's reactivity?
 

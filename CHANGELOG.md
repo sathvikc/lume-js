@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- **`effect()` re-runs no longer rebuild their subscriptions:** auto-tracked dependencies now persist across runs in a per-effect registry; a re-run whose reads match the previous run makes zero subscribe/unsubscribe calls and zero allocations (each dependency is stamped with the run generation), and dependencies the effect stopped reading are swept afterwards. An effect reading 3,000 stores re-ran 7.5x faster in the browser (23.8ms → 3.2ms per run under a matched CPU throttle); `computed()` inherits the gain since it is built on `effect()`. Tracking semantics are unchanged (conditional dependencies still attach and drop exactly as before), and a run that throws now keeps its subscriptions cleanly instead of leaking listeners the old restore path could never unsubscribe.
+
 ## [2.3.1] - 2026-07-09
 
 ### Added

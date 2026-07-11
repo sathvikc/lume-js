@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi } from 'vitest';
-import { state, effect } from '../../src/index.js';
+import { state, effect, batch } from '../../src/index.js';
 import { computed } from '../../src/addons/computed.js';
 
 describe('effect', () => {
@@ -120,6 +120,61 @@ describe('effect', () => {
 
     expect(errorSpy).toHaveBeenCalledWith('[Lume.js effect] Error in effect:', expect.any(Error));
     errorSpy.mockRestore();
+  });
+
+  it('sweeps a dropped key while keeping other keys of the same store', async () => {
+    const store = state({ a: 1, b: 2, mode: 'both' });
+    const runs = [];
+
+    effect(() => {
+      runs.push(store.mode === 'both' ? store.a + store.b : store.a);
+    });
+    expect(runs).toEqual([3]);
+
+    // Stop reading b (a and mode stay tracked on the same store)
+    store.mode = 'only-a';
+    await Promise.resolve();
+    expect(runs).toEqual([3, 1]);
+
+    // b was swept: writing it must not re-run the effect
+    store.b = 99;
+    await Promise.resolve();
+    expect(runs).toEqual([3, 1]);
+
+    // a is still live
+    store.a = 5;
+    await Promise.resolve();
+    expect(runs).toEqual([3, 1, 5]);
+  });
+
+  it('sweeps a store entirely when the effect stops reading it', async () => {
+    const settings = state({ useExternal: true });
+    const external = state({ value: 10 });
+    const runs = [];
+
+    effect(() => {
+      runs.push(settings.useExternal ? external.value : -1);
+    });
+    expect(runs).toEqual([10]);
+
+    // Stop reading the external store altogether
+    settings.useExternal = false;
+    await Promise.resolve();
+    expect(runs).toEqual([10, -1]);
+
+    // external was fully dropped: writes there must not re-run the effect
+    external.value = 20;
+    await Promise.resolve();
+    expect(runs).toEqual([10, -1]);
+
+    // Reading it again re-subscribes
+    settings.useExternal = true;
+    await Promise.resolve();
+    expect(runs).toEqual([10, -1, 20]);
+
+    external.value = 30;
+    await Promise.resolve();
+    expect(runs).toEqual([10, -1, 20, 30]);
   });
 
   it('should prevent infinite recursion', async () => {
@@ -558,6 +613,73 @@ describe('effect', () => {
 
       // Restore to avoid leaking the spoofed context
       delete globalThis.__LUME_CURRENT_EFFECT__;
+    });
+  });
+
+  describe('subscription reuse (registry) under batch and nesting', () => {
+    it('coalesces many batched writes across stores into one re-run and stays reactive', async () => {
+      const a = state({ v: 0 });
+      const b = state({ v: 0 });
+      const c = state({ v: 0 });
+      const fn = vi.fn();
+
+      effect(() => {
+        fn(a.v + b.v + c.v);
+      });
+      expect(fn).toHaveBeenCalledTimes(1);
+
+      // Three writes across three stores in one batch: the effect's read set is
+      // unchanged, so the persistent registry reuses every subscription and the
+      // effect coalesces to exactly ONE re-run (not one per store).
+      batch(() => {
+        a.v = 1;
+        b.v = 2;
+        c.v = 3;
+      });
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(fn).toHaveBeenCalledTimes(2);
+      expect(fn).toHaveBeenLastCalledWith(6);
+
+      // The registry survived the reuse path intact: a later single write still
+      // triggers exactly one more run, with all three deps still live.
+      a.v = 10;
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(fn).toHaveBeenCalledTimes(3);
+      expect(fn).toHaveBeenLastCalledWith(15);
+    });
+
+    it('inner effect reads do not leak into the outer effect dependency set', async () => {
+      const store = state({ outer: 0, inner: 0 });
+      const outerFn = vi.fn();
+      const innerFn = vi.fn();
+      let innerCleanup;
+
+      effect(() => {
+        outerFn();
+        void store.outer; // outer depends on `outer` only
+        innerCleanup = effect(() => {
+          innerFn();
+          void store.inner; // inner depends on `inner` only
+        });
+      });
+
+      expect(outerFn).toHaveBeenCalledTimes(1);
+      expect(innerFn).toHaveBeenCalledTimes(1);
+
+      // Changing the inner-only dep must re-run the inner but NOT the outer:
+      // the inner's reads are attributed to the inner's context, so `inner`
+      // never enters the outer effect's registry.
+      store.inner = 1;
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(innerFn.mock.calls.length).toBeGreaterThanOrEqual(2);
+      expect(outerFn).toHaveBeenCalledTimes(1);
+
+      // The outer's own dep is still live and re-runs the outer.
+      store.outer = 1;
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(outerFn).toHaveBeenCalledTimes(2);
+
+      if (innerCleanup) innerCleanup();
     });
   });
 });
