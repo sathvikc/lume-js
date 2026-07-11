@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lume.js - repeat() animated grid</title>
+  <style>
+    :root {
+      --bg: #fff;
+      --fg: #222;
+      --muted: #666;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --ok: #16a34a;
+      --warn: #d97706;
+      --bad: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      max-width: 960px;
+      margin: 18px auto;
+      padding: 0 16px;
+      line-height: 1.45;
+    }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    .sub { color: var(--muted); margin: 0 0 12px; font-size: 14px; }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      background: #fff;
+    }
+    button {
+      padding: 8px 14px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover { background: var(--accent-hover); }
+    button.storm-on { background: var(--bad); }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    pre { background: #f3f4f6; padding: 10px 12px; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+
+    .controls-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .control { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+    .control input[type="range"] { width: 140px; }
+
+    .readouts { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .readout {
+      flex: 1; min-width: 120px;
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 12px; text-align: center;
+    }
+    .readout .v { font-size: 26px; font-weight: 700; line-height: 1.2; }
+    .readout .l { color: var(--muted); font-size: 11px; }
+    .fps-good { color: var(--ok); }
+    .fps-mid { color: var(--warn); }
+    .fps-bad { color: var(--bad); }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+      gap: 4px;
+    }
+    #board .tile {
+      aspect-ratio: 1;
+      border-radius: 7px;
+      background: hsl(var(--h, 200) 74% 58%);
+      color: rgb(255 255 255 / 0.85);
+      font-size: 9px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      user-select: none;
+    }
+    .footnote { color: var(--muted); font-size: 12.5px; }
+    details summary { cursor: pointer; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>repeat(): animated keyed grid</h1>
+  <p class="sub">
+    Every tile below is one keyed item in a single <code>repeat()</code> call. Reordering the array moves the <em>same</em> DOM nodes (no teardown, no re-creation), which is what lets a FLIP transition glide each tile from its old position to its new one. The library does the keyed reconciliation; the animation is ~20 lines of standard JavaScript on top.
+  </p>
+
+  <div class="card">
+    <div class="controls-row">
+      <button id="shuffle">Shuffle</button>
+      <button id="sort">Sort by color</button>
+      <button id="reverse">Reverse</button>
+      <button id="add">Add 100</button>
+      <button id="remove">Remove 100</button>
+      <button id="storm">Storm</button>
+      <label class="control">tiles <input type="range" id="count" min="200" max="2000" step="200" value="1000" /> <strong data-bind="tileCount"></strong></label>
+    </div>
+
+    <div class="readouts">
+      <div class="readout"><div class="v" id="fps" data-bind="fps"></div><div class="l">frames per second</div></div>
+      <div class="readout"><div class="v" data-bind="moved"></div><div class="l">tiles animated (last change)</div></div>
+      <div class="readout"><div class="v" data-bind="reused"></div><div class="l">DOM nodes reused (last change)</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div id="board"></div>
+  </div>
+
+  <div class="card">
+    <details>
+      <summary>How the animation works</summary>
+      <p>
+        <code>repeat()</code> keys each element by tile id, so a reorder is applied with <code>insertBefore</code> on the existing nodes. That identity is what FLIP needs: measure every tile's position, change the array, measure again after the reconcile (still before the browser paints), then apply the inverted delta as a transform and let it transition back to zero.
+      </p>
+      <pre><code>const first = measure(board);        // old positions
+store.tiles = shuffle(store.tiles);  // repeat() reorders the same nodes
+await Promise.resolve();             // reconcile runs in Lume's flush
+const moved = invert(board, first);  // transform: translate(old - new)
+play(moved);                         // transition back to transform: none</code></pre>
+      <p class="footnote">
+        Transforms animate on the compositor, so a thousand tiles glide at once without layout work per frame. New tiles scale in; the count slider, add, and remove reconcile through the same keyed path. The whole page runs on <code>lume-js</code> + the <code>repeat</code> addon, no build step, valid HTML.
+      </p>
+    </details>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
