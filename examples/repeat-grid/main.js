@@ -36,12 +36,17 @@ repeat(board, store, 'tiles', {
 const EASE = 'transform 480ms cubic-bezier(0.22, 1, 0.36, 1)';
 
 async function withFlip(mutate) {
+  // Reads and writes are strictly phase-separated throughout: interleaving
+  // getBoundingClientRect with style writes forces a style recalc per tile
+  // and turns the whole thing O(n²) — a ~300ms stall at 1,000 tiles.
+
   // First: where every tile is now. Rects include in-flight transforms, so
   // interrupting a running animation starts the next one from the visual
   // position instead of jumping.
+  const before = [...board.children];
   const first = new Map();
-  for (const el of board.children) {
-    first.set(el, el.getBoundingClientRect());
+  for (const el of before) first.set(el, el.getBoundingClientRect());
+  for (const el of before) {
     el.style.transition = 'none';
     el.style.transform = '';
   }
@@ -52,11 +57,18 @@ async function withFlip(mutate) {
   // reconciled but nothing has painted yet.
   await Promise.resolve();
 
-  // Last + invert: put every moved tile visually back where it was.
+  // Last: measure everything first...
+  const after = [...board.children];
+  const last = new Map();
+  for (const el of after) {
+    if (first.has(el)) last.set(el, el.getBoundingClientRect());
+  }
+
+  // ...then invert: put every moved tile visually back where it was.
   let moved = 0;
   let reused = 0;
   const players = [];
-  for (const el of board.children) {
+  for (const el of after) {
     const f = first.get(el);
     if (!f) {
       // Brand-new node: scale in.
@@ -67,7 +79,7 @@ async function withFlip(mutate) {
       continue;
     }
     reused++;
-    const l = el.getBoundingClientRect();
+    const l = last.get(el);
     const dx = f.left - l.left;
     const dy = f.top - l.top;
     if (dx || dy) {
