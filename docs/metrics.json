@@ -1,12 +1,12 @@
 {
   "version": "2.3.1",
-  "tests": 457,
+  "tests": 464,
   "sizes": {
     "state": "1.46",
     "index": "2.66",
     "handlers": "1.23",
-    "addons": "4.68",
-    "global": "7.44"
+    "addons": "4.89",
+    "global": "7.65"
   },
   "budgets": {
     "state": "1.75",

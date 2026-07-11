@@ -2,7 +2,7 @@
 
 ## Is Lume.js production-ready?
 
-Yes. Lume 2.x is stable — the current release on npm is v<!-- lume:version -->2.3.1<!-- /lume:version --> (`npm install lume-js`), backed by <!-- lume:tests -->457<!-- /lume:tests --> tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
+Yes. Lume 2.x is stable — the current release on npm is v<!-- lume:version -->2.3.1<!-- /lume:version --> (`npm install lume-js`), backed by <!-- lume:tests -->464<!-- /lume:tests --> tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
 
 ## Does Lume work without a build step?
 

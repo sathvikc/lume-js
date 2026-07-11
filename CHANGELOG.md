@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- **`repeat()` reorders now move only the nodes that are out of place:** reconciliation removes departed rows first, then keeps the longest stable chain of survivors (longest increasing subsequence over previous positions) and re-inserts only the rest, so a k-item change costs O(k) DOM moves instead of cascading into every node after the first mismatch. A far 2-item swap in 100 rows is 2 `insertBefore` calls (previously ~90), removals move zero surviving rows, and the animated-grid example's storm (167 swaps across 2,000 tiles) dropped from ~2,000 to ~310 moves per tick: measured under a 20x CPU throttle, worst frame gap 674ms → 465ms and main-thread blocking over a 12s storm 9.0s → 3.5s. Full permutations are unchanged (nearly everything must move regardless; the O(n log n) pass added no measurable cost). Same final order, same lifecycle callbacks, same focus/scroll preservation; rows hosting iframes, videos, or running transitions no longer reset when other rows move past them.
+
 ## [2.3.1] - 2026-07-09
 
 ### Added
