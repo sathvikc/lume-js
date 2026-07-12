@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lume.js - priority scheduling (proposal)</title>
+  <style>
+    :root {
+      --bg: #fff;
+      --fg: #222;
+      --muted: #666;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --ok: #16a34a;
+      --warn: #d97706;
+      --bad: #dc2626;
+      --proposal: #7c3aed;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      max-width: 960px;
+      margin: 18px auto;
+      padding: 0 16px;
+      line-height: 1.45;
+    }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    .badge {
+      display: inline-block; vertical-align: middle;
+      background: var(--proposal); color: #fff;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.4px;
+      padding: 2px 8px; border-radius: 999px; margin-left: 8px;
+    }
+    .sub { color: var(--muted); margin: 0 0 12px; font-size: 14px; }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      background: #fff;
+    }
+    button {
+      padding: 9px 16px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    button:hover { background: var(--accent-hover); }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    pre { background: #f3f4f6; padding: 10px 12px; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+
+    .controls-row { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+    .control { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+    .control input[type="range"] { width: 160px; }
+    .toggle { font-weight: 600; user-select: none; cursor: pointer; }
+    .toggle input { transform: scale(1.3); margin-right: 6px; cursor: pointer; }
+
+    .readouts { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+    .readout {
+      flex: 1; min-width: 140px;
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; text-align: center;
+    }
+    .readout .v { font-size: 34px; font-weight: 700; line-height: 1.1; }
+    .readout .v.small { font-size: 24px; padding-top: 6px; }
+    .readout .l { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .fps-good { color: var(--ok); }
+    .fps-mid { color: var(--warn); }
+    .fps-bad { color: var(--bad); }
+
+    .feel { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 14px; }
+    .track {
+      position: relative; width: 120px; height: 20px;
+      border: 1px solid var(--border); border-radius: 10px;
+    }
+    .track .dot {
+      position: absolute; top: 3px; left: 3px;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--accent);
+      will-change: transform;
+    }
+    .feel input[type="text"] {
+      flex: 1; min-width: 200px;
+      padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 14px;
+    }
+    .feel .hint { color: var(--muted); font-size: 12.5px; }
+
+    #grid { display: grid; gap: 1px; }
+    #grid .cell {
+      aspect-ratio: 1;
+      min-height: 6px;
+      border-radius: 1px;
+      background: hsl(var(--h, 200) 75% 55%);
+    }
+    .footnote { color: var(--muted); font-size: 12.5px; }
+    details summary { cursor: pointer; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Priority scheduling <span class="badge">PROPOSAL</span></h1>
+  <p class="sub">
+    Same stress load as the <a href="../batch/">batch() demo</a>: every frame writes <strong data-bind="storeLabel"></strong> stores (batched), each driving one cell. The proposal splits presentation from truth: state and the aggregate stay synchronous, but cell repaints become a queue that spends a few milliseconds per frame, visible cells first, and yields the instant input is pending. The data is never stale; only how much of the board has caught up varies, and the "cells behind" readout tells the truth about it.
+  </p>
+
+  <div class="card">
+    <div class="controls-row">
+      <button id="start">Start</button>
+      <label class="toggle control"><input type="checkbox" id="use-priority" checked />priority scheduling</label>
+      <label class="control">stores <input type="range" id="stores" min="500" max="3000" step="500" value="3000" /> <strong data-bind="storeLabel"></strong></label>
+    </div>
+
+    <div class="readouts">
+      <div class="readout"><div class="v" id="fps" data-bind="fps"></div><div class="l">frames per second</div></div>
+      <div class="readout"><div class="v small" data-bind="worst"></div><div class="l">worst frame (last second)</div></div>
+      <div class="readout"><div class="v small" id="inputDelay" data-bind="inputDelay"></div><div class="l">worst input delay (last second)</div></div>
+      <div class="readout"><div class="v small" data-bind="behind"></div><div class="l">cells behind (right now)</div></div>
+    </div>
+
+    <div class="feel">
+      <span class="track"><span class="dot" id="dot"></span></span>
+      <input type="text" id="typebox" placeholder="Type here while it runs" />
+      <span class="hint">The input delay readout measures real event timing while you type.</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div id="grid"></div>
+  </div>
+
+  <div class="card">
+    <details>
+      <summary>What the proposal changes (and what it never touches)</summary>
+      <p>
+        Without priority scheduling, each frame is one atomic task: write all stores, run all cell effects, restyle every cell. Under a throttled CPU that task runs hundreds of milliseconds, and every keystroke waits for all of it. With priority scheduling, cell effects split into a tracked read (runs in the flush, marks the cell dirty, costs almost nothing) and a DOM write (runs from a queue with a fixed per-frame budget, visible cells first, stopping early when <code>isInputPending()</code> reports a waiting user).
+      </p>
+      <pre><code>queue.effect({
+  el: cell,
+  track: () => s.value,                       // flush-time: tracked, cheap
+  apply: () => cell.style.setProperty(...),   // drained within the frame budget
+});</code></pre>
+      <p class="footnote">
+        Truth is never delayed: the stores, the aggregate, and anything bound to them stay synchronous. Only pixels lag, by a measured, displayed amount. This page is the testbed for a proposed <code>lume-js/addons</code> API (working name <code>renderQueue</code> / <code>data-priority</code>); the queue here is ~50 lines of prototype JavaScript, not a shipped API. Graduation criteria and the design write-up live in the branch notes.
+      </p>
+    </details>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
