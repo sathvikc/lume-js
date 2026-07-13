@@ -15,7 +15,7 @@
 <!-- /lume:badge-version -->
     &nbsp;
 <!-- lume:badge-tests -->
-    <a href="tests/"><img src="https://img.shields.io/badge/tests-457%20passing-brightgreen.svg" alt="457 tests"></a>
+    <a href="tests/"><img src="https://img.shields.io/badge/tests-477%20passing-brightgreen.svg" alt="477 tests"></a>
 <!-- /lume:badge-tests -->
     &nbsp;
 <!-- lume:badge-size-state -->

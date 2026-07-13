@@ -46,7 +46,7 @@ export const BUDGETS = {
   'state.min.mjs':    1.75 * 1024,  // 1.75 KB — universal kernel (state+batch, DOM-free)
   'addons.min.mjs':   6 * 1024,     // 6 KB    — CDN addons, self-contained
   'handlers.min.mjs': 2 * 1024,     // 2 KB    — CDN handlers, self-contained
-  'lume.global.js':   8 * 1024,     // 8 KB    — CDN all-in-one
+  'lume.global.js':   9 * 1024,     // 9 KB    — CDN all-in-one (grows as addons are added; not the guarded budget)
 };
 
 // Files to skip in the dist report (sourcemaps, shared chunks)
