@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **`renderQueue()` (addons, experimental):** priority-scheduled presentation. Makes DOM writes that mirror state schedulable (budgeted per frame, priority-ordered, preempted by pending input) while state stays fully synchronous. The load-bearing idea is the track/apply split: `track()` runs inside Lume's flush under a real `effect()` and only marks the entry dirty; `apply()` runs later, from a `requestAnimationFrame` drain that spends at most `budgetMs` (default 2) per frame. Entries drain `high` → visible → `low`/offscreen → `idle`, FIFO within a tier (no starvation), coalesced (N writes → one apply with the latest value), and input-preemptible via `navigator.scheduling.isInputPending()` where available. Priority is inferred from viewport visibility (IntersectionObserver) or set explicitly with a `priority` option or a `[data-priority]` ancestor. `queue.size` reports the backlog honestly so degrading UIs can surface it; `queue.flush()` drains everything synchronously for teardown and tests. Prototype benchmark (Chrome, 20x CPU throttle, 3,000 stores written per frame, typing during the storm): worst input delay 393ms → 53ms (7.4x), fps 4 → 9-11, worst frame 333ms → 109-166ms, backlog converged to zero after load stopped. Shipping experimental: the scheduling model is validated but the API surface may change before it graduates. Adds ~0.66 KB gz to the addons bundle; state semantics are untouched. See [docs/api/addons/renderQueue.md](docs/api/addons/renderQueue.md).
+
 ## [2.3.1] - 2026-07-09
 
 ### Added

@@ -54,7 +54,8 @@
         { "path": "docs/api/addons/hydrateState.md", "title": "hydrateState()", "description": "SSR hydration" },
         { "path": "docs/api/addons/debug.md", "title": "createDebugPlugin() / debug", "description": "Write/flush logging" },
         { "path": "docs/api/addons/withPlugins.md", "title": "withPlugins()", "description": "State extension system" },
-        { "path": "docs/api/addons/isReactive.md", "title": "isReactive()", "description": "Reactive brand detection" }
+        { "path": "docs/api/addons/isReactive.md", "title": "isReactive()", "description": "Reactive brand detection" },
+        { "path": "docs/api/addons/renderQueue.md", "title": "renderQueue()", "description": "Priority-scheduled presentation (experimental)" }
       ]
     },
     {

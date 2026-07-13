@@ -137,5 +137,5 @@ bindDom(document.getElementById('nav'), navStore, {
 ---
 
 <!-- lume:nav -->
-**← Previous: [isReactive()](../addons/isReactive.md)** | **Next: [show](../handlers/show.md) →**
+**← Previous: [renderQueue()](../addons/renderQueue.md)** | **Next: [show](../handlers/show.md) →**
 <!-- /lume:nav -->

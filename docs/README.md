@@ -105,7 +105,7 @@ console.log(total.value);  // cached until items changes
 |--------|----------|
 | `lume-js` | `state`, `bindDom`, `effect`, `batch` |
 | `lume-js/state` | `state`, `batch`, `withReadObserver` — DOM-free universal kernel (<!-- lume:size-state -->1.46<!-- /lume:size-state --> KB) |
-| `lume-js/addons` | `watch`, `computed`, `repeat`, `persist`, `withPlugins`, `createDebugPlugin`, `debug`, `isReactive`, `createCleanupGroup`, `hydrateState`, `defaultFocusPreservation`, `defaultScrollPreservation` |
+| `lume-js/addons` | `watch`, `computed`, `repeat`, `persist`, `withPlugins`, `createDebugPlugin`, `debug`, `isReactive`, `createCleanupGroup`, `hydrateState`, `renderQueue` (experimental), `defaultFocusPreservation`, `defaultScrollPreservation` |
 | `lume-js/handlers` | `show`, `boolAttr`, `ariaAttr`, `classToggle`, `stringAttr`, `on`, `formHandlers`, `a11yHandlers`, `htmlAttrs` |
 
 ## Documentation
@@ -147,6 +147,7 @@ console.log(total.value);  // cached until items changes
 - [createDebugPlugin() / debug](api/addons/debug.md)
 - [withPlugins()](api/addons/withPlugins.md)
 - [isReactive()](api/addons/isReactive.md)
+- [renderQueue()](api/addons/renderQueue.md)
 
 ### API — Handlers
 - [Handlers API](api/core/handlers.md)

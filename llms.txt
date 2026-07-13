@@ -62,6 +62,7 @@ data-* attribute values are state keys, never expressions.
 - [docs/api/addons/debug.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/debug.md): Write/flush logging
 - [docs/api/addons/withPlugins.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/withPlugins.md): State extension system
 - [docs/api/addons/isReactive.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/isReactive.md): Reactive brand detection
+- [docs/api/addons/renderQueue.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/api/addons/renderQueue.md): Priority-scheduled presentation (experimental)
 
 ## API — Handlers
 
