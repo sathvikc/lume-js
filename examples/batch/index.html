@@ -155,7 +155,7 @@
   for (const s of stores) s.value = next(s.value);
 });</code></pre>
       <p class="footnote">
-        The per-cell effects run the same number of times in both modes; batch() never makes granular updates coarser. Only the cross-store aggregate is deduplicated, and that is what "aggregate runs per frame" shows: store count without batch, 1 with it. Everything on this page (the stores, the effects, the DOM binding, the batcher) is 2.66 KB gzipped of library, no build step, valid HTML.
+        The per-cell effects run the same number of times in both modes; batch() never makes granular updates coarser. Only the cross-store aggregate is deduplicated, and that is what "aggregate runs per frame" shows: store count without batch, 1 with it. Everything on this page (the stores, the effects, the DOM binding, the batcher) is 2.73 KB gzipped of library, no build step, valid HTML.
       </p>
     </details>
   </div>
