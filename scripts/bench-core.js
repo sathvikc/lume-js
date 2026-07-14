@@ -10,6 +10,7 @@
  *     state-read          — property reads per second (tracking disabled)
  *     state-write         — property writes + microtask notifications/s
  *     effect-run          — effects re-run per second under load
+ *     effect-rerun-wide   — one 1,000-dep effect re-run after a single write
  *     computed-read       — computed.value reads per second
  *     subscribe-notify    — $subscribe notifications per second
  *
@@ -145,6 +146,31 @@ const results = [];
   }, { iterations: 30, async: true }));
 
   stop();
+}
+
+{
+  // effect-rerun-wide: one auto-tracked effect reading 1,000 stores; a single
+  // changing write re-runs the whole body. The cost is dominated by dependency
+  // re-tracking across a wide read set, which is exactly what subscription
+  // reuse optimizes — this is the case that regresses if effect() ever goes
+  // back to tearing down and rebuilding its subscriptions on every run.
+  const N = 1_000;
+  const stores = Array.from({ length: N }, () => state({ v: 1 }));
+  let sum = 0;
+  const stop = effect(() => {
+    let acc = 0;
+    for (let i = 0; i < N; i++) { acc += stores[i].v; }
+    sum = acc;
+  });
+
+  let next = 2;
+  results.push(await bench('effect re-run wide (1k deps)', async () => {
+    stores[next % N].v = next++; // always a changing value (Object.is guard)
+    await Promise.resolve(); // resumes after the flush microtask re-runs the effect
+  }, { iterations: 50, async: true }));
+
+  stop();
+  void sum;
 }
 
 {
