@@ -37,7 +37,7 @@ Two documents are the source of truth — read them **before** designing anythin
 
 Additional rules tied to specific artifacts:
 
-- **Decision entries** follow house style: Decision / Reasoning / Alternatives considered / Tradeoff. Amending an existing decision: add a dated amendment block, don't rewrite history. Always append to **Document History** at the bottom when the file changes.
+- **Decision entries** are added only when truly necessary and meaningful — new semantics, a changed guarantee, a ratified tradeoff — not for every change; most commits need no entry. They follow house style: Decision / Reasoning / Alternatives considered / Tradeoff — the **why** is the point; an entry that states an outcome without the reasoning that led to it is incomplete. Amending an existing decision: add a dated amendment block, don't rewrite history.
 - **Examples** get `examples/<slug>/index.html` + `main.js` (import from `'lume-js'` — the vite resolver maps it to `src/`) and a card in `examples/index.html`'s grid. Add one only for features whose behavior is better *seen* than read.
 - **Proposal branches** (multi-commit feature branches for review): every commit also gets a row in `docs/changes/README.md`, and feat/fix commits get a full write-up file there (what/why, before/after examples, edge cases, how to verify). Plain main-line fixes don't need this.
 
