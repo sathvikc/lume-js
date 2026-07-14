@@ -47,7 +47,7 @@ Input delay is measured **in the page** as `performance.now()` at the `keydown`/
 - **burst** — all cells change once, then quiet (measures the one-shot spike and convergence).
 - **quiet** — no writes at all (isolates the per-frame overhead of the mode/testbed itself).
 
-Typing (input) and scrolling are driven by the external driver while a regime runs.
+Typing (input) is driven by the external driver while every regime runs. **Scrolling-under-load was not separately driven** — an honest scope note. The `visible`-auto tier (IntersectionObserver) is nonetheless exercised in every case, and scrolling only *reprioritizes* the drain; it cannot lift the drain-throughput ceiling that causes the freeze, so newly-scrolled-in cells still wait behind the backlog. The dimension scrolling stresses — rendering cost of on/off-screen cells — is exactly what `content-visibility: auto` (already the measured winner) culls on demand as you scroll, so a scroll regime would widen cv's lead, not renderQueue's. It does not change the verdict.
 
 ### The dot-animation artifact (methodology correction mid-session)
 
