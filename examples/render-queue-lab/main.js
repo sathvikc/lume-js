@@ -228,6 +228,56 @@ function smartLoop() {
   if (smartRunning) smartRaf = requestAnimationFrame(smartLoop);
 }
 
+// ── sliced — LAYER 3: time-slice the write pass too ──────────────────────────
+// The recurring floor across every earlier round: the synchronous WRITE PASS
+// (updating state for every changed cell) is one long task no presentation
+// scheduler chunks, so it blocks input under heavy updates. `sliced` chunks it:
+// the producer only *buffers* the latest intended value per cell (cheap,
+// coalesced — drop-stale at the write layer), and one budgeted, input-reserved,
+// cursor-fair loop applies a slice of those writes to state AND paints them each
+// frame. Producer→state→pixel is now entirely budgeted: no long task. The cost
+// is that state is eventually-consistent (some cells lag) — this deliberately
+// trades away synchronous-truth, which is why it is a research mode, not core.
+let slicing = false;
+let pendingVal = [];
+let pendingDirty = [];
+let sliceCount = 0;
+let sliceCursor = 0;
+let sliceRaf = 0;
+let sliceRunning = false;
+let maxSliceMs = 0;
+let maxOnFrameMs = 0;
+function sliceLoop() {
+  sliceRaf = 0;
+  const t0 = performance.now();
+  const interacting = t0 - lastInputAt < INPUT_WINDOW;
+  const budget = interacting ? cfg.budgetMs : cfg.budgetMs * 5;
+  const N = pendingDirty.length;
+  let seen = 0;
+  let n = 0;
+  // Batch the slice's state writes into ONE flush: un-batched, each write
+  // schedules its own per-state microtask flush, and N of those after the rAF
+  // callback is the hidden O(N) task that dominates the frame.
+  batch(() => {
+    while (seen < N && sliceCount > 0) {
+      const i = sliceCursor;
+      sliceCursor = (sliceCursor + 1) % N;
+      seen++;
+      if (pendingDirty[i]) {
+        stores[i].value = pendingVal[i]; // apply latest intended value (drop-stale)
+        pendingDirty[i] = false;
+        sliceCount--;
+        applyCellRaw(i);                 // paint in the same slice
+        n++;
+        if ((n & 7) === 0 && performance.now() - t0 > budget) break;
+      }
+    }
+  });
+  if (sliceRunning && sliceCount > 0) sliceRaf = requestAnimationFrame(sliceLoop);
+  const dur = performance.now() - t0;
+  if (dur > maxSliceMs) maxSliceMs = dur;
+}
+
 // ── Mode wiring ──────────────────────────────────────────────────────────────
 function clearWiring() {
   for (const d of disposers) d();
@@ -242,6 +292,12 @@ function clearWiring() {
   if (pullRaf) { cancelAnimationFrame(pullRaf); pullRaf = 0; }
   smartRunning = false;
   if (smartRaf) { cancelAnimationFrame(smartRaf); smartRaf = 0; }
+  slicing = false;
+  sliceRunning = false;
+  if (sliceRaf) { cancelAnimationFrame(sliceRaf); sliceRaf = 0; }
+  pendingDirty = new Array(stores.length).fill(false);
+  sliceCount = 0;
+  sliceCursor = 0;
   queue = null;
 }
 
@@ -267,6 +323,17 @@ function wire(mode) {
     smartTotalFrames = 0;
     smartRunning = true;
     smartRaf = requestAnimationFrame(smartLoop);
+    return;
+  }
+
+  if (mode === 'sliced') {
+    slicing = true;
+    sliceRunning = true;
+    pendingVal = new Array(stores.length);
+    pendingDirty = new Array(stores.length).fill(false);
+    sliceCount = 0;
+    sliceCursor = 0;
+    for (let i = 0; i < stores.length; i++) applyCellRaw(i); // initial paint
     return;
   }
 
@@ -319,6 +386,7 @@ function wire(mode) {
 
 function currentBacklog() {
   if (queue) return queue.size;
+  if (slicing) return sliceCount; // pending writes not yet applied to state
   // pull/smart keep no queue — their backlog is cells whose current value has
   // not yet been painted. O(N), only polled for convergence, so acceptable.
   const last = pullRunning ? pullLast : (smartRunning ? smartLast : null);
@@ -378,7 +446,16 @@ function nextVal(v) {
 }
 function writeCell(i) {
   if (pendingSince[i] === 0) pendingSince[i] = performance.now();
-  stores[i].value = nextVal(stores[i].value);
+  if (slicing) {
+    // Producer only buffers the latest incoming value (coalesced, drop-stale) —
+    // cheap ingestion, like receiving a data point; no proxy read, no state
+    // write. The expensive work (state write + paint) is deferred to sliceLoop.
+    pendingVal[i] = Math.random() * 100;
+    if (!pendingDirty[i]) { pendingDirty[i] = true; sliceCount++; }
+    if (!sliceRaf) sliceRaf = requestAnimationFrame(sliceLoop);
+  } else {
+    stores[i].value = nextVal(stores[i].value);
+  }
 }
 function stormWrite() {
   batch(() => { for (let i = 0; i < stores.length; i++) writeCell(i); });
@@ -452,8 +529,11 @@ function onFrame(now) {
 
   if (cfg.dot) dot.style.transform = `translateX(${(Math.sin(now / 300) + 1) * 51}px)`;
 
+  const pw0 = performance.now();
   if (running && cfg.regime === 'storm') stormWrite();
   else if (running && cfg.regime === 'dashboard') dashboardWrite();
+  const pwDur = performance.now() - pw0;
+  if (pwDur > maxOnFrameMs) maxOnFrameMs = pwDur;
 
   const bl = currentBacklog();
   if (bl > peakBacklog) peakBacklog = bl;
@@ -502,6 +582,8 @@ window.__lab = {
     longTasks.maxMs = 0;
     smartBusyFrames = 0;
     smartTotalFrames = 0;
+    maxSliceMs = 0;
+    maxOnFrameMs = 0;
     peakBacklog = 0;
     maxStaleness = 0;
     appliedCount = 0;
@@ -526,6 +608,8 @@ window.__lab = {
       starvation: starvationStats(),
       longTasks: { count: longTasks.count, totalMs: longTasks.totalMs, maxMs: longTasks.maxMs },
       smartBusyFraction: smartTotalFrames ? smartBusyFrames / smartTotalFrames : null,
+      maxProducerMs: maxOnFrameMs,
+      maxSliceMs,
     };
   },
 };

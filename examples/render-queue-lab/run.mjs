@@ -27,7 +27,7 @@ const BASE = process.env.LAB_BASE || 'http://localhost:5199/examples/render-queu
 
 export function parseArgs(argv) {
   const a = { mode: 'off', regime: 'storm', cells: 3000, budget: 2, churn: 0.08,
-    rate: 20, warmup: 1500, measure: 5000, type: false, converge: false, dot: 1, text: 1, headed: false, out: null };
+    rate: 20, warmup: 1500, measure: 5000, type: false, converge: false, dot: 1, text: 1, render: 1, headed: false, out: null };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i];
     if (k === '--type') { a.type = true; continue; }
@@ -36,6 +36,7 @@ export function parseArgs(argv) {
     if (k === '--notext') { a.text = 0; continue; }
     if (k === '--headed') { a.headed = true; continue; }
     if (k === '--burst-type') { a.typeBursty = true; continue; }
+    if (k === '--norender') { a.render = 0; continue; }
     const v = argv[++i];
     if (k === '--mode') a.mode = v;
     else if (k === '--regime') a.regime = v;
@@ -89,7 +90,7 @@ async function runCaseInner(opts, page) {
 
   const cdp = await page.context().newCDPSession(page);
   // Warm the JIT for a stable native baseline, then throttle and probe.
-  const url = `${BASE}?mode=${opts.mode}&regime=${opts.regime}&cells=${opts.cells}&budget=${opts.budget}&churn=${opts.churn}&dot=${opts.dot}&text=${opts.text}`;
+  const url = `${BASE}?mode=${opts.mode}&regime=${opts.regime}&cells=${opts.cells}&budget=${opts.budget}&churn=${opts.churn}&dot=${opts.dot}&text=${opts.text}&render=${opts.render}`;
   await page.goto(url, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__lab && window.__lab.cfg);
   for (let i = 0; i < 4; i++) await busyProbe(page);
@@ -198,6 +199,8 @@ async function runCaseInner(opts, page) {
       freePct: measureWall > 0 ? round1(100 * (1 - Math.min(1, snap.longTasks.totalMs / measureWall))) : null,
     } : null,
     smartBusyFraction: snap.smartBusyFraction != null ? round1(snap.smartBusyFraction) : null,
+    maxProducerMs: snap.maxProducerMs != null ? round1(snap.maxProducerMs) : null,
+    maxSliceMs: snap.maxSliceMs != null ? round1(snap.maxSliceMs) : null,
     maxStalenessMs: round1(snap.maxStaleness),
     appliedCount: snap.appliedCount,
     errs,

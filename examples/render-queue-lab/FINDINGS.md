@@ -342,6 +342,21 @@ The maintainer's two principles are right, and `smart` is the best-articulated d
 
 `renderQueue` as shipped sits in none of these layers cleanly — it schedules the apply (layer 2's job) but with an unbounded queue and a starvation bug, doesn't reduce work (layer 1), and doesn't touch writes (layer 3). The KILL stands; the constructive path is `content-visibility` now, a `smart`-style pull renderer next, and — if Lume ever wants true smoothness under storm-scale writes — a time-sliced write mode as a deliberate core decision.
 
+## Round 5: layer 3 — time-slice the write pass (`sliced`), and where the floor really is
+
+The remaining floor after Round 4 was the synchronous write pass. `sliced` (in `main.js`) chunks it: the producer only *buffers* the latest intended value per cell (cheap, coalesced — drop-stale at the write layer), and one budgeted, input-reserved, cursor-fair loop applies a slice of writes to state **and** paints them each frame. Data: `results/layer3-summary.json`.
+
+**The chunking works — at the JS level.** Instrumented, the producer pass runs in ~7 ms and the slice loop (including its batched flush) in ~16 ms per frame at 3000 cells; both respect the budget. There is no long JS task in my code. But input at 3000 cells (~1155 ms) is no better than `pull`/`off`, and a wall-clock "worst block" of ~2 s persists.
+
+**A CPU profile (CDP, 20×) located the real floor: the Lume kernel write path.** Excluding 44% `(program)` throttle overhead, the hot self-time is `set` (12.2%) + `notifySubscribers` (9.7%) + `flushBatchedStates` (5.5%) ≈ **27% of active CPU** — spent updating state, and this is with **zero subscribers** (the pull/sliced pattern has no effects). Writing N reactive values is inherently O(N) through this path; slicing spreads that cost across frames but does not reduce the total, so at storm scale it still dominates. Two concrete consequences worth acting on:
+
+- **`notifySubscribers` (state.js:131) allocates `Array.from(pendingNotifications)` and iterates on every flush even when a store has no listeners.** In the pull/sliced pattern that is ~10% of CPU spent notifying nobody. A no-subscriber fast-path in the kernel is a real, shippable optimization (it would need the full artifact matrix, so it is a `src/` decision, not done here).
+- **The truest pull renderer should bypass reactive state entirely for the high-churn layer** — hold plain data, skip `set`/`notify`/`flush` (the whole 27%). `sliced` writes Lume state unnecessarily; a plain-data pull layer is the untested but likely-biggest lever, and is item 2 in the handoff's "not tried yet."
+
+**Methodology correction from this round:** wall-clock Long-Tasks / `worstBlock` under CPU throttle is inflated by throttle-inserted pauses (the profile shows the slice loop is 16 ms of *work* inside a task the API reports as ~2 s of *wall-clock*). Treat `worstBlock` as relative-only under a fixed throttle; input-delay is the clean absolute metric. This does not change earlier *relative* conclusions but it does mean the absolute block-time figures in Round 3 are throttle-inflated.
+
+**Net:** the write pass is chunkable, but under it lies the kernel write path, which scheduling cannot cheapen — only a cheaper kernel write (no-subscriber fast-path) or not using reactive state for the churny layer (plain-data pull) can. See [`HANDOFF.md`](HANDOFF.md) for the full menu of what's been tried and the next-session candidates.
+
 ## Reproducing
 
 ```bash
@@ -356,6 +371,7 @@ xvfb-run -a node examples/render-queue-lab/round2.mjs fidelity   # headless vs h
 node examples/render-queue-lab/headroom.mjs storm 20   # fps ceiling + main-thread free % (20x)
 node examples/render-queue-lab/headroom.mjs dashboard 1 # native ceiling (1x); arg4 = custom cell counts
 node examples/render-queue-lab/smart.mjs            # smart (drop-stale + input-reserved budget) vs fixed-budget pull
+node examples/render-queue-lab/run.mjs --mode sliced --regime dashboard --cells 3000 --nodot --type  # layer 3
 # single case:
 node examples/render-queue-lab/run.mjs --mode pull --regime storm --cells 3000 --nodot --type --out results/one.json
 ```

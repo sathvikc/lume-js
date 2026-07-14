@@ -1,0 +1,33 @@
+{
+  "note": "Layer 3 = the 'sliced' mode: time-slice the WRITE pass. Producer only buffers the latest intended value per cell (cheap, coalesced/drop-stale); a budgeted, input-reserved, cursor-fair loop applies a slice of writes to state AND paints them each frame. Goal: no single long task in the producer->state->pixel pipeline. dot=0, 20x.",
+  "sliced_dashboard_worstBlock_vs_cells_render_off": {
+    "note": "worstBlock scales with TOTAL cells (not churn) — but see the profile: under CPU throttle the Long Tasks wall-clock is inflated by throttle pauses, so worstBlock is NOT a clean CPU-blocking metric here. Use input-delay (measured directly) instead.",
+    "500":  { "worstBlockMs": 151 },
+    "1500": { "worstBlockMs": 644 },
+    "3000": { "worstBlockMs": 2061 }
+  },
+  "sliced_dashboard_3000_instrumented": {
+    "note": "maxProducer / maxSlice are the actual synchronous durations of the producer pass and the slice loop (incl. its batched flush). Both are cheap and budget-respecting — the chunking WORKS at the JS level. The remaining wall-clock 'worstBlock' is throttle inflation, not a real 2s task.",
+    "maxProducerMs": 7,
+    "maxSliceMs": 16,
+    "worstBlockMs": 2117,
+    "inputMedMs": 1155
+  },
+  "cpu_profile_sliced_dashboard_3000": {
+    "note": "CDP CPU profile, 20x, 5s. Self-time % (excluding 44% '(program)' throttle overhead). The dominant REAL cost is the Lume kernel write path, even with ZERO subscribers (sliced renders via pull, no effects).",
+    "set_state.js": "12.2%",
+    "notifySubscribers_state.js": "9.7%",
+    "sliceLoop_batch_closure_main.js": "7.8%",
+    "flushBatchedStates_batch.js": "5.5%",
+    "applyCellRaw_main.js": "3.7%",
+    "writeCell_main.js": "3.0%",
+    "kernel_write_path_total": "~27% (set + notifySubscribers + flushBatchedStates)"
+  },
+  "findings": {
+    "chunking_works": "sliced keeps the producer (7ms) and slice (16ms) budget-bounded per frame. The write pass IS chunkable.",
+    "real_floor_is_the_kernel_write_path": "Writing N reactive values costs O(N) through set + notifySubscribers + flushBatchedStates (~27% of active CPU). Chunking spreads it across frames but does not reduce the total; at 3000 cells the per-frame slice still writes enough that input (~1155ms) is no better than pull/off.",
+    "notifySubscribers_no_sub_waste": "notifySubscribers (state.js:131) does Array.from(pendingNotifications) + iterate on every flush even when a store has NO subscribers. The pull/sliced pattern (reactive state, no effects) pays this for nothing. A no-subscriber fast-path in the kernel would cut it — concrete, shippable core optimization.",
+    "truest_pull_bypasses_reactive_state": "Since a pull renderer has no subscribers, the high-churn layer could hold PLAIN data (not Lume state) and skip set/notify/flush entirely — zero kernel write cost. The sliced experiment writes Lume state unnecessarily.",
+    "worstBlock_under_throttle_unreliable": "CDP CPU throttling inflates Long Tasks wall-clock with inserted pauses, so worstBlock >> CPU time. Relative comparisons under the same throttle are still directionally valid; absolute ms are not. Input-delay (event.timeStamp based) is the clean metric."
+  }
+}
