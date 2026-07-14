@@ -593,3 +593,74 @@ export function persist(
   options?: PersistOptions
 ): Unsubscribe;
 
+/**
+ * A single presentation entry registered with a renderQueue.
+ *
+ * - `el` anchors the entry to the DOM; its viewport visibility and any
+ *   `[data-priority]` ancestor decide when it drains.
+ * - `track` runs inside Lume's flush under a real effect() (auto-tracked):
+ *   read state here, and any change re-arms the entry. It must not write DOM.
+ * - `apply` runs later, from the per-frame drain, untracked: do the DOM
+ *   write here, reading current state.
+ * - `priority` explicitly overrides the inferred tier.
+ */
+export interface RenderQueueEntry {
+  el: Element;
+  track: () => void;
+  apply: () => void;
+  priority?: 'high' | 'low' | 'idle';
+}
+
+/**
+ * A priority-scheduled presentation queue returned by renderQueue().
+ */
+export interface RenderQueue {
+  /**
+   * Register a presentation entry. apply() runs once synchronously now,
+   * then again from the drain whenever a tracked read changes.
+   *
+   * @returns Dispose function — stops tracking, drops the entry, unobserves.
+   */
+  schedule(entry: RenderQueueEntry): Unsubscribe;
+  /** Apply every dirty entry synchronously, ignoring budget and priority. */
+  flush(): void;
+  /** Current backlog: entries dirty and waiting to drain. */
+  readonly size: number;
+}
+
+/**
+ * Makes presentation updates (DOM writes that mirror state) schedulable:
+ * budgeted per frame, priority-ordered, and preempted by pending input.
+ * State stays fully synchronous — only the pixels are scheduled.
+ *
+ * @experimental The scheduling model is validated by prototype, but the API
+ * surface may change before it graduates to production. State semantics are
+ * never affected.
+ *
+ * Drain order per frame: high -> visible-auto -> low/offscreen-auto -> idle.
+ * `idle` entries only run when everything else fit inside the budget.
+ * Draining is FIFO within a tier, so no entry can starve.
+ *
+ * @param options - Queue options
+ * @param options.budgetMs - Max ms of apply() work per frame. Non-positive
+ *   or non-finite values fall back to the default (2).
+ * @returns A queue with schedule(), flush(), and a live size.
+ *
+ * @example
+ * ```typescript
+ * import { state } from 'lume-js';
+ * import { renderQueue } from 'lume-js/addons';
+ *
+ * const store = state({ hue: 0 });
+ * const queue = renderQueue({ budgetMs: 2 });
+ *
+ * const stop = queue.schedule({
+ *   el,
+ *   track: () => store.hue,
+ *   apply: () => { el.style.setProperty('--h', String(store.hue)); },
+ * });
+ * ```
+ */
+export function renderQueue(options?: { budgetMs?: number }): RenderQueue;
+
+
