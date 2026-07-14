@@ -2,7 +2,7 @@
 
 **Lume.js** is a lightweight reactive state library built on standard JavaScript and HTML. Drop it into any page via a CDN `<script>` tag and get reactive bindings in minutes — no build tool, no custom syntax, no framework required.
 
-> **Version:** <!-- lume:version -->2.3.1<!-- /lume:version --> · **Core:** <!-- lume:size-state -->1.46<!-- /lume:size-state --> KB gzipped (universal) / <!-- lume:size-index -->2.73<!-- /lume:size-index --> KB gzipped (+ DOM) · **Tests:** <!-- lume:tests -->461<!-- /lume:tests --> · **Dependencies:** 0
+> **Version:** <!-- lume:version -->2.3.1<!-- /lume:version --> · **Core:** <!-- lume:size-state -->1.46<!-- /lume:size-state --> KB gzipped (universal) / <!-- lume:size-index -->2.73<!-- /lume:size-index --> KB gzipped (+ DOM) · **Tests:** <!-- lume:tests -->468<!-- /lume:tests --> · **Dependencies:** 0
 
 ## Why Lume.js?
 

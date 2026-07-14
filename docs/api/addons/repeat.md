@@ -170,9 +170,11 @@ repeat('#todo-list', store, 'todos', {
 | Array change | DOM effect |
 |--------------|------------|
 | New key added (immutable replace) | Appends/inserts new row |
-| Key removed (immutable replace) | Removes row |
-| Reorder — same keys (immutable replace) | Moves existing nodes, `update` fires (index changed) |
+| Key removed (immutable replace) | Removes row, moves nothing else |
+| Reorder — same keys (immutable replace) | Moves only nodes out of relative order, `update` fires (index changed) |
 | Same key, item ref changed | Only that row's `update` fires |
+
+Reorders are minimal-move: reconciliation keeps the longest stable chain of surviving rows in place (longest increasing subsequence over previous positions) and re-inserts only the rest, so a k-item change costs O(k) `insertBefore` calls — a far 2-item swap moves 2 nodes, not everything between them. Rows that don't move keep their live state (playing `<video>`, `<iframe>` documents, running CSS transitions).
 
 > **→ Why check both reference AND index to skip `update`?** [See the design decision.](../../design/design-decisions.md#why-check-both-reference-and-index-for-update-skip)
 

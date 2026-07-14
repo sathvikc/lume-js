@@ -626,6 +626,22 @@ store.$subscribe('text', (value) => {
 
 **Tradeoff:** Reorder-heavy updates on very large lists (1000+ rows) may move more DOM nodes than minimal-move virtual DOM diffing — `repeat()` reconciles in a single forward pass, not with an LIS-style algorithm. For ordinary updates this is not a penalty: keyed element reuse plus the same-reference/same-index skip make the work proportional to what actually changed, with no vnode allocation at all. For very large lists, prefer pagination or virtualization — as you would with any framework.
 
+#### Amendment (v2.3, 2026-07): minimal-move reordering, still no virtual DOM
+
+**Decision:** The tradeoff above no longer holds — `repeat()` now reorders with a minimal-move plan: departed rows are removed first, then the longest increasing subsequence over the surviving rows' previous positions marks the nodes already in the right relative order, and only the nodes off that chain are re-inserted (end to start, before the nearest settled node). A k-item change costs O(k) DOM moves instead of cascading into every node after the first mismatch. This is not a virtual DOM: the diff runs on real elements and their previous indices, with no vnode allocation, no render functions, and no change to the addon's API or observable order/lifecycle semantics.
+
+**Reasoning:**
+- Moving a DOM node is the expensive part of a list update: it invalidates layout, and reinserted `iframe`/`video` elements reset. The old forward pass turned one far move into O(distance) moves — a 167-swap storm across 2,000 rows cost ~2,000 `insertBefore` calls per tick, indistinguishable from a full shuffle.
+- Measured in the animated-grid example (2,000 tiles, DevTools 20x CPU throttle): storm DOM moves per tick ~2,000 → ~310, worst frame gap 674ms → 465ms, main-thread blocking over a 12s storm 9.0s → 3.5s, sampled fps 4.7 → 9.1. jsdom-verified bounds: a far 2-item swap in 100 rows is ≤2 moves (was ~90), removals move zero survivors, k scattered inserts are exactly k moves.
+- Full permutations are unchanged by design (nearly every node must move regardless); the O(n log n) bookkeeping added no measurable cost there (shuffle critical path within noise).
+
+**Alternatives considered:**
+- ❌ Keep the forward pass → simplest, but sparse reorders (the common real case: swaps, drag-drop, sort-by-column) pay O(n) moves for O(k) changes.
+- ❌ Key-index map without LIS (Vue 2 style patching) → fewer moves than the forward pass but still moves nodes that were already in relative order.
+- ❌ Full virtual DOM diff → rejected above; nothing about minimal moves requires vnodes.
+
+**Tradeoff:** +0.21 KB gz on the addons bundle (4.68 → 4.89, budget 6) and O(n log n) index bookkeeping per update (Set + Map + one binary-search pass), paid on every list update to make sparse reorders O(k) — negligible against the DOM operations it removes, and shuffle-scale updates showed no measurable regression.
+
 ---
 
 ### Why Effects Reuse Their Subscriptions Across Runs (v2.3, 2026-07)

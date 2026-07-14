@@ -114,6 +114,42 @@ import { logWarn, logError } from '../utils/log.js';
 import { applyBindValue } from '../core/bindDom.js';
 
 /**
+ * Mark the longest increasing subsequence over the previous positions of
+ * reused nodes — the maximal set already in the right relative order, which
+ * reconciliation can leave untouched. positions[i] is node i's previous
+ * index, or -1 for brand-new nodes (never part of the chain). Patience
+ * sorting with predecessor links, O(n log n).
+ *
+ * @param {number[]} positions - previous index per desired slot (-1 = new)
+ * @returns {boolean[]} true where the node keeps its place
+ */
+function stableChainMarkers(positions) {
+  const n = positions.length;
+  const prev = new Array(n);
+  const tails = []; // indices of chain tails, one per chain length
+  for (let i = 0; i < n; i++) {
+    const v = positions[i];
+    if (v < 0) continue;
+    let lo = 0;
+    let hi = tails.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (positions[tails[mid]] < v) lo = mid + 1;
+      else hi = mid;
+    }
+    prev[i] = lo > 0 ? tails[lo - 1] : -1;
+    tails[lo] = i;
+  }
+  const settled = new Array(n).fill(false);
+  let k = tails.length ? tails[tails.length - 1] : -1;
+  while (k !== -1) {
+    settled[k] = true;
+    k = prev[k];
+  }
+  return settled;
+}
+
+/**
  * Resolve the template option to the <template> element.
  * Accepts true (first <template> inside the container), a CSS selector,
  * or an HTMLTemplateElement directly.
@@ -360,28 +396,47 @@ export function repeat(container, store, arrayKey, options) {
     }
   }
 
+  // Reorders with minimal moves: nodes whose previous positions already
+  // form an increasing chain (the longest one) are in the right relative
+  // order and never touched; everything else is inserted before the
+  // nearest settled node, walking end to start. Moving a DOM node is the
+  // expensive part of a list update (layout invalidation, and iframes or
+  // videos reset when reinserted), so a k-item change costs O(k) moves
+  // instead of cascading into every node after the first mismatch.
   function reconcileDOM(container, nextEls) {
-    let ptr = container.firstChild;
-
-    for (let i = 0; i < nextEls.length; i++) {
-      // Never treat the source template (or its wrapper) as a list row
-      if (keepEl && ptr === keepEl) ptr = ptr.nextSibling;
-
-      const desired = nextEls[i];
-
-      if (ptr === desired) {
-        ptr = ptr.nextSibling;
-        continue;
-      }
-
-      container.insertBefore(desired, ptr);
+    // Drop rows that left the list first, so they don't shift the
+    // stability math (the source template is never a row).
+    const staying = new Set(nextEls);
+    let node = container.firstChild;
+    while (node) {
+      const next = node.nextSibling;
+      if (node !== keepEl && !staying.has(node)) container.removeChild(node);
+      node = next;
     }
 
-    // Remove leftover children not in nextEls (preserving the template)
-    while (ptr) {
-      const next = ptr.nextSibling;
-      if (ptr !== keepEl) container.removeChild(ptr);
-      ptr = next;
+    // Previous index of every surviving row.
+    const prevIndex = new Map();
+    let pi = 0;
+    for (let el = container.firstElementChild; el; el = el.nextElementSibling) {
+      if (el !== keepEl) prevIndex.set(el, pi++);
+    }
+
+    const positions = new Array(nextEls.length);
+    for (let i = 0; i < nextEls.length; i++) {
+      const p = prevIndex.get(nextEls[i]);
+      positions[i] = p === undefined ? -1 : p; // -1: brand-new node
+    }
+    const settled = stableChainMarkers(positions);
+
+    let anchor = null; // insert before this; null appends at the end
+    for (let i = nextEls.length - 1; i >= 0; i--) {
+      const el = nextEls[i];
+      if (settled[i]) {
+        anchor = el;
+        continue;
+      }
+      container.insertBefore(el, anchor);
+      anchor = el;
     }
   }
 

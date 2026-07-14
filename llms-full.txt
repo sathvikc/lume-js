@@ -269,7 +269,7 @@ FILE: README.md
     &nbsp;
 <a href="package.json"><img src="https://img.shields.io/badge/version-2.3.1-orange.svg" alt="v2.3.1"></a>
     &nbsp;
-<a href="tests/"><img src="https://img.shields.io/badge/tests-461%20passing-brightgreen.svg" alt="461 tests"></a>
+<a href="tests/"><img src="https://img.shields.io/badge/tests-468%20passing-brightgreen.svg" alt="468 tests"></a>
     &nbsp;
 <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/universal%20core-1.46KB-blue.svg" alt="universal core 1.46KB"></a>
     &nbsp;
@@ -3038,9 +3038,11 @@ repeat('#todo-list', store, 'todos', {
 | Array change | DOM effect |
 |--------------|------------|
 | New key added (immutable replace) | Appends/inserts new row |
-| Key removed (immutable replace) | Removes row |
-| Reorder — same keys (immutable replace) | Moves existing nodes, `update` fires (index changed) |
+| Key removed (immutable replace) | Removes row, moves nothing else |
+| Reorder — same keys (immutable replace) | Moves only nodes out of relative order, `update` fires (index changed) |
 | Same key, item ref changed | Only that row's `update` fires |
+
+Reorders are minimal-move: reconciliation keeps the longest stable chain of surviving rows in place (longest increasing subsequence over previous positions) and re-inserts only the rest, so a k-item change costs O(k) `insertBefore` calls — a far 2-item swap moves 2 nodes, not everything between them. Rows that don't move keep their live state (playing `<video>`, `<iframe>` documents, running CSS transitions).
 
 > **→ Why check both reference AND index to skip `update`?** [See the design decision.](../../design/design-decisions.md#why-check-both-reference-and-index-for-update-skip)
 
@@ -6421,6 +6423,22 @@ store.$subscribe('text', (value) => {
 
 **Tradeoff:** Reorder-heavy updates on very large lists (1000+ rows) may move more DOM nodes than minimal-move virtual DOM diffing — `repeat()` reconciles in a single forward pass, not with an LIS-style algorithm. For ordinary updates this is not a penalty: keyed element reuse plus the same-reference/same-index skip make the work proportional to what actually changed, with no vnode allocation at all. For very large lists, prefer pagination or virtualization — as you would with any framework.
 
+#### Amendment (v2.3, 2026-07): minimal-move reordering, still no virtual DOM
+
+**Decision:** The tradeoff above no longer holds — `repeat()` now reorders with a minimal-move plan: departed rows are removed first, then the longest increasing subsequence over the surviving rows' previous positions marks the nodes already in the right relative order, and only the nodes off that chain are re-inserted (end to start, before the nearest settled node). A k-item change costs O(k) DOM moves instead of cascading into every node after the first mismatch. This is not a virtual DOM: the diff runs on real elements and their previous indices, with no vnode allocation, no render functions, and no change to the addon's API or observable order/lifecycle semantics.
+
+**Reasoning:**
+- Moving a DOM node is the expensive part of a list update: it invalidates layout, and reinserted `iframe`/`video` elements reset. The old forward pass turned one far move into O(distance) moves — a 167-swap storm across 2,000 rows cost ~2,000 `insertBefore` calls per tick, indistinguishable from a full shuffle.
+- Measured in the animated-grid example (2,000 tiles, DevTools 20x CPU throttle): storm DOM moves per tick ~2,000 → ~310, worst frame gap 674ms → 465ms, main-thread blocking over a 12s storm 9.0s → 3.5s, sampled fps 4.7 → 9.1. jsdom-verified bounds: a far 2-item swap in 100 rows is ≤2 moves (was ~90), removals move zero survivors, k scattered inserts are exactly k moves.
+- Full permutations are unchanged by design (nearly every node must move regardless); the O(n log n) bookkeeping added no measurable cost there (shuffle critical path within noise).
+
+**Alternatives considered:**
+- ❌ Keep the forward pass → simplest, but sparse reorders (the common real case: swaps, drag-drop, sort-by-column) pay O(n) moves for O(k) changes.
+- ❌ Key-index map without LIS (Vue 2 style patching) → fewer moves than the forward pass but still moves nodes that were already in relative order.
+- ❌ Full virtual DOM diff → rejected above; nothing about minimal moves requires vnodes.
+
+**Tradeoff:** +0.21 KB gz on the addons bundle (4.68 → 4.89, budget 6) and O(n log n) index bookkeeping per update (Set + Map + one binary-search pass), paid on every list update to make sparse reorders O(k) — negligible against the DOM operations it removes, and shuffle-scale updates showed no measurable regression.
+
 ---
 
 ### Why Effects Reuse Their Subscriptions Across Runs (v2.3, 2026-07)
@@ -6849,7 +6867,7 @@ FILE: docs/guides/faq.md
 
 ## Is Lume.js production-ready?
 
-Yes. Lume 2.x is stable — the current release on npm is v2.3.1 (`npm install lume-js`), backed by 461 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
+Yes. Lume 2.x is stable — the current release on npm is v2.3.1 (`npm install lume-js`), backed by 468 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
 
 ## Does Lume work without a build step?
 
