@@ -182,6 +182,13 @@ async function runCaseInner(opts, page) {
     },
     backlog: { peak: snap.peakBacklog, atEnd: snap.currentBacklog, convergeMs },
     starvation: snap.starvation || null,
+    mainThread: snap.longTasks ? {
+      longTaskCount: snap.longTasks.count,
+      longTaskTotalMs: round1(snap.longTasks.totalMs),
+      worstBlockMs: round1(snap.longTasks.maxMs),
+      // fraction of the window NOT locked in >50ms blocking tasks (free for input)
+      freePct: measureWall > 0 ? round1(100 * (1 - Math.min(1, snap.longTasks.totalMs / measureWall))) : null,
+    } : null,
     maxStalenessMs: round1(snap.maxStaleness),
     appliedCount: snap.appliedCount,
     errs,

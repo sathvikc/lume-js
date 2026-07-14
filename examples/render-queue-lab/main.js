@@ -334,6 +334,20 @@ function burstWrite() {
 // (which lags badly and under-reports when frames are seconds long).
 // eventDelays keeps the Event Timing view (processingStart - startTime) as a
 // cross-check where it does fire.
+// Long tasks (>50ms) are the ones that block input and stall the frame loop.
+// Tracking their count / total / worst tells us how much of the window the main
+// thread is LOCKED (unavailable to the user) and the single worst blocking hang.
+const longTasks = { count: 0, totalMs: 0, maxMs: 0 };
+try {
+  new PerformanceObserver((list) => {
+    for (const e of list.getEntries()) {
+      longTasks.count++;
+      longTasks.totalMs += e.duration;
+      if (e.duration > longTasks.maxMs) longTasks.maxMs = e.duration;
+    }
+  }).observe({ type: 'longtask', buffered: false });
+} catch { /* Long Tasks API unsupported: longTasks stays zeroed */ }
+
 const keyDelays = [];
 const eventDelays = [];
 let keyCount = 0;
@@ -417,6 +431,9 @@ window.__lab = {
     keyDelays.length = 0;
     eventDelays.length = 0;
     frameGaps.length = 0;
+    longTasks.count = 0;
+    longTasks.totalMs = 0;
+    longTasks.maxMs = 0;
     peakBacklog = 0;
     maxStaleness = 0;
     appliedCount = 0;
@@ -439,6 +456,7 @@ window.__lab = {
       keyCount,
       currentBacklog: currentBacklog(),
       starvation: starvationStats(),
+      longTasks: { count: longTasks.count, totalMs: longTasks.totalMs, maxMs: longTasks.maxMs },
     };
   },
 };

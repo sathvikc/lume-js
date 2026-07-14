@@ -267,6 +267,49 @@ Result: `pull` had the **best input and the shortest frame in the storm regime**
 - **The direction is not dead, and the maintainer's instincts were right.** The round-robin cursor fixes the freeze; pull-based rendering attacks the real bottleneck. If Lume wants to pursue schedulable presentation, retire the tiered-push-queue design and prototype a **pull-based budgeted renderer** (no per-cell effects, cursor-fair, staleness bounded by construction) as a real addon, then re-measure on production hardware where the fixed floor is small. Ship `content-visibility` guidance now regardless — it is free and wins the common case.
 - **The design-decisions entry above stands** (reject the shipped `renderQueue`), with the round-2 findings — the starvation bug and the pull/bounded alternatives — added to its "Alternatives considered" and "Tradeoff" as the concrete reasons the door is left open for a different, pull-based mechanism later.
 
+## Round 3: the fps ceiling and keeping the main thread free
+
+Two maintainer questions: (1) how many frames/second can we actually update, and below what point (60 / 120 fps) is a technique warranted; (2) how do we keep the main thread free so the user can do other things (the smoothness that input responsiveness is really about). Instrumented with the Long Tasks API — `worstBlock` = the single longest task (the worst input-blocking hang), `thread-free %` = share of the window not locked in > 50 ms tasks. Data: `results/headroom-summary.json`; driver: `headroom.mjs`. (Headless rAF is vsync-capped at 60 fps, so a measured 60 means "the frame's work fits the 16.6 ms budget"; below 60 means it does not.)
+
+### The 60 fps capacity — how many cells before you drop below the line (native, 1×)
+
+fps at increasing cell counts, storm (100% change) and dashboard (8% change):
+
+| | 1000 | 2000 | 4000 | 8000 |
+|---|---|---|---|---|
+| **storm** off | 34 | 13 | 4 | 1.4 |
+| storm pull | 36 | 16 | 6 | 2 |
+| storm bounded | 34 | 15 | 6 | 1.9 |
+| storm **cv** | **41** | **20** | **9** | **4.6** |
+| **dashboard** off | 58 | 20 | 6 | 2 |
+| dashboard pull | 58 | 20 | 6 | 2 |
+| dashboard bounded | 58 | 20 | 6 | 2 |
+| dashboard **cv** | **60** | **58** | **27** | **11** |
+
+The load already blows the 16.6 ms budget at low cell counts: a full storm holds 60 fps for only a few hundred cells; a dashboard for ~1200. Under 20× throttle divide by ~20 (storm is ~3 fps at 500 cells). So yes — beyond a few hundred to ~1000 changing cells you are below 60 fps and something has to give.
+
+**But the crucial split is *which* technique raises the ceiling and which does not:**
+
+- **Rescheduling the work does NOT raise the fps ceiling.** `pull`, `bounded` (and `renderQueue`) run the *same* total work, just spread across frames — so in dashboard they track OFF almost exactly (58/20/6 fps) and in storm they gain only ~15% (from removing the flush). They cannot make work that doesn't fit the frame suddenly fit.
+- **Reducing the work DOES raise it.** `content-visibility: auto` renders only on-screen cells, so it holds 60 fps to ~2000 dashboard cells (vs ~1200) and stays 2–4× ahead everywhere — because it does *less*, not because it schedules better. This is the only lever here that moves the fps line, and it is free CSS.
+
+So: **to update *more* at 60 fps, cut the work (content-visibility, plus the already-shipped effect-reuse and `repeat()` LIS that cut flush and DOM-move cost). Scheduling addons do not extend the 60 fps ceiling.**
+
+### Keeping the main thread free — the other axis, where scheduling *does* pay
+
+fps is not the whole story: a page can be at 15 fps and still feel responsive if no single task is long. The metric for "can the user do other things" is `worstBlock` — the longest uninterrupted task — because input can only be handled between tasks.
+
+- **At light load the thread is already free.** At ≤ 1000 cells (native) every mode has `worstBlock = 0` (no task > 50 ms) and 100% free — no technique needed. Techniques earn their keep only once the frame's work exceeds ~50 ms.
+- **Once it doesn't fit, budgeting halves the worst block.** Native storm at 2000 cells: OFF's worst task is 129 ms; `pull` 70 ms, `bounded` 74 ms — roughly halved, because they cap per-frame apply work and yield. Under 20× the same pattern holds (storm 500 cells: OFF 408 ms → pull 197 ms). Lower worst-block = the thread comes up for air more often = input handled sooner, even though fps is unchanged. **This — not fps — is what the scheduling designs actually buy.**
+- **What none of them free is the writer.** The storm still writes every store synchronously each frame; that write pass (and, for the push designs, the effect flush) is one un-budgeted task that no *presentation* scheduler chunks. It is why even `pull` can't hold 60 fps under a large storm. Fully freeing the thread under heavy writes needs the *writes* time-sliced too — an upstream change that trades away "state is synchronous truth," which is a much bigger decision than a render addon.
+
+### The two principles this settles
+
+1. **Raising the fps ceiling is a work-*reduction* problem, not a scheduling problem.** Cull what you render (`content-visibility`), shrink the flush (effect-reuse — shipped), shrink DOM moves (`repeat()` LIS — shipped). renderQueue/pull/bounded do not help here.
+2. **Keeping the thread free when the work genuinely doesn't fit is a work-*chunking* problem** — cap the longest task. Budgeted rescheduling (pull/bounded) halves the worst block; but it only chunks the render, so under heavy synchronous writes the writer/flush still block, and the honest ceiling on this axis is set by whatever you leave un-chunked.
+
+Neither principle rescues the shipped `renderQueue`: it doesn't reduce work (ceiling unchanged) and its worst-block reduction is undercut by the flush it keeps synchronous and the starvation bug. If Lume pursues this, the shape is: **content-visibility guidance for the ceiling + a pull-based, cursor-fair, budgeted renderer for the worst-block** — and measure both axes (fps *and* worstBlock), because they are different problems with different fixes.
+
 ## Reproducing
 
 ```bash
@@ -278,6 +321,8 @@ node examples/render-queue-lab/sweep.mjs clean     # clean matrix (dot off) → 
 node examples/render-queue-lab/round2.mjs starve   # the starvation bug + bounded/pull fairness
 node examples/render-queue-lab/round2.mjs compare  # all modes incl. bounded + pull → round2-summary.json
 xvfb-run -a node examples/render-queue-lab/round2.mjs fidelity   # headless vs headed
+node examples/render-queue-lab/headroom.mjs storm 20   # fps ceiling + main-thread free % (20x)
+node examples/render-queue-lab/headroom.mjs dashboard 1 # native ceiling (1x); arg4 = custom cell counts
 # single case:
 node examples/render-queue-lab/run.mjs --mode pull --regime storm --cells 3000 --nodot --type --out results/one.json
 ```

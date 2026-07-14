@@ -1,0 +1,36 @@
+{
+  "note": "fps ceiling + main-thread occupancy. Each cell: 'fps / worstBlockMs / threadFreePct'. worstBlock = longest single task (the worst input-blocking hang); threadFree = share of window NOT in >50ms tasks. No typing. Reproduce: node examples/render-queue-lab/headroom.mjs [regime] [rate] [cells]. Headless rAF is vsync-capped at 60fps, so native fps of 60 means 'work fits the 16.6ms frame'; below 60 means it does not.",
+  "throttled_20x": {
+    "storm": {
+      "cols": [500, 1000, 2000, 4000],
+      "off":     [{ "fps": 2.9, "worstBlockMs": 408, "freePct": 8.4 }, { "fps": 1.2, "worstBlockMs": 882, "freePct": 0.9 }, { "fps": 0.5, "worstBlockMs": 2002, "freePct": 1.2 }, { "fps": 0.2, "worstBlockMs": 4626, "freePct": 10.4 }],
+      "pull":    [{ "fps": 6.1, "worstBlockMs": 197, "freePct": 0.4 }, { "fps": 3.0, "worstBlockMs": 419, "freePct": 2.7 }, { "fps": 0.9, "worstBlockMs": 1324, "freePct": 0 }, { "fps": 0.3, "worstBlockMs": 3613, "freePct": 14.1 }],
+      "bounded": [{ "fps": 6.3, "worstBlockMs": 203, "freePct": 2.9 }, { "fps": 2.5, "worstBlockMs": 462, "freePct": 2.1 }, { "fps": 0.9, "worstBlockMs": 1185, "freePct": 0.8 }, { "fps": 0.3, "worstBlockMs": 2907, "freePct": 55.6 }],
+      "cv":      [{ "fps": 3.0, "worstBlockMs": 470, "freePct": 0 }, { "fps": 1.5, "worstBlockMs": 953, "freePct": 0 }, { "fps": 0.8, "worstBlockMs": 1625, "freePct": 27.6 }, { "fps": 0.3, "worstBlockMs": 4990, "freePct": 0 }]
+    },
+    "dashboard": {
+      "cols": [500, 1000, 2000, 4000],
+      "off":     [{ "fps": 5.5, "worstBlockMs": 225, "freePct": 6.8 }, { "fps": 2.3, "worstBlockMs": 509, "freePct": 0 }, { "fps": 0.9, "worstBlockMs": 1233, "freePct": 1.7 }, { "fps": 0.3, "worstBlockMs": 3601, "freePct": 39.2 }],
+      "pull":    [{ "fps": 6.4, "worstBlockMs": 189, "freePct": 0 }, { "fps": 2.7, "worstBlockMs": 425, "freePct": 2.4 }, { "fps": 0.9, "worstBlockMs": 1137, "freePct": 1 }, { "fps": 0.3, "worstBlockMs": 3339, "freePct": 0 }],
+      "bounded": [{ "fps": 6.4, "worstBlockMs": 178, "freePct": 4.8 }, { "fps": 2.7, "worstBlockMs": 408, "freePct": 1.4 }, { "fps": 1.0, "worstBlockMs": 1079, "freePct": 0.8 }, { "fps": 0.4, "worstBlockMs": 3394, "freePct": 0 }],
+      "cv":      [{ "fps": 8.2, "worstBlockMs": 156, "freePct": 5.5 }, { "fps": 3.8, "worstBlockMs": 411, "freePct": 0 }, { "fps": 2.3, "worstBlockMs": 653, "freePct": 10.3 }, { "fps": 0.9, "worstBlockMs": 1236, "freePct": 0.5 }]
+    }
+  },
+  "native_1x": {
+    "note": "Unthrottled. Headless rAF caps at 60fps, so 60 = 'work fits the 16.6ms frame'; below 60 = it does not. The cell count where a mode drops below 60fps is its 60fps capacity.",
+    "storm": {
+      "cols": [1000, 2000, 4000, 8000, 16000],
+      "off":     [{ "fps": 34.5, "worstBlockMs": 0, "freePct": 100 }, { "fps": 12.8, "worstBlockMs": 129, "freePct": 4.4 }, { "fps": 4.0, "worstBlockMs": 359, "freePct": 4.3 }, { "fps": 1.4, "worstBlockMs": 844, "freePct": 0.9 }, { "fps": 0.5, "worstBlockMs": 2425, "freePct": 0 }],
+      "pull":    [{ "fps": 36, "worstBlockMs": 0, "freePct": 100 }, { "fps": 16, "worstBlockMs": 70, "freePct": 6.6 }, { "fps": 6.0, "worstBlockMs": 176, "freePct": 0 }, { "fps": 2.0, "worstBlockMs": 516, "freePct": 0.2 }, { "fps": 0.6, "worstBlockMs": 1778, "freePct": 0.5 }],
+      "bounded": [{ "fps": 34.2, "worstBlockMs": 0, "freePct": 100 }, { "fps": 15.3, "worstBlockMs": 74, "freePct": 3.6 }, { "fps": 5.9, "worstBlockMs": 187, "freePct": 1.6 }, { "fps": 1.9, "worstBlockMs": 544, "freePct": 0 }, { "fps": 0.6, "worstBlockMs": 1779, "freePct": 0 }],
+      "cv":      [{ "fps": 41.2, "worstBlockMs": 0, "freePct": 100 }, { "fps": 20.1, "worstBlockMs": 74, "freePct": 71.7 }, { "fps": 9.2, "worstBlockMs": 138, "freePct": 2.4 }, { "fps": 4.6, "worstBlockMs": 262, "freePct": 0.8 }, { "fps": 1.8, "worstBlockMs": 974, "freePct": 0 }]
+    },
+    "dashboard": {
+      "cols": [1000, 2000, 4000, 8000, 16000],
+      "off":     [{ "fps": 58, "worstBlockMs": 0, "freePct": 100 }, { "fps": 19.6, "worstBlockMs": 64, "freePct": 50.4 }, { "fps": 6.1, "worstBlockMs": 175, "freePct": 0.2 }, { "fps": 2.0, "worstBlockMs": 528, "freePct": 0.1 }, { "fps": 0.6, "worstBlockMs": 1787, "freePct": 0 }],
+      "pull":    [{ "fps": 57.7, "worstBlockMs": 0, "freePct": 100 }, { "fps": 20.2, "worstBlockMs": 56, "freePct": 72.8 }, { "fps": 6.3, "worstBlockMs": 194, "freePct": 0.4 }, { "fps": 2.0, "worstBlockMs": 510, "freePct": 0.2 }, { "fps": 0.6, "worstBlockMs": 1809, "freePct": 0 }],
+      "bounded": [{ "fps": 57.5, "worstBlockMs": 0, "freePct": 100 }, { "fps": 19.6, "worstBlockMs": 64, "freePct": 44.1 }, { "fps": 6.1, "worstBlockMs": 203, "freePct": 0 }, { "fps": 2.0, "worstBlockMs": 534, "freePct": 7.8 }, { "fps": 0.6, "worstBlockMs": 1820, "freePct": 0 }],
+      "cv":      [{ "fps": 60, "worstBlockMs": 0, "freePct": 100 }, { "fps": 58.5, "worstBlockMs": 0, "freePct": 100 }, { "fps": 27.5, "worstBlockMs": 51, "freePct": 99.2 }, { "fps": 11, "worstBlockMs": 145, "freePct": 0 }, { "fps": 5.3, "worstBlockMs": 237, "freePct": 1.1 }]
+    }
+  }
+}
