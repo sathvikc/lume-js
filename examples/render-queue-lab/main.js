@@ -183,6 +183,51 @@ function pullLoop() {
   if (pullRunning) pullRaf = requestAnimationFrame(pullLoop);
 }
 
+// ── smart — drop-stale pull + input-reserved dynamic budget ──────────────────
+// The maintainer's responsiveness-first design:
+//   (1) drop stale work: like `pull`, read CURRENT state and paint the latest
+//       value — never a queue of old change-events, coalesced by construction,
+//       cursor-fair so nothing starves.
+//   (2) reserve capacity for the user: while the user is interacting (any input
+//       in the last INPUT_WINDOW ms) shrink the per-frame render budget so most
+//       of the frame is left free for input; when idle, grow it back to catch up.
+const INPUT_WINDOW = 250;
+let lastInputAt = -1e9;
+for (const ev of ['keydown', 'pointerdown', 'pointermove', 'wheel', 'input']) {
+  window.addEventListener(ev, () => { lastInputAt = performance.now(); }, { passive: true, capture: true });
+}
+let smartLast = [];
+let smartCursor = 0;
+let smartRaf = 0;
+let smartRunning = false;
+let smartBusyFrames = 0;
+let smartTotalFrames = 0;
+function smartLoop() {
+  smartRaf = 0;
+  const t0 = performance.now();
+  const interacting = t0 - lastInputAt < INPUT_WINDOW;
+  // reserve when interacting (small budget), catch up when idle (larger budget)
+  const budget = interacting ? cfg.budgetMs : cfg.budgetMs * 5;
+  smartTotalFrames++;
+  if (interacting) smartBusyFrames++;
+  const N = stores.length;
+  let seen = 0;
+  let n = 0;
+  while (seen < N) {
+    const i = smartCursor;
+    smartCursor = (smartCursor + 1) % N;
+    seen++;
+    const v = stores[i].value;
+    if (v !== smartLast[i]) {
+      smartLast[i] = v;
+      applyCellRaw(i);
+      n++;
+      if ((n & 7) === 0 && performance.now() - t0 > budget) break;
+    }
+  }
+  if (smartRunning) smartRaf = requestAnimationFrame(smartLoop);
+}
+
 // ── Mode wiring ──────────────────────────────────────────────────────────────
 function clearWiring() {
   for (const d of disposers) d();
@@ -195,6 +240,8 @@ function clearWiring() {
   bCursor = 0;
   pullRunning = false;
   if (pullRaf) { cancelAnimationFrame(pullRaf); pullRaf = 0; }
+  smartRunning = false;
+  if (smartRaf) { cancelAnimationFrame(smartRaf); smartRaf = 0; }
   queue = null;
 }
 
@@ -209,6 +256,17 @@ function wire(mode) {
     pullCursor = 0;
     pullRunning = true;
     pullRaf = requestAnimationFrame(pullLoop);
+    return;
+  }
+
+  if (mode === 'smart') {
+    smartLast = new Array(stores.length);
+    for (let i = 0; i < stores.length; i++) { smartLast[i] = stores[i].value; applyCellRaw(i); }
+    smartCursor = 0;
+    smartBusyFrames = 0;
+    smartTotalFrames = 0;
+    smartRunning = true;
+    smartRaf = requestAnimationFrame(smartLoop);
     return;
   }
 
@@ -261,6 +319,14 @@ function wire(mode) {
 
 function currentBacklog() {
   if (queue) return queue.size;
+  // pull/smart keep no queue — their backlog is cells whose current value has
+  // not yet been painted. O(N), only polled for convergence, so acceptable.
+  const last = pullRunning ? pullLast : (smartRunning ? smartLast : null);
+  if (last) {
+    let behind = 0;
+    for (let i = 0; i < stores.length; i++) if (stores[i].value !== last[i]) behind++;
+    return behind;
+  }
   return simpleDirty.size + bDirtyCount;
 }
 
@@ -434,6 +500,8 @@ window.__lab = {
     longTasks.count = 0;
     longTasks.totalMs = 0;
     longTasks.maxMs = 0;
+    smartBusyFrames = 0;
+    smartTotalFrames = 0;
     peakBacklog = 0;
     maxStaleness = 0;
     appliedCount = 0;
@@ -457,6 +525,7 @@ window.__lab = {
       currentBacklog: currentBacklog(),
       starvation: starvationStats(),
       longTasks: { count: longTasks.count, totalMs: longTasks.totalMs, maxMs: longTasks.maxMs },
+      smartBusyFraction: smartTotalFrames ? smartBusyFrames / smartTotalFrames : null,
     };
   },
 };

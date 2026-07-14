@@ -310,6 +310,38 @@ fps is not the whole story: a page can be at 15 fps and still feel responsive if
 
 Neither principle rescues the shipped `renderQueue`: it doesn't reduce work (ceiling unchanged) and its worst-block reduction is undercut by the flush it keeps synchronous and the starvation bug. If Lume pursues this, the shape is: **content-visibility guidance for the ceiling + a pull-based, cursor-fair, budgeted renderer for the worst-block** — and measure both axes (fps *and* worstBlock), because they are different problems with different fixes.
 
+## Round 4: the responsiveness-first scheduler (drop-stale + input-reserved budget)
+
+The maintainer proposed a two-principle design and asked to build and measure it, not just reason about it. Built as the `smart` mode (`main.js`), measured by `smart.mjs`; data in `results/smart-summary.json`.
+
+- **Principle 1 — drop stale work, render the latest state, never a growing backlog.** This is exactly what `pull` already does at the per-cell level: it reads *current* state and paints the latest value, coalesced by construction (a cell written 1000× between frames paints once, at the newest value), cursor-fair so nothing starves. There is no queue of superseded change-events to replay. Validated: `pull`/`smart` staleness is bounded, versus `renderQueue`'s unbounded backlog and its starvation bug. **This is the correct fix for the freeze** — and it is the maintainer's principle, independently arrived at.
+
+- **Principle 2 — reserve rendering capacity for user interaction.** New and worth building: while the user is interacting (any input within 250 ms) `smart` shrinks its per-frame render budget so most of the frame is left for input; when idle it grows the budget 5× to catch the picture up. This is better-targeted than the earlier `adaptive` mode (which reacted to janky frames, not to the user).
+
+**Result (burst regime, 3000 cells, 20×, bursty typing — chosen to isolate the render from a continuous writer):**
+
+| variant | median input | busyFrac |
+|---|---|---|
+| pull, fixed budget 2 ms | 1557 ms | — |
+| pull, fixed budget 10 ms | 1486 ms | — |
+| **smart (2 ms interacting / 10 ms idle)** | **1218 ms** | 0.7 |
+
+`smart` had the **best input latency of the three** (~1.2× better than either fixed budget), and the dynamic budget verifiably engaged (it saw "interacting" on 70% of render frames under bursty input). So principle 2 works directionally — reserving capacity on input does lower input latency.
+
+**But the same floor from Round 3 caps it, and it is worth stating plainly.** Even a *one-shot* burst of 3000 cells produced a ~2.2 s blocking task — and that task is the **write pass itself** (the batched state updates), not the render. `smart` shrinks the render's contribution to input, but the render is a *minority* of the main-thread time under a heavy update; the synchronous write pass dominates, and no presentation scheduler — `renderQueue`, `pull`, `bounded`, or `smart` — chunks it. Principle 2 delivers its full promise only where **rendering** is the dominant main-thread cost (large DOM, expensive paints); where **state updates** dominate (Lume's synchronous-truth model under a storm), the ceiling on input is set by the un-chunked writes.
+
+(Honest limits of this measurement: single runs under a throttle that drifted 12–26× between cases — take the *ordering* as the finding, not the exact milliseconds — and the freshness/convergence half of "best of both" was not cleanly isolated here, because the O(N) backlog poll I added to measure it saturates the throttled thread and starves the drain. The input result is clean; the convergence result is not, and is marked invalid in the data.)
+
+### What this adds up to
+
+The maintainer's two principles are right, and `smart` is the best-articulated design tested here: it never renders stale work (principle 1, which also fixes the freeze) and it measurably protects input (principle 2). The complete "smooth under heavy load" system, following the evidence across all four rounds, is three-layered and each layer targets a different cost:
+
+1. **Reduce render work** — `content-visibility` (offscreen culling) raises the fps ceiling; nothing else does. *(Round 3.)*
+2. **Render pull-based, drop-stale, cursor-fair, with an input-reserved budget** — `smart` — keeps presentation current and protects input from the *render's* share. *(Rounds 2 + 4.)*
+3. **Time-slice the writes** — the one thing none of these do, and the remaining floor on both fps and input under heavy updates. This is the real open problem, and it trades against "state is synchronous truth," so it is a core-design decision, not an addon. *(Rounds 3 + 4.)*
+
+`renderQueue` as shipped sits in none of these layers cleanly — it schedules the apply (layer 2's job) but with an unbounded queue and a starvation bug, doesn't reduce work (layer 1), and doesn't touch writes (layer 3). The KILL stands; the constructive path is `content-visibility` now, a `smart`-style pull renderer next, and — if Lume ever wants true smoothness under storm-scale writes — a time-sliced write mode as a deliberate core decision.
+
 ## Reproducing
 
 ```bash
@@ -323,8 +355,9 @@ node examples/render-queue-lab/round2.mjs compare  # all modes incl. bounded + p
 xvfb-run -a node examples/render-queue-lab/round2.mjs fidelity   # headless vs headed
 node examples/render-queue-lab/headroom.mjs storm 20   # fps ceiling + main-thread free % (20x)
 node examples/render-queue-lab/headroom.mjs dashboard 1 # native ceiling (1x); arg4 = custom cell counts
+node examples/render-queue-lab/smart.mjs            # smart (drop-stale + input-reserved budget) vs fixed-budget pull
 # single case:
 node examples/render-queue-lab/run.mjs --mode pull --regime storm --cells 3000 --nodot --type --out results/one.json
 ```
 
-Open `http://localhost:5199/examples/render-queue-lab/?mode=pull&regime=storm&cells=3000` and flip the URL params to drive it by hand: `mode` = `off`/`rq`/`simple`/`adaptive`/`cv`/`bounded`/`pull`, plus `regime`, `cells`, `budget`, `churn`, `dot` (0 to remove the jank-dot artifact), `text` (0 for paint-only apply), `render` (0 to keep the flush but skip DOM writes). Every result JSON embeds its own throttle probe so numbers are self-describing.
+Open `http://localhost:5199/examples/render-queue-lab/?mode=pull&regime=storm&cells=3000` and flip the URL params to drive it by hand: `mode` = `off`/`rq`/`simple`/`adaptive`/`cv`/`bounded`/`pull`/`smart`, plus `regime`, `cells`, `budget`, `churn`, `dot` (0 to remove the jank-dot artifact), `text` (0 for paint-only apply), `render` (0 to keep the flush but skip DOM writes). Every result JSON embeds its own throttle probe so numbers are self-describing.

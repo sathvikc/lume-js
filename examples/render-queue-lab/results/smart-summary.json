@@ -1,0 +1,14 @@
+{
+  "note": "The 'smart' scheduler = drop-stale pull + input-reserved dynamic budget (small budget while interacting, 5x larger when idle). Tests the two responsiveness-first principles. dot=0, 20x, bursty typing (1.2s on / 1.2s off) so the dynamic budget has idle gaps. Reproduce: node examples/render-queue-lab/smart.mjs",
+  "burst_3000": {
+    "note": "Burst isolates the render from a continuous writer (all cells change once, then quiet). in.med = median input latency during the window (ms). busyFrac = fraction of render frames the budget saw as 'interacting'. convergeMs is INVALID here — the O(N) backlog poll added for this run saturates the throttled thread and starves the drain; treat convergence as not-measured.",
+    "pull_budget2":  { "inMedMs": 1556.8, "inP95Ms": 2108.2, "worstBlockMs": 2197, "busyFrac": null },
+    "pull_budget10": { "inMedMs": 1486.0, "inP95Ms": 2006.8, "worstBlockMs": 2140, "busyFrac": null },
+    "smart_budget2": { "inMedMs": 1217.8, "inP95Ms": 1988.1, "worstBlockMs": 2432, "busyFrac": 0.7 }
+  },
+  "findings": {
+    "principle1_drop_stale": "Validated. pull/smart keep no queue of old change-events; they read CURRENT state and paint the latest value, coalesced, cursor-fair. Staleness is bounded (vs renderQueue's unbounded backlog + starvation). This is the correct freeze/starvation fix.",
+    "principle2_input_reserved_budget": "Directionally validated. smart had the best input latency of the three (1218 vs 1486-1557ms, ~1.2x over fixed pull) and the dynamic budget engaged (busyFrac 0.7 under bursty typing). Its ceiling is the synchronous WRITE PASS: even a one-shot 3000-cell burst is a ~2.2s task (the batched state writes) that blocks input, and no presentation scheduler — smart included — chunks it. So principle 2 improves the render's contribution to input but cannot remove the write-pass block.",
+    "caveat": "Single-run numbers under a throttle that drifted 12-26x between cases; treat the ordering (smart best on input) as the finding, not the exact ms. The freshness/convergence half of 'best of both' was not cleanly isolated here (writer confound + O(N) poll artifact)."
+  }
+}

@@ -35,6 +35,7 @@ export function parseArgs(argv) {
     if (k === '--nodot') { a.dot = 0; continue; }
     if (k === '--notext') { a.text = 0; continue; }
     if (k === '--headed') { a.headed = true; continue; }
+    if (k === '--burst-type') { a.typeBursty = true; continue; }
     const v = argv[++i];
     if (k === '--mode') a.mode = v;
     else if (k === '--regime') a.regime = v;
@@ -120,8 +121,15 @@ async function runCaseInner(opts, page) {
   if (opts.type) {
     const t0 = Date.now();
     while (Date.now() - t0 < opts.measure) {
-      cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'a', code: 'KeyA', text: 'a', windowsVirtualKeyCode: 65 }).catch(() => {});
-      cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65 }).catch(() => {});
+      // Bursty typing (1.2s typing / 1.2s idle) exercises an input-reserved
+      // dynamic budget: it can only show idle catch-up if there are idle gaps.
+      // Continuous typing (default) keeps the interaction window always warm.
+      const elapsed = Date.now() - t0;
+      const idleGap = opts.typeBursty && Math.floor(elapsed / 1200) % 2 === 1;
+      if (!idleGap) {
+        cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'a', code: 'KeyA', text: 'a', windowsVirtualKeyCode: 65 }).catch(() => {});
+        cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65 }).catch(() => {});
+      }
       await new Promise((r) => setTimeout(r, 100));
     }
   } else {
@@ -189,6 +197,7 @@ async function runCaseInner(opts, page) {
       // fraction of the window NOT locked in >50ms blocking tasks (free for input)
       freePct: measureWall > 0 ? round1(100 * (1 - Math.min(1, snap.longTasks.totalMs / measureWall))) : null,
     } : null,
+    smartBusyFraction: snap.smartBusyFraction != null ? round1(snap.smartBusyFraction) : null,
     maxStalenessMs: round1(snap.maxStaleness),
     appliedCount: snap.appliedCount,
     errs,
