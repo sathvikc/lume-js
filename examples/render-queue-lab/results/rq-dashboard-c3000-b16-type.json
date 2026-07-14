@@ -1,0 +1,43 @@
+{
+  "mode": "rq",
+  "regime": "dashboard",
+  "cells": 3000,
+  "budget": 16,
+  "churn": 0.08,
+  "rate": 20,
+  "warmup": 1500,
+  "measure": 6000,
+  "type": true,
+  "converge": false,
+  "throttle": {
+    "rate": 20,
+    "nativeMs": 10.9,
+    "throttledMs": 193.7,
+    "throttledMs2": 5.5,
+    "effectiveSlowdown": 17.8
+  },
+  "inputDelay": {
+    "worst": 3139,
+    "p95": 3012.1,
+    "median": 1615,
+    "count": 60,
+    "keys": 60,
+    "eventWorst": null,
+    "eventCount": 0
+  },
+  "frame": {
+    "p95Gap": 3483.2,
+    "worstGap": 3483.2,
+    "medianGap": 3099.9,
+    "fps": 0.3,
+    "frames": 4
+  },
+  "backlog": {
+    "peak": 438,
+    "atEnd": 403,
+    "convergeMs": null
+  },
+  "maxStalenessMs": 3306.4,
+  "appliedCount": 712,
+  "errs": []
+}

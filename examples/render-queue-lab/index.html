@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lume.js — renderQueue lab (experimental)</title>
+  <style>
+    :root {
+      --bg: #fff; --fg: #222; --muted: #666; --border: #e5e7eb;
+      --accent: #2563eb; --accent-hover: #1d4ed8;
+      --ok: #16a34a; --mid: #d97706; --bad: #dc2626; --experimental: #7c3aed;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg); color: var(--fg);
+      max-width: 1080px; margin: 18px auto; padding: 0 16px; line-height: 1.45;
+    }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    .badge {
+      display: inline-block; vertical-align: middle;
+      background: var(--experimental); color: #fff;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.4px;
+      padding: 2px 8px; border-radius: 999px; margin-left: 8px;
+    }
+    .sub { color: var(--muted); margin: 0 0 12px; font-size: 14px; }
+    .card {
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px 16px; margin-bottom: 12px; background: #fff;
+    }
+    button {
+      padding: 9px 16px; border: 0; border-radius: 8px;
+      background: var(--accent); color: #fff; font-weight: 600;
+      cursor: pointer; font-size: 15px;
+    }
+    button:hover { background: var(--accent-hover); }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    input[type="text"] {
+      padding: 8px 10px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 15px; min-width: 220px;
+    }
+    .controls-row { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+    .meta { font-size: 13px; color: var(--muted); }
+    .meta b { color: var(--fg); }
+
+    .readouts { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 4px; }
+    .metric { min-width: 96px; }
+    .metric .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+    .metric .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    .track { position: relative; height: 14px; margin: 10px 0 2px; }
+    .track .rail { position: absolute; inset: 0; background: #f3f4f6; border-radius: 999px; }
+    #dot {
+      position: absolute; top: 1px; left: 0; width: 12px; height: 12px;
+      border-radius: 50%; background: var(--accent); will-change: transform;
+    }
+    .hint { font-size: 12px; color: var(--muted); }
+
+    #grid {
+      display: grid; gap: 1px; margin-top: 12px;
+      grid-auto-rows: 12px;
+    }
+    .cell {
+      background: hsl(var(--h, 0) 75% 55%);
+      font-size: 7px; line-height: 12px; text-align: center;
+      color: rgba(0,0,0,0.55); overflow: hidden;
+    }
+    /* cv mode: let the browser skip rendering offscreen cells */
+    #grid.cv .cell {
+      content-visibility: auto;
+      contain-intrinsic-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>renderQueue lab <span class="badge">EXPERIMENTAL</span></h1>
+  <p class="sub">Regime testbed: state stays synchronous, presentation is scheduled. Configure via URL — <code>?mode=rq&amp;regime=storm&amp;cells=3000&amp;budget=2&amp;churn=0.08</code>.</p>
+
+  <div class="card">
+    <div class="controls-row">
+      <button id="start">Start</button>
+      <span class="meta">mode <b data-bind="mode"></b> · regime <b data-bind="regime"></b> · cells <b data-bind="storeLabel"></b></span>
+    </div>
+    <div class="track"><div class="rail"></div><div id="dot"></div></div>
+    <p class="hint">The dot is driven every frame by rAF. When the main thread stalls, it stutters — a cheap visual jank meter.</p>
+  </div>
+
+  <div class="card">
+    <label class="meta">Type here while a regime runs (bound input — exercises the real two-way binding path):<br />
+      <input type="text" data-bind="typed" placeholder="type to probe input latency…" /></label>
+    <div class="readouts">
+      <div class="metric"><div class="k">fps</div><div class="v" data-bind="fps"></div></div>
+      <div class="metric"><div class="k">worst frame</div><div class="v" data-bind="worst"></div></div>
+      <div class="metric"><div class="k">worst input</div><div class="v" data-bind="inputDelay"></div></div>
+      <div class="metric"><div class="k">cells behind</div><div class="v" data-bind="behind"></div></div>
+      <div class="metric"><div class="k">max staleness</div><div class="v" data-bind="stale"></div></div>
+    </div>
+  </div>
+
+  <div id="grid"></div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
