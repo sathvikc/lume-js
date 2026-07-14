@@ -2,9 +2,11 @@
 
 > Research session, 2026-07-14. Branch: research (off latest `main`). The experimental `renderQueue` addon was cherry-picked from the frozen `feature/render-queue` branch (originally `c3864fe`) so it is importable; the silent 8→9 KB budget raise that shipped with it was **reverted** here so the addon's real cost is measured, not hidden. This file is the artifact the maintainer reviews. Testbed: [`examples/render-queue-lab/`](.); drivers: [`run.mjs`](run.mjs), [`sweep.mjs`](sweep.mjs); raw per-case JSON: [`results/`](results/).
 
-## Verdict — KILL (do not ship, not even experimental)
+## Verdict — KILL the addon as designed (do not ship); keep the *direction* alive
 
 The freeze reproduces immediately and is root-caused: it is a structural mismatch between the drain's per-frame *time* budget and the load's per-frame *count* of re-dirties, with no fix that doesn't reintroduce the input jank the addon exists to prevent. Across realistic regimes renderQueue delivers at most a ~1.5× median input-latency improvement (target: ≥5×), while freezing the presentation under sustained load. A 15-line rAF coalesce matches it without freezing; `content-visibility: auto` — free, zero-JS, standards-only — beats it 2–3×. It is also 0.37 KB over the all-in-one bundle budget. Four of five SHIP criteria fail.
+
+**Round 2 (after maintainer pushback) reinforced the KILL for the shipped addon but showed the research direction is not dead — see [Round 2](#round-2-reconciliation-a-real-bug-and-two-better-designs) below.** Headline additions: (1) renderQueue has an **active starvation bug** — under a uniform re-dirty order (any grid iterating cells in order) it repaints ~8 cells up to 13× each while **2984 of 3000 never paint at all**; the "re-dirty moves to back" guarantee fails for uniform order and the tests never exercise it. (2) The maintainer's **round-robin-cursor instinct is correct** — a `bounded` variant paints every cell fairly and bounds staleness. (3) A new **`pull`-based** design (no per-cell effects at all) attacks the effect-flush floor renderQueue leaves untouched and wins the storm regime. The specific renderQueue design should be retired; `content-visibility` (sparse updates) and pull-based budgeted rendering (dense updates) are the directions worth pursuing.
 
 ## The three numbers that decide it
 
@@ -211,6 +213,60 @@ Do not ship renderQueue, not even as experimental. The scheduling model is sound
 >
 > **Tradeoff:** We give up a genuinely clever mechanism (the `track`/`apply` split is elegant and the coalescing is free) and the ability to say Lume "schedules pixels." In exchange the core stays at three reactive primitives, the all-in-one bundle stays under 8 KB, and we don't ship a feature whose own headline metric (the backlog) advertises that it freezes the UI under the exact load it was built for. The kill is reversible: if a future version can defer or shrink the *effect flush* (not just the DOM write) and cap staleness, the track/apply split is worth revisiting — that, not apply-scheduling, is where the frame's time actually goes.
 
+## Round 2: reconciliation, a real bug, and two better designs
+
+Prompted by four maintainer questions — does combining `batch()` with renderQueue help; why did the original `priority-proto` show good numbers when I measured ~1.5×; would a frame-coalescing / round-robin scheme help; and can the research *invent* something rather than only test what exists. All four turned out to be productive. Data: `results/round2-summary.json`; driver: `round2.mjs`.
+
+### `batch()` + renderQueue — already the baseline, and they attack different costs
+
+Every regime here already wraps writes in `batch()`, so "off" is `batch()`+effects and "rq" is `batch()`+renderQueue — the combination *is* what was measured. They are orthogonal: `batch()` collapses the **effect flush** (an effect reading N changed stores re-runs once, not N times), renderQueue defers the **DOM apply**. `batch()`'s dramatic win in the `examples/batch/` demo comes from an *aggregate* effect reading many stores; this lab uses one store per cell, so `batch()`'s dedup barely applies and the win there is small. Stacking renderQueue on top adds the ~1.5× above. The lever `batch()` can't reach in the per-cell case — the O(N) flush of one effect per changed cell — is exactly what the `pull` design below targets.
+
+### Why `priority-proto` looked better: the fixed-floor ratio (and a hardware caveat)
+
+renderQueue's input win is roughly `OFF-frame ÷ (fixed-floor + budget)`, where the fixed floor is the part of the frame it *can't* spread — the synchronous effect flush plus the browser's rendering lifecycle. When the floor is small relative to the spreadable apply cost, spreading wins big; when the floor dominates, spreading barely helps. Two things determine the floor here:
+
+- **Hardware.** The prototype's machine was ~5× faster natively than this environment (its busy-loop probe was ~1.3 ms vs ~7 ms here). On a fast machine a 3000-cell frame is small enough that the apply is spreadable and you can see ~7×; here the same frame is multiple seconds and the floor swamps the win. This is a real caveat: **on production-class hardware renderQueue's input benefit may be larger than the ~1.5× measured here.** It does not change the freeze (below), which is arithmetic.
+- **Render path, not headless.** I checked whether headless software rasterization was inflating the floor by re-running headed (real compositor, under `xvfb`). It was not: the ~3200 ms frame floor persisted in both paths (headed rq/off ratio 1.06× — no win), so the weak benefit is not a headless artifact. (Single-case fidelity runs were noisy — the CDP throttle drifted 24–36× between cases — which is itself why the multi-case sweep medians, not single A/Bs, are the numbers to trust.)
+
+### The starvation bug (new, concrete, environment-independent)
+
+Tracing the drain under a **uniform** re-dirty order — the storm writes cells 0…N in order every frame, exactly what a list or grid iterating its items produces — exposes a real defect. Each frame every entry's `track()` effect re-runs and does `dirty.delete(rec); dirty.add(rec)`, re-adding all entries in the *same* order; the drain then always takes the front 8–16 and deletes them, and next frame they are re-added at the back while the middle re-adds in place — so the front is perpetually the same low-index cells. Measured over a 10 s storm (`round2.mjs starve`):
+
+| mode | cells painted / 3000 | applies per cell (min–max) |
+|---|---|---|
+| **rq** | **16** | **0–13** (8 cells repainted 13×, 2984 never) |
+| simple | 3000 | 5–5 (perfectly fair — full drain each frame) |
+| bounded (cursor) | 2416 | 0–1 (fair sweep; the rest simply not-yet-reached) |
+
+renderQueue's own "no starvation" test passes because it only re-dirties a *single* entry; it never exercises the uniform-order case, so the bug ships green. This makes the shipped addon worse than "modest benefit + freeze": under the most natural update pattern it paints < 1% of the grid and calls the staleness on the other 99% "backlog."
+
+### `bounded` — the maintainer's round-robin cursor (fixes the freeze)
+
+The fix the maintainer intuited: don't always drain from the front — advance a **cursor** through a flat entries array, so every cell is visited within `ceil(N / throughput)` frames. Staleness becomes bounded by one sweep instead of infinite, and no cell starves (max 1 paint per sweep vs renderQueue's 13). It keeps renderQueue's budgeted-frame benefit for input. In the sparse dashboard regime it was in fact the **best non-CSS option** (median input 845 ms vs OFF 1382 ms, 1.6×). This is a genuine improvement over the shipped design and validates the instinct — but it is a fix to a scheduler that still, at best, ties the free CSS option.
+
+### `pull` — invent something new: no per-cell effects at all (attacks the flush floor)
+
+Every push-based scheduler above (off/rq/simple/bounded) still re-runs one effect per changed cell every frame — the synchronous flush that the mechanism probe put at ~40% of the frame and that renderQueue explicitly keeps synchronous. So the new idea inverts it: **no effects.** One rAF loop sweeps cells from a cursor, reads current state, and paints those whose value changed since last paint, within budget — pull-based, zero flush. Trades fine-grained reactivity (it polls) for eliminating the O(N) flush.
+
+Result: `pull` had the **best input and the shortest frame in the storm regime** (median input 1263 ms, frame 2183 ms — better than every push design) because it pays no flush. Its expected weakness also showed: in the sparse dashboard regime (only 8% change) it wastes a full 3000-cell read-sweep to find the few that changed, so it fell behind `bounded` (1193 vs 845 ms). Clean, characterizable tradeoff: **pull is the right tool for dense/always-changing grids; content-visibility for sparse.** It is a genuinely different primitive from renderQueue and the most promising thing this research produced.
+
+### Full round-2 comparison (dot off, 3000, 20×, median input ms)
+
+| mode | storm input | dashboard input | fairness | staleness | notes |
+|---|---|---|---|---|---|
+| off | 2095 | 1382 | fair (sync) | tiny | honest baseline; input worst |
+| rq | 1283 | 1359 | **starves (8 cells 13×, rest 0)** | unbounded | dominated + broken |
+| simple | 1457 | 1296 | fair | ~1–2 frames | 15 lines, no freeze |
+| **bounded** | 1406 | **845** | fair (cursor) | bounded | maintainer's fix; best non-CSS in dashboard |
+| **pull** | **1263** | 1193 | fair | bounded | new; best in storm; polling-wasteful when sparse |
+| **cv** | 1360 | **457** | fair | tiny | free CSS; best in dashboard |
+
+### Revised recommendation
+
+- **renderQueue as designed: KILL, reinforced.** It is dominated in input by `pull`, `bounded`, and `cv` in the regimes each targets, and it actively starves the grid under the most common update order. Do not ship it.
+- **The direction is not dead, and the maintainer's instincts were right.** The round-robin cursor fixes the freeze; pull-based rendering attacks the real bottleneck. If Lume wants to pursue schedulable presentation, retire the tiered-push-queue design and prototype a **pull-based budgeted renderer** (no per-cell effects, cursor-fair, staleness bounded by construction) as a real addon, then re-measure on production hardware where the fixed floor is small. Ship `content-visibility` guidance now regardless — it is free and wins the common case.
+- **The design-decisions entry above stands** (reject the shipped `renderQueue`), with the round-2 findings — the starvation bug and the pull/bounded alternatives — added to its "Alternatives considered" and "Tradeoff" as the concrete reasons the door is left open for a different, pull-based mechanism later.
+
 ## Reproducing
 
 ```bash
@@ -218,8 +274,12 @@ npm run dev -- --port 5199 --strictPort          # serve examples
 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i --no-save playwright-core
 node examples/render-queue-lab/sweep.mjs          # full matrix (dot on)  → results/summary-full.json
 node examples/render-queue-lab/sweep.mjs clean     # clean matrix (dot off) → results/*-nodot-type.json
+# round-2 follow-ups:
+node examples/render-queue-lab/round2.mjs starve   # the starvation bug + bounded/pull fairness
+node examples/render-queue-lab/round2.mjs compare  # all modes incl. bounded + pull → round2-summary.json
+xvfb-run -a node examples/render-queue-lab/round2.mjs fidelity   # headless vs headed
 # single case:
-node examples/render-queue-lab/run.mjs --mode rq --regime dashboard --cells 3000 --nodot --type --out results/one.json
+node examples/render-queue-lab/run.mjs --mode pull --regime storm --cells 3000 --nodot --type --out results/one.json
 ```
 
-Open `http://localhost:5199/examples/render-queue-lab/?mode=rq&regime=storm&cells=3000` and flip `mode`/`regime`/`cells`/`budget`/`dot` in the URL to drive it by hand. Every result JSON embeds its own throttle probe so numbers are self-describing.
+Open `http://localhost:5199/examples/render-queue-lab/?mode=pull&regime=storm&cells=3000` and flip the URL params to drive it by hand: `mode` = `off`/`rq`/`simple`/`adaptive`/`cv`/`bounded`/`pull`, plus `regime`, `cells`, `budget`, `churn`, `dot` (0 to remove the jank-dot artifact), `text` (0 for paint-only apply), `render` (0 to keep the flush but skip DOM writes). Every result JSON embeds its own throttle probe so numbers are self-describing.

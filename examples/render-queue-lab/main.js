@@ -42,6 +42,7 @@ const cfg = {
   churn: Number(params.get('churn')) || 0.08,
   dot: params.get('dot') !== '0', // set ?dot=0 to isolate the per-frame render floor
   render: params.get('render') !== '0', // set ?render=0 to keep the flush but skip DOM writes (isolate flush vs rendering cost)
+  text: params.get('text') !== '0', // set ?text=0 for paint-only apply (CSS var, no textContent) — matches the original prototype
 };
 
 // ── Readouts (bound via Lume; updated once per second — negligible churn) ────
@@ -72,6 +73,7 @@ let queue = null;
 
 let appliedCount = 0;
 let maxStaleness = 0;
+let applyCounts = []; // per-cell paint counter, for detecting starvation
 
 function fmtInt(v) {
   return String(v | 0);
@@ -84,10 +86,11 @@ function applyCellRaw(i) {
   const v = stores[i].value; // tracked read (keeps effect wiring identical across render on/off)
   if (cfg.render) {
     const cell = cells[i];
-    cell.style.setProperty('--h', String((v * 3.6) | 0));
-    cell.firstChild.nodeValue = fmtInt(v);
+    cell.style.setProperty('--h', String((v * 3.6) | 0)); // paint (background hsl)
+    if (cfg.text) cell.firstChild.nodeValue = fmtInt(v);   // layout (text) — skip for paint-only
   }
   appliedCount++;
+  applyCounts[i]++;
   const p = pendingSince[i];
   if (p !== 0) {
     const age = performance.now() - p;
@@ -112,18 +115,102 @@ function simpleMark(i) {
 // Adaptive engages deferral after a janky frame, disengages once frames recover.
 let deferMode = false;
 
+// ── bounded — round-robin cursor drain (the freeze fix) ──────────────────────
+// renderQueue's Set drain, under a *uniform* re-dirty order (a grid iterating
+// cells 0..N every frame), keeps re-adding every entry in the same order, so
+// the drain always hits the same front cells and the tail starves — staleness
+// grows without bound. This variant advances a cursor through a flat entries
+// array instead, so every cell is visited within ceil(N / throughput) frames:
+// no starvation, staleness bounded by design, backlog capped at N.
+let bDirty = [];      // per-cell dirty flag
+let bCursor = 0;
+let bDirtyCount = 0;
+let bRaf = 0;
+function bMark(i) {
+  if (!bDirty[i]) { bDirty[i] = true; bDirtyCount++; }
+  if (!bRaf) bRaf = requestAnimationFrame(bDrain);
+}
+function bDrain() {
+  bRaf = 0;
+  const t0 = performance.now();
+  const N = bDirty.length;
+  let seen = 0;
+  let n = 0;
+  while (seen < N && bDirtyCount > 0) {
+    const i = bCursor;
+    bCursor = (bCursor + 1) % N;
+    seen++;
+    if (bDirty[i]) {
+      applyCellRaw(i);
+      bDirty[i] = false;
+      bDirtyCount--;
+      n++;
+      if ((n & 7) === 0 && performance.now() - t0 > cfg.budgetMs) break;
+    }
+  }
+  if (bDirtyCount > 0) bRaf = requestAnimationFrame(bDrain);
+}
+
+// ── pull — no per-cell effects at all (the flush-floor experiment) ───────────
+// Every push-based scheduler (off/rq/simple/bounded) still re-runs one effect
+// per changed cell every frame — the synchronous flush that dominates ~40% of
+// the frame and that renderQueue leaves untouched. `pull` has zero effects: one
+// rAF loop sweeps cells from a cursor, reads current state, and paints those
+// whose value changed since last paint, within budget. It trades fine-grained
+// reactivity (it polls) for eliminating the flush. Best when most cells change.
+let pullLast = [];
+let pullCursor = 0;
+let pullRaf = 0;
+let pullRunning = false;
+function pullLoop() {
+  pullRaf = 0;
+  const t0 = performance.now();
+  const N = stores.length;
+  let seen = 0;
+  let n = 0;
+  while (seen < N) {
+    const i = pullCursor;
+    pullCursor = (pullCursor + 1) % N;
+    seen++;
+    const v = stores[i].value;
+    if (v !== pullLast[i]) {
+      pullLast[i] = v;
+      applyCellRaw(i);
+      n++;
+      if ((n & 7) === 0 && performance.now() - t0 > cfg.budgetMs) break;
+    }
+  }
+  if (pullRunning) pullRaf = requestAnimationFrame(pullLoop);
+}
+
 // ── Mode wiring ──────────────────────────────────────────────────────────────
 function clearWiring() {
   for (const d of disposers) d();
   disposers = [];
   simpleDirty.clear();
   if (simpleRaf) { cancelAnimationFrame(simpleRaf); simpleRaf = 0; }
+  if (bRaf) { cancelAnimationFrame(bRaf); bRaf = 0; }
+  bDirty = new Array(stores.length).fill(false);
+  bDirtyCount = 0;
+  bCursor = 0;
+  pullRunning = false;
+  if (pullRaf) { cancelAnimationFrame(pullRaf); pullRaf = 0; }
   queue = null;
 }
 
 function wire(mode) {
   clearWiring();
   grid.classList.toggle('cv', mode === 'cv');
+
+  if (mode === 'pull') {
+    // No effects. Paint everything once, then run the pull loop continuously.
+    pullLast = new Array(stores.length);
+    for (let i = 0; i < stores.length; i++) { pullLast[i] = stores[i].value; applyCellRaw(i); }
+    pullCursor = 0;
+    pullRunning = true;
+    pullRaf = requestAnimationFrame(pullLoop);
+    return;
+  }
 
   if (mode === 'rq') {
     queue = renderQueue({ budgetMs: cfg.budgetMs });
@@ -160,13 +247,37 @@ function wire(mode) {
         if (deferMode) simpleMark(idx);
         else applyCellRaw(idx);
       }));
+    } else if (mode === 'bounded') {
+      let primed = false;
+      applyCellRaw(idx);
+      disposers.push(effect(() => {
+        stores[idx].value;
+        if (!primed) { primed = true; return; }
+        bMark(idx);
+      }));
     }
   }
 }
 
 function currentBacklog() {
   if (queue) return queue.size;
-  return simpleDirty.size;
+  return simpleDirty.size + bDirtyCount;
+}
+
+// Starvation detector: since reset(), how evenly were cells painted? A large
+// gap between the most- and least-painted cell (or many cells at 0) means the
+// drain is starving some entries rather than round-robining fairly.
+function starvationStats() {
+  let min = Infinity;
+  let max = 0;
+  let zero = 0;
+  for (let i = 0; i < applyCounts.length; i++) {
+    const c = applyCounts[i];
+    if (c < min) min = c;
+    if (c > max) max = c;
+    if (c === 0) zero++;
+  }
+  return { min: min === Infinity ? 0 : min, max, zeroCount: zero, total: applyCounts.length };
 }
 
 // ── Build the grid ────────────────────────────────────────────────────────────
@@ -175,6 +286,7 @@ function setup(count) {
   stores = new Array(count);
   cells = new Array(count);
   pendingSince = new Array(count).fill(0);
+  applyCounts = new Array(count).fill(0);
   grid.textContent = '';
   const frag = document.createDocumentFragment();
   for (let i = 0; i < count; i++) {
@@ -310,7 +422,7 @@ window.__lab = {
     appliedCount = 0;
     keyCount = 0;
     worstGap = 0;
-    for (let i = 0; i < pendingSince.length; i++) pendingSince[i] = 0;
+    for (let i = 0; i < pendingSince.length; i++) { pendingSince[i] = 0; applyCounts[i] = 0; }
   },
   snapshot() {
     return {
@@ -326,6 +438,7 @@ window.__lab = {
       appliedCount,
       keyCount,
       currentBacklog: currentBacklog(),
+      starvation: starvationStats(),
     };
   },
 };

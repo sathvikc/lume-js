@@ -27,12 +27,14 @@ const BASE = process.env.LAB_BASE || 'http://localhost:5199/examples/render-queu
 
 export function parseArgs(argv) {
   const a = { mode: 'off', regime: 'storm', cells: 3000, budget: 2, churn: 0.08,
-    rate: 20, warmup: 1500, measure: 5000, type: false, converge: false, dot: 1, out: null };
+    rate: 20, warmup: 1500, measure: 5000, type: false, converge: false, dot: 1, text: 1, headed: false, out: null };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i];
     if (k === '--type') { a.type = true; continue; }
     if (k === '--converge') { a.converge = true; continue; }
     if (k === '--nodot') { a.dot = 0; continue; }
+    if (k === '--notext') { a.text = 0; continue; }
+    if (k === '--headed') { a.headed = true; continue; }
     const v = argv[++i];
     if (k === '--mode') a.mode = v;
     else if (k === '--regime') a.regime = v;
@@ -64,7 +66,11 @@ async function busyProbe(page) {
 }
 
 export async function runCase(opts, sharedBrowser) {
-  const browser = sharedBrowser || await chromium.launch({ executablePath: EXEC, args: ['--no-sandbox'] });
+  const browser = sharedBrowser || await chromium.launch({
+    executablePath: EXEC,
+    headless: !opts.headed,
+    args: ['--no-sandbox'],
+  });
   const page = await browser.newPage();
   try {
     return await runCaseInner(opts, page);
@@ -82,7 +88,7 @@ async function runCaseInner(opts, page) {
 
   const cdp = await page.context().newCDPSession(page);
   // Warm the JIT for a stable native baseline, then throttle and probe.
-  const url = `${BASE}?mode=${opts.mode}&regime=${opts.regime}&cells=${opts.cells}&budget=${opts.budget}&churn=${opts.churn}&dot=${opts.dot}`;
+  const url = `${BASE}?mode=${opts.mode}&regime=${opts.regime}&cells=${opts.cells}&budget=${opts.budget}&churn=${opts.churn}&dot=${opts.dot}&text=${opts.text}`;
   await page.goto(url, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__lab && window.__lab.cfg);
   for (let i = 0; i < 4; i++) await busyProbe(page);
@@ -175,6 +181,7 @@ async function runCaseInner(opts, page) {
       frames: gaps.length,
     },
     backlog: { peak: snap.peakBacklog, atEnd: snap.currentBacklog, convergeMs },
+    starvation: snap.starvation || null,
     maxStalenessMs: round1(snap.maxStaleness),
     appliedCount: snap.appliedCount,
     errs,

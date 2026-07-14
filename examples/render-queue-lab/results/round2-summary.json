@@ -1,0 +1,25 @@
+{
+  "note": "Round-2 follow-up experiments (dot=0, 3000 cells, 20x, real keystrokes). Median input in ms. 'starved' = cells never painted in the window; for bounded/pull under storm this is a short-window artifact of a fair cursor mid-sweep, NOT permanent starvation (see applies-per-cell: rq concentrates paints on ~8 cells at up to 13x while the rest get 0; bounded/simple/pull spread fairly at <=1x per sweep). Reproduce: node examples/render-queue-lab/round2.mjs [starve|compare|fidelity].",
+  "starvation_storm_10s_window": {
+    "rq":      { "cellsPainted": 16,   "of": 3000, "appliesPerCell": { "min": 0, "max": 13 }, "verdict": "STARVES — same ~16 front cells repainted, 2984 never painted" },
+    "simple":  { "cellsPainted": 3000, "of": 3000, "appliesPerCell": { "min": 5, "max": 5 },  "verdict": "fair — full drain each frame" },
+    "bounded": { "cellsPainted": 2416, "of": 3000, "appliesPerCell": { "min": 0, "max": 1 },  "verdict": "fair — cursor sweeps all, <=1x each, rest not-yet-reached" }
+  },
+  "compare_median_input_ms": {
+    "storm":     { "off": 2095, "rq": 1283, "simple": 1457, "bounded": 1406, "pull": 1263, "cv": 1360 },
+    "dashboard": { "off": 1382, "rq": 1359, "simple": 1296, "bounded": 845,  "pull": 1193, "cv": 457 }
+  },
+  "compare_frame_median_ms": {
+    "storm":     { "off": 3583, "rq": 2250, "simple": 2600, "bounded": 2383, "pull": 2183, "cv": 2383 },
+    "dashboard": { "off": 2650, "rq": 2517, "simple": 2400, "bounded": 1950, "pull": 2216, "cv": 1033 }
+  },
+  "compare_max_staleness_ms": {
+    "storm":     { "off": 288, "rq": 2592, "simple": 3634, "bounded": 7362, "pull": 6887, "cv": 277 },
+    "dashboard": { "off": 56,  "rq": 7830, "simple": 2453, "bounded": 6541, "pull": 6861, "cv": 88 }
+  },
+  "fidelity_paintonly_dashboard": {
+    "note": "rq-vs-off median-input ratio, headless (software raster) vs headed (real compositor via xvfb). Single-case, throttle drifted 24-36x, so noisy; the ~3200ms frame floor persists in BOTH paths.",
+    "headless": { "off": 1289, "rq": 2392, "ratio_off_over_rq": 0.54 },
+    "headed":   { "off": 2181, "rq": 2052, "ratio_off_over_rq": 1.06 }
+  }
+}
