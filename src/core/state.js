@@ -50,6 +50,19 @@ import { enqueueIfBatching, MAX_FLUSH_ITERATIONS } from './batch.js';
 // own independent Set via ES module / CommonJS isolation.
 const readers = new Set();
 
+// EXPERIMENT (Round 11 / handoff item 10): opt-in O(changed) dirty-signal sink.
+// Null by default so the module top-level stays pure (sideEffects:false). A pull
+// renderer installs a Set via __setDirtySink; the set trap adds each *changed*
+// store's target to it inside the no-subscriber fast path — an O(1), notify-free
+// change signal (the cheap alternative to $subscribe/beforeFlush, which would each
+// defeat the Round-6 fast path by pulling the write back onto the full notify/flush
+// path). The renderer drains the sink each frame → O(changed), not an O(N) sweep.
+// This is the "kernel $version" idea in its cheapest form: instead of a per-store
+// counter the renderer must still scan, the trap pushes the changed store directly.
+// Global (one sink for all stores) — fine for the lab, crude for a real addon.
+let __dirtySink = null;
+export function __setDirtySink(sink) { __dirtySink = sink; }
+
 /**
  * Brand symbol stamped on every object passed to state().
  *
@@ -309,7 +322,13 @@ export function state(obj) {
       // the target is the whole job; skip every downstream scheduling cost
       // (O(N) per storm frame in state.js + batch.js). A later subscribe()
       // still delivers the current value immediately, so no update is missed.
-      if (listenerCount === 0 && beforeFlushHooks.length === 0) return true;
+      if (listenerCount === 0 && beforeFlushHooks.length === 0) {
+        // EXPERIMENT (item 10): O(changed) dirty signal. Adds one Set entry per
+        // changed store when a pull renderer has opted in; null-check is free
+        // otherwise, so the Round-6 fast path is unchanged when unused.
+        if (__dirtySink !== null) __dirtySink.add(target);
+        return true;
+      }
 
       // Batch notifications at the state level (per-state, not global)
       pendingNotifications.set(key, value);

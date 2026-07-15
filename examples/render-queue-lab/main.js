@@ -1,5 +1,10 @@
 import { state, effect, bindDom, batch } from 'lume-js';
 import { renderQueue } from 'lume-js/addons';
+// EXPERIMENT (item 10): direct kernel import for the O(changed) dirty-signal sink.
+// Same module instance as 'lume-js' (both resolve to src/core/state.js), so the
+// sink installed here is the one the set trap checks. Research-only; the `dirty`
+// mode is the only consumer.
+import { __setDirtySink } from '../../src/core/state.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // render-queue-lab — a regime testbed for the experimental renderQueue addon.
@@ -10,8 +15,8 @@ import { renderQueue } from 'lume-js/addons';
 // across modes — only *when* and *whether* it is deferred changes. That keeps
 // OFF vs ON vs alternatives an honest comparison of scheduling, not of work.
 //
-//   mode    = off | rq | simple | adaptive | cv | bounded | pull | smart |
-//             sliced | plain | smartcv | canvas | vis   (how presentation is wired)
+//   mode    = off | rq | simple | adaptive | cv | bounded | pull | smart | sliced |
+//             plain | smartcv | canvas | vis | dirty     (how presentation is wired)
 //   regime  = storm | dashboard | burst | quiet       (how state is written)
 //   cells   = grid size (default 3000)
 //   budget  = renderQueue budgetMs (default 2)
@@ -425,6 +430,37 @@ function visLoop() {
   if (visRunning) visRaf = requestAnimationFrame(visLoop);
 }
 
+// ── dirty — O(changed) dirty-set drain via a kernel change signal (item 10) ──
+// Every pull mode (pull/smart/vis) sweeps its cell array each frame reading
+// `.value` to find what changed — O(N) work regardless of how few cells moved (the
+// budget caps *paints*, not the scan). `dirty` removes the scan: the kernel set
+// trap pushes each changed store into an opt-in sink Set (O(1), no notify —
+// preserves the Round-6 fast path, unlike a $subscribe/beforeFlush per store which
+// would defeat it), and this loop drains exactly the changed stores, newest work
+// coalesced by the Set. It stacks `cv` + smart's input-reserved budget, so
+// dirty-vs-smartcv isolates the change-detection mechanism (O(changed) drain vs
+// O(N) sweep). Backlog becomes O(1) (`dirtySink.size`) — the one mode that fixes
+// the convergence-poll gotcha. Drop-stale by construction: drain reads CURRENT
+// value; leftovers past budget stay in the set for next frame (no starvation).
+let dirtySink = null;
+let dirtyRaf = 0;
+let dirtyRunning = false;
+function dirtyLoop() {
+  dirtyRaf = 0;
+  const t0 = performance.now();
+  const interacting = t0 - lastInputAt < INPUT_WINDOW;
+  const budget = interacting ? cfg.budgetMs : cfg.budgetMs * 5;
+  let n = 0;
+  // Iterate the Set; deleting the current entry during for..of is safe in JS.
+  for (const target of dirtySink) {
+    dirtySink.delete(target);
+    applyCellRaw(target.$idx); // reads stores[$idx].value (current) — drop-stale
+    n++;
+    if ((n & 7) === 0 && performance.now() - t0 > budget) break;
+  }
+  if (dirtyRunning) dirtyRaf = requestAnimationFrame(dirtyLoop);
+}
+
 // ── sliced — LAYER 3: time-slice the write pass too ──────────────────────────
 // The recurring floor across every earlier round: the synchronous WRITE PASS
 // (updating state for every changed cell) is one long task no presentation
@@ -495,6 +531,10 @@ function clearWiring() {
   if (visRaf) { cancelAnimationFrame(visRaf); visRaf = 0; }
   if (visObserver) { visObserver.disconnect(); visObserver = null; }
   visListDirty = false;
+  dirtyRunning = false;
+  if (dirtyRaf) { cancelAnimationFrame(dirtyRaf); dirtyRaf = 0; }
+  __setDirtySink(null); // EXPERIMENT: stop feeding the sink before other modes wire
+  dirtySink = null;
   smartRunning = false;
   if (smartRaf) { cancelAnimationFrame(smartRaf); smartRaf = 0; }
   slicing = false;
@@ -512,7 +552,7 @@ function wire(mode) {
   // under the smart pull renderer (Layer 1 + Layer 2 together). Note it only
   // culls when the grid overflows the viewport — at small cell counts the whole
   // grid is on-screen and cv is a no-op.
-  grid.classList.toggle('cv', mode === 'cv' || mode === 'smartcv' || mode === 'vis');
+  grid.classList.toggle('cv', mode === 'cv' || mode === 'smartcv' || mode === 'vis' || mode === 'dirty');
 
   if (mode === 'canvas') {
     // The paint-floor probe replaces the DOM grid with a single canvas. Measure
@@ -578,6 +618,19 @@ function wire(mode) {
     for (let i = 0; i < cells.length; i++) visObserver.observe(cells[i]);
     visRunning = true;
     visRaf = requestAnimationFrame(visLoop);
+    return;
+  }
+
+  if (mode === 'dirty') {
+    // Stamp each store's target with its index (via the proxy, before the sink is
+    // installed so it doesn't self-populate), so the drain can map a dirty target
+    // back to its cell. Then install the sink and paint once from current state.
+    for (let i = 0; i < stores.length; i++) stores[i].$idx = i;
+    dirtySink = new Set();
+    __setDirtySink(dirtySink);
+    for (let i = 0; i < stores.length; i++) applyCellRaw(i);
+    dirtyRunning = true;
+    dirtyRaf = requestAnimationFrame(dirtyLoop);
     return;
   }
 
@@ -658,6 +711,9 @@ function currentBacklog() {
     for (let i = 0; i < plainVals.length; i++) if (plainVals[i] !== plainLast[i]) behind++;
     return behind;
   }
+  // dirty's backlog is the sink itself — an O(1) read, the only mode that doesn't
+  // pay the O(N) convergence-poll the other pull modes do (measurement gotcha).
+  if (dirtyRunning && dirtySink) return dirtySink.size;
   // vis intentionally never refreshes offscreen cells, so its meaningful backlog
   // is VISIBLE cells behind — counting hidden ones would report the whole grid.
   if (visRunning) {
