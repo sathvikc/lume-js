@@ -49,6 +49,7 @@ const cfg = {
   dot: params.get('dot') !== '0', // set ?dot=0 to isolate the per-frame render floor
   render: params.get('render') !== '0', // set ?render=0 to keep the flush but skip DOM writes (isolate flush vs rendering cost)
   text: params.get('text') !== '0', // set ?text=0 for paint-only apply (CSS var, no textContent) — matches the original prototype
+  wrate: Number(params.get('wrate')) || 1, // mode=worker: software slow-device throttle for the worker thread (1 = native/free core)
 };
 
 // ── Readouts (bound via Lume; updated once per second — negligible churn) ────
@@ -333,6 +334,89 @@ function canvasLoop() {
   if (canvasRunning) canvasRaf = requestAnimationFrame(canvasLoop);
 }
 
+// ── worker — the OFF-MAIN-THREAD pipeline (producer + diff + paint in a Worker) ─
+// The counterpart to `canvas` that answers next-step (e): `canvas` proved DOM-per-
+// cell paint is ~99% of the remaining input delay but still ran the paint ON the
+// main thread (16 ms floor = one frame of budgeted main-thread paint). `worker`
+// moves the ENTIRE render pipeline — produce, diff, paint — onto a worker thread
+// via OffscreenCanvas.transferControlToOffscreen(). The main thread then does zero
+// per-frame render work, so its input delay is measured against a nearly-idle
+// thread; the worker reports its own paint fps / worst frame back so we see whether
+// pixels stay fresh off-thread. The worker also self-probes the CPU throttle (see
+// worker-paint.js) so we can tell whether it ran throttled (apples-to-apples with
+// the DOM modes) or on a free core (real-hardware analogue). Diagnostic like
+// `canvas` — it abandons the data-* DOM model — but it is the last unmeasured
+// ceiling with breakthrough potential.
+let paintWorker = null;
+let workerCanvasEl = null;
+let workerStats = null;
+// whybrid (hybrid): main-thread reactive state + diff, changed cells posted to the
+// worker to blit. Measures the realistic Lume-integration cost of OffscreenCanvas —
+// the per-frame diff + serialize + postMessage the main thread must still pay when
+// the app's state lives on the main thread (unlike mode=worker, which moves the
+// producer off-thread too and so isn't reactive Lume state).
+let whybridLast = [];
+let whybridScratch = null; // preallocated [i,v,i,v,…] fill buffer, sliced per post
+let whybridCursor = 0;
+let whybridRaf = 0;
+let whybridRunning = false;
+function ensureWorkerCanvas(count) {
+  // transferControlToOffscreen() is one-shot per element, so always build a fresh
+  // canvas for a worker wire (a page runs one mode, so this is once per case).
+  if (workerCanvasEl) { workerCanvasEl.remove(); workerCanvasEl = null; }
+  const { W, H } = computeCanvasGeom(count); // sets cvCols/cvRows/cvCellW/cvCellH
+  workerCanvasEl = document.createElement('canvas');
+  workerCanvasEl.id = 'workercanvas';
+  workerCanvasEl.style.marginTop = '12px';
+  workerCanvasEl.width = Math.round(W);
+  workerCanvasEl.height = Math.round(H);
+  workerCanvasEl.style.width = W + 'px';
+  workerCanvasEl.style.height = H + 'px';
+  grid.parentNode.insertBefore(workerCanvasEl, grid.nextSibling);
+}
+
+// Main-thread diff-and-push loop for whybrid: a `smart`-style input-reserved,
+// cursor-fair sweep over the reactive stores that, instead of painting DOM, packs
+// each changed cell into a flat Float32 buffer and transfers it to the worker. The
+// input delay this produces is the honest cost of using OffscreenCanvas from a
+// main-thread reactive store — everything the DOM pull modes pay MINUS the paint,
+// PLUS the serialize + postMessage.
+function whybridLoop() {
+  whybridRaf = 0;
+  const t0 = performance.now();
+  const interacting = t0 - lastInputAt < INPUT_WINDOW;
+  const budget = interacting ? cfg.budgetMs : cfg.budgetMs * 5;
+  const N = stores.length;
+  let seen = 0;
+  let k = 0; // number of changed cells packed this frame
+  while (seen < N) {
+    const i = whybridCursor;
+    whybridCursor = (whybridCursor + 1) % N;
+    seen++;
+    const v = stores[i].value;
+    if (v !== whybridLast[i]) {
+      whybridLast[i] = v;
+      whybridScratch[2 * k] = i;
+      whybridScratch[2 * k + 1] = v;
+      k++;
+      appliedCount++;
+      applyCounts[i]++;
+      const p = pendingSince[i];
+      if (p !== 0) {
+        const age = performance.now() - p;
+        if (age > maxStaleness) maxStaleness = age;
+        pendingSince[i] = 0;
+      }
+      if ((k & 7) === 0 && performance.now() - t0 > budget) break;
+    }
+  }
+  if (k && paintWorker) {
+    const buf = whybridScratch.slice(0, 2 * k); // exact-size copy for zero-copy transfer
+    paintWorker.postMessage({ type: 'paint', buf: buf.buffer, n: k }, [buf.buffer]);
+  }
+  if (whybridRunning) whybridRaf = requestAnimationFrame(whybridLoop);
+}
+
 // ── smart — drop-stale pull + input-reserved dynamic budget ──────────────────
 // The maintainer's responsiveness-first design:
 //   (1) drop stale work: like `pull`, read CURRENT state and paint the latest
@@ -527,6 +611,10 @@ function clearWiring() {
   if (plainRaf) { cancelAnimationFrame(plainRaf); plainRaf = 0; }
   canvasRunning = false;
   if (canvasRaf) { cancelAnimationFrame(canvasRaf); canvasRaf = 0; }
+  if (paintWorker) { paintWorker.terminate(); paintWorker = null; }
+  workerStats = null;
+  whybridRunning = false;
+  if (whybridRaf) { cancelAnimationFrame(whybridRaf); whybridRaf = 0; }
   visRunning = false;
   if (visRaf) { cancelAnimationFrame(visRaf); visRaf = 0; }
   if (visObserver) { visObserver.disconnect(); visObserver = null; }
@@ -553,6 +641,60 @@ function wire(mode) {
   // culls when the grid overflows the viewport — at small cell counts the whole
   // grid is on-screen and cv is a no-op.
   grid.classList.toggle('cv', mode === 'cv' || mode === 'smartcv' || mode === 'vis' || mode === 'dirty');
+
+  if (mode === 'worker') {
+    // Everything runs in the worker; the main thread only ships it an
+    // OffscreenCanvas and start/stop/reset messages, then stays idle for input.
+    ensureWorkerCanvas(stores.length);
+    grid.style.display = 'none';
+    const off = workerCanvasEl.transferControlToOffscreen();
+    paintWorker = new Worker(new URL('./worker-paint.js', import.meta.url), { type: 'module' });
+    paintWorker.onmessage = (e) => { if (e.data.type === 'stats') workerStats = e.data; };
+    paintWorker.postMessage({
+      type: 'init', canvas: off, count: stores.length,
+      cols: cvCols, gap: cvGap, cellW: cvCellW, cellH: cvCellH,
+      text: cfg.text ? 1 : 0, render: cfg.render ? 1 : 0,
+      budgetMs: 0, churn: cfg.churn, regime: cfg.regime,
+      softThrottle: cfg.wrate, pipeline: 'full',
+    }, [off]);
+    return;
+  }
+
+  if (mode === 'whybrid') {
+    // Hybrid: reactive stores stay on the main thread (the producer writes them via
+    // the normal regime path); this loop diffs them and posts changed cells to the
+    // worker, which blits into the OffscreenCanvas. The main thread still pays the
+    // diff + serialize + postMessage — that cost is the whole point of the mode.
+    ensureWorkerCanvas(stores.length);
+    grid.style.display = 'none';
+    const off = workerCanvasEl.transferControlToOffscreen();
+    paintWorker = new Worker(new URL('./worker-paint.js', import.meta.url), { type: 'module' });
+    paintWorker.onmessage = (e) => { if (e.data.type === 'stats') workerStats = e.data; };
+    paintWorker.postMessage({
+      type: 'init', canvas: off, count: stores.length,
+      cols: cvCols, gap: cvGap, cellW: cvCellW, cellH: cvCellH,
+      text: cfg.text ? 1 : 0, render: cfg.render ? 1 : 0,
+      budgetMs: 0, churn: cfg.churn, regime: cfg.regime,
+      softThrottle: 1, pipeline: 'push',
+    }, [off]);
+    whybridLast = new Array(stores.length);
+    whybridScratch = new Float32Array(2 * stores.length);
+    // Seed last from current values, then post an initial full paint so the worker's
+    // canvas matches the stores (its own init values were random).
+    let k = 0;
+    for (let i = 0; i < stores.length; i++) {
+      whybridLast[i] = stores[i].value;
+      whybridScratch[2 * k] = i;
+      whybridScratch[2 * k + 1] = stores[i].value;
+      k++;
+    }
+    const seed = whybridScratch.slice(0, 2 * k);
+    paintWorker.postMessage({ type: 'paint', buf: seed.buffer, n: k }, [seed.buffer]);
+    whybridCursor = 0;
+    whybridRunning = true;
+    whybridRaf = requestAnimationFrame(whybridLoop);
+    return;
+  }
 
   if (mode === 'canvas') {
     // The paint-floor probe replaces the DOM grid with a single canvas. Measure
@@ -704,6 +846,14 @@ function wire(mode) {
 }
 
 function currentBacklog() {
+  // worker mode: the backlog lives on the worker; use its last reported value.
+  if (cfg.mode === 'worker') return workerStats ? workerStats.backlog : 0;
+  // whybrid: main-thread reactive stores not yet posted to the worker.
+  if (whybridRunning) {
+    let behind = 0;
+    for (let i = 0; i < stores.length; i++) if (stores[i].value !== whybridLast[i]) behind++;
+    return behind;
+  }
   if (queue) return queue.size;
   if (slicing) return sliceCount; // pending writes not yet applied to state
   if (plainRunning) {
@@ -870,8 +1020,12 @@ function onFrame(now) {
   if (cfg.dot) dot.style.transform = `translateX(${(Math.sin(now / 300) + 1) * 51}px)`;
 
   const pw0 = performance.now();
-  if (running && cfg.regime === 'storm') stormWrite();
-  else if (running && cfg.regime === 'dashboard') dashboardWrite();
+  // In worker mode the producer runs IN the worker — the main thread must stay
+  // idle (that is the whole point), so it skips all regime writing here.
+  if (cfg.mode !== 'worker') {
+    if (running && cfg.regime === 'storm') stormWrite();
+    else if (running && cfg.regime === 'dashboard') dashboardWrite();
+  }
   const pwDur = performance.now() - pw0;
   if (pwDur > maxOnFrameMs) maxOnFrameMs = pwDur;
 
@@ -898,11 +1052,19 @@ function onFrame(now) {
 function start() {
   running = true;
   startBtn.textContent = 'Stop';
+  if (cfg.mode === 'worker') {
+    // The worker owns the producer; the main thread's `running` flag only gates
+    // its (worker-mode: absent) regime writer. Kick the worker's pipeline.
+    if (paintWorker) paintWorker.postMessage({ type: 'start' });
+    if (cfg.regime === 'burst') { running = false; startBtn.textContent = 'Start'; }
+    return;
+  }
   if (cfg.regime === 'burst') { burstWrite(); running = false; startBtn.textContent = 'Start'; }
 }
 function stop() {
   running = false;
   startBtn.textContent = 'Start';
+  if (cfg.mode === 'worker' && paintWorker) paintWorker.postMessage({ type: 'stop' });
 }
 startBtn.addEventListener('click', () => (running ? stop() : start()));
 
@@ -930,6 +1092,7 @@ window.__lab = {
     keyCount = 0;
     worstGap = 0;
     for (let i = 0; i < pendingSince.length; i++) { pendingSince[i] = 0; applyCounts[i] = 0; }
+    if (paintWorker) paintWorker.postMessage({ type: 'reset' });
   },
   snapshot() {
     return {
@@ -951,6 +1114,7 @@ window.__lab = {
       maxProducerMs: maxOnFrameMs,
       maxSliceMs,
       visVisibleCount: visRunning ? visVisibleCount : null, // occlusion diagnostic: how many cells the sweep actually touches
+      worker: (cfg.mode === 'worker' || cfg.mode === 'whybrid') ? workerStats : null, // off-thread pipeline stats (fps/paint/throttle probe)
     };
   },
 };

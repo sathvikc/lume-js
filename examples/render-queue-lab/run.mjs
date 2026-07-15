@@ -27,7 +27,7 @@ const BASE = process.env.LAB_BASE || 'http://localhost:5199/examples/render-queu
 
 export function parseArgs(argv) {
   const a = { mode: 'off', regime: 'storm', cells: 3000, budget: 2, churn: 0.08,
-    rate: 20, warmup: 1500, measure: 5000, type: false, converge: false, dot: 1, text: 1, render: 1, headed: false, out: null };
+    rate: 20, warmup: 1500, measure: 5000, type: false, converge: false, dot: 1, text: 1, render: 1, headed: false, wthrottle: false, out: null };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i];
     if (k === '--type') { a.type = true; continue; }
@@ -37,6 +37,13 @@ export function parseArgs(argv) {
     if (k === '--headed') { a.headed = true; continue; }
     if (k === '--burst-type') { a.typeBursty = true; continue; }
     if (k === '--norender') { a.render = 0; continue; }
+    // mode=worker only: software slow-device throttle for the worker thread. CDP
+    // CPU throttling reaches only the page's main thread (a bare worker run pits a
+    // throttled main thread against a native-speed worker — the "free fast core"
+    // analogue), so --wthrottle asks the worker to stretch each frame to --rate×
+    // its compute, modelling a device whose worker core is also slow — the
+    // apples-to-apples case. See worker-paint.js.
+    if (k === '--wthrottle') { a.wthrottle = true; continue; }
     const v = argv[++i];
     if (k === '--mode') a.mode = v;
     else if (k === '--regime') a.regime = v;
@@ -90,13 +97,17 @@ async function runCaseInner(opts, page) {
 
   const cdp = await page.context().newCDPSession(page);
   // Warm the JIT for a stable native baseline, then throttle and probe.
-  const url = `${BASE}?mode=${opts.mode}&regime=${opts.regime}&cells=${opts.cells}&budget=${opts.budget}&churn=${opts.churn}&dot=${opts.dot}&text=${opts.text}&render=${opts.render}`;
+  // Worker-mode parity: --wthrottle asks the worker to software-throttle itself at
+  // --rate (passed as ?wrate=; the worker stretches each frame to rate× its compute).
+  const wrate = (opts.mode === 'worker' && opts.wthrottle) ? opts.rate : 1;
+  const url = `${BASE}?mode=${opts.mode}&regime=${opts.regime}&cells=${opts.cells}&budget=${opts.budget}&churn=${opts.churn}&dot=${opts.dot}&text=${opts.text}&render=${opts.render}&wrate=${wrate}`;
   await page.goto(url, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__lab && window.__lab.cfg);
   for (let i = 0; i < 4; i++) await busyProbe(page);
   const nativeMs = await busyProbe(page);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: opts.rate });
   const throttledMs = await busyProbe(page);
+  const workerThrottled = wrate > 1;
 
   await page.focus('input[data-bind="typed"]').catch(() => {});
   // burst's whole point is the one-shot spike at start(): for OFF that spike is
@@ -200,6 +211,11 @@ async function runCaseInner(opts, page) {
     } : null,
     smartBusyFraction: snap.smartBusyFraction != null ? round1(snap.smartBusyFraction) : null,
     visVisibleCount: snap.visVisibleCount != null ? snap.visVisibleCount : null,
+    // mode=worker: off-thread pipeline stats. worker.fps / worker.worstPaintMs are
+    // the pixel-freshness signal; worker.probe.slowdown says whether the CPU
+    // throttle reached the worker thread (≈1 = free core, ≈rate = throttled).
+    worker: snap.worker || null,
+    workerThrottled, // whether the worker software slow-device throttle (wrate>1) was active
     maxProducerMs: snap.maxProducerMs != null ? round1(snap.maxProducerMs) : null,
     maxSliceMs: snap.maxSliceMs != null ? round1(snap.maxSliceMs) : null,
     maxStalenessMs: round1(snap.maxStaleness),

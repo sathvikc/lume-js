@@ -26,7 +26,7 @@ function parse(argv) {
   const a = { modes: ['off', 'pull'], regimes: ['dashboard'], cells: [3000],
     budget: 2, churn: 0.08, rate: 20, warmup: 1500, measure: 6000,
     type: false, typeBursty: false, converge: false, dot: 1, text: 1, render: 1,
-    headed: false, out: null };
+    headed: false, wthrottle: false, out: null };
   const nums = new Set(['budget', 'churn', 'rate', 'warmup', 'measure']);
   const lists = { modes: 'modes', regimes: 'regimes', cells: 'cells' };
   for (let i = 0; i < argv.length; i++) {
@@ -38,6 +38,7 @@ function parse(argv) {
     if (k === 'burst-type') { a.type = true; a.typeBursty = true; continue; }
     if (k === 'converge') { a.converge = true; continue; }
     if (k === 'headed') { a.headed = true; continue; }
+    if (k === 'wthrottle') { a.wthrottle = true; continue; }
     const v = argv[++i];
     if (k in lists) a[lists[k]] = k === 'cells' ? v.split(',').map(Number) : v.split(',');
     else if (nums.has(k)) a[k] = Number(v);
@@ -48,15 +49,19 @@ function parse(argv) {
 
 const fmt = (v, w = 6) => String(v == null ? '—' : v).padStart(w);
 const cols = (r) => {
-  const mt = r.mainThread || {}; const st = r.starvation || {};
+  const mt = r.mainThread || {}; const st = r.starvation || {}; const w = r.worker || {};
+  const wp = w.probe || {};
   return [
     fmt(r.inputDelay.median), fmt(r.inputDelay.p95), fmt(r.frame.fps, 5),
     fmt(mt.worstBlockMs), fmt(mt.freePct, 5), fmt(r.maxStalenessMs, 7),
     fmt(r.backlog.peak, 6), fmt(st.zeroCount, 5), fmt(r.backlog.convergeMs, 6),
     fmt(r.smartBusyFraction, 5), fmt(r.maxProducerMs, 5), fmt(r.maxSliceMs, 5),
+    // worker-mode only (— for every other mode): off-thread paint fps, worst paint
+    // frame, and the worker's own throttle slowdown (≈1 free core / ≈rate throttled).
+    fmt(w.fps, 5), fmt(w.worstPaintMs, 6), fmt(wp.slowdown, 5),
   ].join(' ');
 };
-const HEADER = ['in.med', 'in.p95', '  fps', 'worstBl', 'free%', 'maxStal', 'peakBL', 'starv', '  conv', 'busyF', ' prod', 'slice'];
+const HEADER = ['in.med', 'in.p95', '  fps', 'worstBl', 'free%', 'maxStal', 'peakBL', 'starv', '  conv', 'busyF', ' prod', 'slice', ' wfps', ' wPnt', 'wSlow'];
 
 const a = parse(process.argv.slice(2));
 const all = [];
@@ -71,7 +76,7 @@ for (const regime of a.regimes) {
         const r = await runCase({ mode, regime, cells, budget: a.budget, churn: a.churn,
           rate: a.rate, warmup: a.warmup, measure: a.measure, type: a.type,
           typeBursty: a.typeBursty, converge: a.converge, dot: a.dot, text: a.text,
-          render: a.render, headed: a.headed });
+          render: a.render, headed: a.headed, wthrottle: a.wthrottle });
         all.push(r);
         console.log(mode.padEnd(9) + ' ' + cols(r) + `   (${(Date.now() - t0) / 1000 | 0}s, ${r.throttle.effectiveSlowdown}x)`);
       } catch (e) {
