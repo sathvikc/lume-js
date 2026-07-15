@@ -1,0 +1,258 @@
+[
+  {
+    "mode": "off",
+    "regime": "dashboard",
+    "cells": 3000,
+    "budget": 2,
+    "churn": 0.08,
+    "rate": 20,
+    "warmup": 1500,
+    "measure": 6000,
+    "type": true,
+    "typeBursty": false,
+    "converge": false,
+    "dot": 0,
+    "text": 1,
+    "render": 1,
+    "headed": false,
+    "throttle": {
+      "rate": 20,
+      "nativeMs": 4.3,
+      "throttledMs": 79.7,
+      "throttledMs2": 136.3,
+      "effectiveSlowdown": 18.5
+    },
+    "inputDelay": {
+      "worst": 3463.6,
+      "p95": 3300.1,
+      "median": 1935.2,
+      "count": 60,
+      "keys": 60,
+      "eventWorst": 124.2,
+      "eventCount": 5
+    },
+    "frame": {
+      "p95Gap": 3799.8,
+      "worstGap": 3799.8,
+      "medianGap": 3183.3,
+      "fps": 0.3,
+      "frames": 3
+    },
+    "backlog": {
+      "peak": 0,
+      "atEnd": 0,
+      "convergeMs": null
+    },
+    "starvation": {
+      "min": 0,
+      "max": 3,
+      "zeroCount": 2360,
+      "total": 3000
+    },
+    "mainThread": {
+      "longTaskCount": 6,
+      "longTaskTotalMs": 12957,
+      "worstBlockMs": 3466,
+      "freePct": 0
+    },
+    "smartBusyFraction": null,
+    "visVisibleCount": null,
+    "maxProducerMs": 92.3,
+    "maxSliceMs": 0,
+    "maxStalenessMs": 84.4,
+    "appliedCount": 699,
+    "errs": []
+  },
+  {
+    "mode": "cv",
+    "regime": "dashboard",
+    "cells": 3000,
+    "budget": 2,
+    "churn": 0.08,
+    "rate": 20,
+    "warmup": 1500,
+    "measure": 6000,
+    "type": true,
+    "typeBursty": false,
+    "converge": false,
+    "dot": 0,
+    "text": 1,
+    "render": 1,
+    "headed": false,
+    "throttle": {
+      "rate": 20,
+      "nativeMs": 3.4,
+      "throttledMs": 82.3,
+      "throttledMs2": 81.2,
+      "effectiveSlowdown": 24.2
+    },
+    "inputDelay": {
+      "worst": 1719.3,
+      "p95": 1563.4,
+      "median": 888.7,
+      "count": 60,
+      "keys": 60,
+      "eventWorst": 1512.2,
+      "eventCount": 170
+    },
+    "frame": {
+      "p95Gap": 2083.2,
+      "worstGap": 2083.2,
+      "medianGap": 1650,
+      "fps": 0.6,
+      "frames": 5
+    },
+    "backlog": {
+      "peak": 0,
+      "atEnd": 0,
+      "convergeMs": null
+    },
+    "starvation": {
+      "min": 0,
+      "max": 3,
+      "zeroCount": 2006,
+      "total": 3000
+    },
+    "mainThread": {
+      "longTaskCount": 10,
+      "longTaskTotalMs": 10022,
+      "worstBlockMs": 1806,
+      "freePct": 0
+    },
+    "smartBusyFraction": null,
+    "visVisibleCount": null,
+    "maxProducerMs": 110,
+    "maxSliceMs": 0,
+    "maxStalenessMs": 99.5,
+    "appliedCount": 1151,
+    "errs": []
+  },
+  {
+    "mode": "smartcv",
+    "regime": "dashboard",
+    "cells": 3000,
+    "budget": 2,
+    "churn": 0.08,
+    "rate": 20,
+    "warmup": 1500,
+    "measure": 6000,
+    "type": true,
+    "typeBursty": false,
+    "converge": false,
+    "dot": 0,
+    "text": 1,
+    "render": 1,
+    "headed": false,
+    "throttle": {
+      "rate": 20,
+      "nativeMs": 3.6,
+      "throttledMs": 81.9,
+      "throttledMs2": 91.1,
+      "effectiveSlowdown": 22.7
+    },
+    "inputDelay": {
+      "worst": 1043.8,
+      "p95": 877.2,
+      "median": 410.7,
+      "count": 60,
+      "keys": 60,
+      "eventWorst": 1064,
+      "eventCount": 220
+    },
+    "frame": {
+      "p95Gap": 1016.8,
+      "worstGap": 1016.8,
+      "medianGap": 833.3,
+      "fps": 1.2,
+      "frames": 8
+    },
+    "backlog": {
+      "peak": 1338,
+      "atEnd": 1338,
+      "convergeMs": null
+    },
+    "starvation": {
+      "min": 0,
+      "max": 1,
+      "zeroCount": 2448,
+      "total": 3000
+    },
+    "mainThread": {
+      "longTaskCount": 14,
+      "longTaskTotalMs": 6878,
+      "worstBlockMs": 1078,
+      "freePct": 0
+    },
+    "smartBusyFraction": 1,
+    "visVisibleCount": null,
+    "maxProducerMs": 11,
+    "maxSliceMs": 0,
+    "maxStalenessMs": 6081.1,
+    "appliedCount": 552,
+    "errs": []
+  },
+  {
+    "mode": "canvas",
+    "regime": "dashboard",
+    "cells": 3000,
+    "budget": 2,
+    "churn": 0.08,
+    "rate": 20,
+    "warmup": 1500,
+    "measure": 6000,
+    "type": true,
+    "typeBursty": false,
+    "converge": false,
+    "dot": 0,
+    "text": 1,
+    "render": 1,
+    "headed": false,
+    "throttle": {
+      "rate": 20,
+      "nativeMs": 4.2,
+      "throttledMs": 95.8,
+      "throttledMs2": 49.7,
+      "effectiveSlowdown": 22.8
+    },
+    "inputDelay": {
+      "worst": 52.6,
+      "p95": 45.4,
+      "median": 25.6,
+      "count": 60,
+      "keys": 60,
+      "eventWorst": 91.5,
+      "eventCount": 295
+    },
+    "frame": {
+      "p95Gap": 83.4,
+      "worstGap": 100.1,
+      "medianGap": 66.6,
+      "fps": 15.9,
+      "frames": 97
+    },
+    "backlog": {
+      "peak": 2770,
+      "atEnd": 2698,
+      "convergeMs": null
+    },
+    "starvation": {
+      "min": 0,
+      "max": 2,
+      "zeroCount": 6,
+      "total": 3000
+    },
+    "mainThread": {
+      "longTaskCount": 25,
+      "longTaskTotalMs": 1396,
+      "worstBlockMs": 87,
+      "freePct": 77.1
+    },
+    "smartBusyFraction": null,
+    "visVisibleCount": null,
+    "maxProducerMs": 11.4,
+    "maxSliceMs": 0,
+    "maxStalenessMs": 4187.4,
+    "appliedCount": 3720,
+    "errs": []
+  }
+]
