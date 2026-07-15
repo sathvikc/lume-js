@@ -28,7 +28,7 @@ const BASE = process.env.LAB_BASE || 'http://localhost:5199/examples/render-queu
 export function parseArgs(argv) {
   const a = { mode: 'off', regime: 'storm', cells: 3000, budget: 2, churn: 0.08,
     rate: 20, warmup: 1500, measure: 5000, type: false, converge: false, dot: 1, text: 1, render: 1, headed: false, wthrottle: false,
-    paint: 'var', contain: 'off', fixed: false, out: null };
+    paint: 'var', contain: 'off', fixed: false, scroll: false, out: null };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i];
     if (k === '--type') { a.type = true; continue; }
@@ -46,6 +46,10 @@ export function parseArgs(argv) {
     // apples-to-apples case. See worker-paint.js.
     if (k === '--wthrottle') { a.wthrottle = true; continue; }
     if (k === '--fixed') { a.fixed = true; continue; }
+    // Round 14: drive the page scroll during the measure window (occlusion's real
+    // use case for mode=vis). Oscillates a mouse wheel up/down through the grid, so
+    // cells scroll in and out of the viewport and the IntersectionObserver churns.
+    if (k === '--scroll') { a.scroll = true; continue; }
     const v = argv[++i];
     if (k === '--mode') a.mode = v;
     else if (k === '--paint') a.paint = v;   // Round 13: var | bg
@@ -134,19 +138,42 @@ async function runCaseInner(opts, page) {
   // cadence via CDP, FIRE-AND-FORGET — never awaiting the renderer. Awaiting a
   // keystroke (page.keyboard.type) deadlocks the driver when a frame is seconds
   // long; the in-page handler records the true queueing delay regardless.
-  if (opts.type) {
+  let scrollState = null;
+  // Measure the actual scrollable range so the oscillation matches the page (the
+  // grid is wide/short, so even 12000 cells only overflows a few hundred px); an
+  // amplitude larger than this pins the page at the top/bottom instead of revealing.
+  const maxScroll = opts.scroll ? await page.evaluate(() => Math.max(0, document.body.scrollHeight - window.innerHeight)).catch(() => 0) : 0;
+  if (opts.type || opts.scroll) {
     const t0 = Date.now();
+    let dir = 1;      // scroll direction (1 = down, -1 = up)
+    let accum = 0;    // px scrolled from the top, kept within the grid's overflow
+    let scrollCount = 0;
+    let maxY = 0;
     while (Date.now() - t0 < opts.measure) {
       // Bursty typing (1.2s typing / 1.2s idle) exercises an input-reserved
       // dynamic budget: it can only show idle catch-up if there are idle gaps.
       // Continuous typing (default) keeps the interaction window always warm.
       const elapsed = Date.now() - t0;
       const idleGap = opts.typeBursty && Math.floor(elapsed / 1200) % 2 === 1;
-      if (!idleGap) {
+      if (opts.type && !idleGap) {
         cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'a', code: 'KeyA', text: 'a', windowsVirtualKeyCode: 65 }).catch(() => {});
         cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65 }).catch(() => {});
       }
+      if (opts.scroll && maxScroll > 0) {
+        // Oscillate the wheel through the grid so rows continuously reveal/occlude
+        // (mode=vis's real use case). Reverse at the top and at the page bottom.
+        const dy = 140 * dir;
+        cdp.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: 450, y: 360, deltaX: 0, deltaY: dy }).catch(() => {});
+        accum += dy;
+        if (accum > maxScroll) { accum = maxScroll; dir = -1; } else if (accum < 0) { accum = 0; dir = 1; }
+        if (accum > maxY) maxY = accum;
+        scrollCount++;
+      }
       await new Promise((r) => setTimeout(r, 100));
+    }
+    if (opts.scroll) {
+      const y = await page.evaluate(() => window.scrollY).catch(() => null);
+      scrollState = { count: scrollCount, maxScroll, finalY: y, sweptPx: maxY };
     }
   } else {
     await page.waitForTimeout(opts.measure);
@@ -220,6 +247,7 @@ async function runCaseInner(opts, page) {
     // throttle reached the worker thread (≈1 = free core, ≈rate = throttled).
     worker: snap.worker || null,
     workerThrottled, // whether the worker software slow-device throttle (wrate>1) was active
+    scroll: scrollState, // Round 14: {count, finalY} when --scroll drove the page (confirms occlusion churned)
     maxProducerMs: snap.maxProducerMs != null ? round1(snap.maxProducerMs) : null,
     maxSliceMs: snap.maxSliceMs != null ? round1(snap.maxSliceMs) : null,
     maxStalenessMs: round1(snap.maxStaleness),

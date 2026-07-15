@@ -26,7 +26,7 @@ function parse(argv) {
   const a = { modes: ['off', 'pull'], regimes: ['dashboard'], cells: [3000],
     budget: 2, churn: 0.08, rate: 20, warmup: 1500, measure: 6000,
     type: false, typeBursty: false, converge: false, dot: 1, text: 1, render: 1,
-    headed: false, wthrottle: false, paint: 'var', contain: 'off', fixed: false, out: null };
+    headed: false, wthrottle: false, paint: 'var', contain: 'off', fixed: false, scroll: false, out: null };
   const nums = new Set(['budget', 'churn', 'rate', 'warmup', 'measure']);
   const strs = new Set(['paint', 'contain']);
   const lists = { modes: 'modes', regimes: 'regimes', cells: 'cells' };
@@ -41,6 +41,7 @@ function parse(argv) {
     if (k === 'headed') { a.headed = true; continue; }
     if (k === 'wthrottle') { a.wthrottle = true; continue; }
     if (k === 'fixed') { a.fixed = true; continue; }
+    if (k === 'scroll') { a.scroll = true; continue; }
     const v = argv[++i];
     if (k in lists) a[lists[k]] = k === 'cells' ? v.split(',').map(Number) : v.split(',');
     else if (nums.has(k)) a[k] = Number(v);
@@ -68,7 +69,7 @@ const HEADER = ['in.med', 'in.p95', '  fps', 'worstBl', 'free%', 'maxStal', 'pea
 
 const a = parse(process.argv.slice(2));
 const all = [];
-console.log(`modes=${a.modes} regimes=${a.regimes} cells=${a.cells} budget=${a.budget} rate=${a.rate}x dot=${a.dot} type=${a.type}${a.typeBursty ? '(bursty)' : ''} text=${a.text} paint=${a.paint} contain=${a.contain} fixed=${a.fixed}`);
+console.log(`modes=${a.modes} regimes=${a.regimes} cells=${a.cells} budget=${a.budget} rate=${a.rate}x dot=${a.dot} type=${a.type}${a.typeBursty ? '(bursty)' : ''} text=${a.text} paint=${a.paint} contain=${a.contain} fixed=${a.fixed} scroll=${a.scroll}`);
 for (const regime of a.regimes) {
   for (const cells of a.cells) {
     console.log(`\n=== ${regime} · ${cells} cells ===`);
@@ -80,7 +81,7 @@ for (const regime of a.regimes) {
           rate: a.rate, warmup: a.warmup, measure: a.measure, type: a.type,
           typeBursty: a.typeBursty, converge: a.converge, dot: a.dot, text: a.text,
           render: a.render, headed: a.headed, wthrottle: a.wthrottle,
-          paint: a.paint, contain: a.contain, fixed: a.fixed });
+          paint: a.paint, contain: a.contain, fixed: a.fixed, scroll: a.scroll });
         all.push(r);
         console.log(mode.padEnd(9) + ' ' + cols(r) + `   (${(Date.now() - t0) / 1000 | 0}s, ${r.throttle.effectiveSlowdown}x)`);
       } catch (e) {
