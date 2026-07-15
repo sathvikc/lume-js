@@ -12,6 +12,8 @@ This is a **pure research/experiment branch**. Explore freely:
 
 `renderQueue` is settled (KILLed) — you never need to revisit it; it stays imported only so the lab has a `mode=rq` baseline to compare against.
 
+**Experimental `src/` edits currently applied on this branch:** `src/core/state.js` carries the Round-6 **no-subscriber fast-path** (marked `// EXPERIMENT:`) — the `set` trap skips all notify/flush work when a store has zero listeners and no beforeFlush hooks. It's behaviourally transparent (all 488 tests pass) and is a candidate to graduate to `main` with the full artifact matrix. To measure *without* it, `git stash -- src/core/state.js` and re-run. Nothing else in `src/` is patched.
+
 ## Reusable scripts — USE THESE instead of writing a new one
 
 | script | what it does | example |
@@ -51,6 +53,7 @@ Lab page: `index.html` + `main.js`, configured by URL query. To add a technique:
 | `pull` | NO per-cell effects — one rAF sweeps cursor, reads current state, paints changed within budget | attacks the flush; best in storm |
 | `smart` | `pull` + input-reserved dynamic budget (small while interacting, 5× when idle) | best input of the pull family |
 | `sliced` | LAYER 3 — also time-slice the WRITE pass: producer buffers latest value, budgeted loop applies+paints a slice/frame | chunking works; kernel write path is the floor |
+| `plain` | pull renderer over a PLAIN array — no `state()`, producer writes raw memory; scheduling identical to `pull` | the theoretical write floor (~0% kernel); confirms how little is left under the fast-path |
 
 URL knobs: `regime` (`storm`/`dashboard`/`burst`/`quiet`), `cells`, `budget`, `churn`, `dot` (0 removes the jank-dot render artifact — **always use dot=0 for real numbers**), `text` (0 = paint-only apply), `render` (0 = keep flush, skip DOM writes — isolates rendering cost).
 
@@ -64,6 +67,7 @@ URL knobs: `regime` (`storm`/`dashboard`/`burst`/`quiet`), `cells`, `budget`, `c
 6. **Main-thread free time.** Budgeted schedulers (pull/bounded) roughly HALVE the worst blocking task vs `off` — that (not fps) is what they buy. But nothing frees the thread from the WRITE pass. *(FINDINGS Round 3.)*
 7. **`smart` (drop-stale + input-reserved budget)** had the best input of the pull family (burst: 1218ms vs 1486–1557ms fixed). Principle 2 works, but its ceiling is the write pass. *(FINDINGS Round 4; `smart.mjs`.)*
 8. **Layer 3 (`sliced`): time-slicing the write pass.** Chunking WORKS at the JS level (producer 7ms, slice 16ms, budget-respected). But a CPU profile shows the real floor is the **Lume kernel write path** — `set` + `notifySubscribers` + `flushBatchedStates` ≈ **27% of active CPU**, O(N) in writes, even with ZERO subscribers. Chunking spreads it, doesn't reduce it; input at 3000 cells (~1155ms) ≈ pull/off. *(FINDINGS Round 5 / `results/layer3-summary.json`.)*
+9. **Round 6 — the write-path floor is removed, two ways.** (a) **Kernel no-subscriber fast-path** (`src/core/state.js`, applied): the `set` trap skips notify/flush when a store has no listeners + no beforeFlush hooks. `pull` storm worst write-pass frame **156→16ms (~10×)**; profile kernel write path **~9%→~1.5%** (`notifySubscribers`/`takeEffects` vanish); **all 488 tests pass unchanged**. (b) **`plain` mode** (pull over a plain array, no `state()`): profile shows **~0% kernel write path** (97% `(program)`), `prod` ~8–16ms. The fast-path captures ~85% of the win *while keeping the reactive API*; plain buys only the last sliver by dropping reactivity. Neither raises the fps ceiling (still content-visibility) nor fixes input under a pure paint-bound storm — they remove the O(N) write floor Round 5 diagnosed. Use `prod` (worst write-pass frame), not input-delay (paint-dominated) or `worstBlock` (throttle-inflated). *(FINDINGS Round 6 / `results/round6-writepath-floor.json`, `exp1-fastpath.json`, `exp2-plain.json`.)*
 
 ## Measurement gotchas (learned the hard way — respect these)
 
@@ -78,9 +82,9 @@ URL knobs: `regime` (`storm`/`dashboard`/`burst`/`quiet`), `cells`, `budget`, `c
 
 ## What has NOT been tried yet (next-session candidates)
 
-1. **Kernel no-subscriber fast-path.** `notifySubscribers` (state.js:131) allocates `Array.from(pendingNotifications)` and iterates even with zero subscribers — ~10% of CPU in the pull/sliced pattern. Patch `src/core/state.js` directly (mark it `// EXPERIMENT:`) to clear-and-return when a store has no listeners, then `profile.mjs --mode sliced` to measure the write-path drop. No artifact matrix needed here — it only matters when/if this graduates to a shipping branch.
-2. **Pull renderer over PLAIN data (bypass reactive state entirely).** Since a pull renderer has no subscribers, the high-churn layer could hold plain arrays/objects, skipping `set`/`notify`/`flush` (the 27%) completely. This is likely the biggest single lever for storm-scale throughput and has NOT been measured.
-3. **`smart` + `cv` combined** (input-reserved pull renderer on a content-visibility grid) — layer 1 + layer 2 together. Each measured alone; not together.
+1. ✅ **DONE (Round 6) — Kernel no-subscriber fast-path.** Applied in `src/core/state.js` (`// EXPERIMENT:`). Not just `notifySubscribers` — the whole `set`-trap notify/flush path is skipped when a store has no listeners + no beforeFlush hooks. `pull` storm write-pass frame 156→16ms; kernel write path ~9%→~1.5%; 488 tests pass. Next step for *this* one is graduation to `main` with the full artifact matrix, not more measurement. *(FINDINGS Round 6.)*
+2. ✅ **DONE (Round 6) — Pull renderer over PLAIN data.** Added as `mode=plain`. Profile confirms ~0% kernel write path (the theoretical floor). Finding: after the fast-path (item 1) the reactive `pull` write pass is already within ~1–2× of plain, so bypassing `state()` buys only the last sliver — not worth losing reactivity for the churny layer. *(FINDINGS Round 6.)*
+3. **`smart` + `cv` combined** (input-reserved pull renderer on a content-visibility grid) — layer 1 + layer 2 together. Each measured alone; not together. **Now the top unstarted lever** — it stacks the only fps-ceiling raiser (`cv`) with the best input scheduler (`smart`), and the write floor beneath is already gone (item 1), so this is the cleanest remaining "all three layers at once" test.
 4. **Recency-priority within the slice** (paint most-recently-changed first, with a fairness floor) — the "render the newest batch, drop older" half of principle 1 at sub-frame granularity. `bounded`/`pull` use index-order cursors; recency ordering is untested.
 5. **Adaptive budget by measured sustainable rate** (grow/shrink the budget from recent frame timing), vs the current fixed 2ms/10ms input-reserved toggle. The "continuously measure how much we can sustain" idea is only crudely approximated.
 6. **A clean freshness/convergence measurement** (fix the O(N) poll: maintain an O(1) backlog counter, or sample the drain curve at fixed times instead of polling to 0) to finally show `smart`'s "best of both" on the freshness axis.
@@ -89,4 +93,6 @@ URL knobs: `regime` (`storm`/`dashboard`/`burst`/`quiet`), `cells`, `budget`, `c
 
 ## Verdict as it stands
 
-KILL `renderQueue` as designed (freeze + starvation + dominated + over budget). The constructive direction, layered by cost: **(1) reduce render work** — `content-visibility` (only thing that raises the fps ceiling); **(2) drop-stale, cursor-fair, input-reserved pull rendering** — `smart`/`pull`/`bounded`; **(3) the write-pass floor** — the real remaining problem, which is the Lume *kernel* write path, best attacked by a no-subscriber fast-path and/or a plain-data pull layer, and only secondarily by scheduling. Items 1–3 in "not tried yet" are the highest-leverage next steps.
+KILL `renderQueue` as designed (freeze + starvation + dominated + over budget). The constructive direction, layered by cost: **(1) reduce render work** — `content-visibility` (only thing that raises the fps ceiling); **(2) drop-stale, cursor-fair, input-reserved pull rendering** — `smart`/`pull`/`bounded`; **(3) the write-pass floor** — *now addressed* by the Round-6 kernel no-subscriber fast-path (`src/core/state.js`), which makes an unsubscribed store's write ~10× cheaper (156→16ms/frame) and lands it within ~1–2× of plain data, so the churny layer no longer needs to abandon `state()`. Layer 3's remaining O(N) is the irreducible `Proxy` trap + DOM paint, not the notify/flush machinery.
+
+**Highest-leverage next step:** graduate the fast-path to `main` (it's behaviourally transparent — 488 tests green — so this is an artifact-matrix exercise, not more research), then test item 3 in "not tried yet" — `smart` + `cv` stacked, the only combination that puts all three layers together now that the write floor is gone.

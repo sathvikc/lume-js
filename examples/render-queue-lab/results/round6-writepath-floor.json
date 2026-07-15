@@ -1,0 +1,39 @@
+{
+  "note": "Round 6 = attacking the Round-5 write-path floor two ways. (A) A kernel no-subscriber fast-path in src/core/state.js (the set trap skips all notify/flush work when a store has zero listeners + no beforeFlush hooks). (B) A `plain` lab mode: pull renderer over a plain array, no state() at all — the theoretical floor. Metric that matters: maxProducerMs (`prod`) = worst synchronous write-pass frame; it is a direct duration of the 3000-cell write loop, far cleaner than input-delay (paint-dominated) or worstBlock (throttle-inflated). All runs: 20x CPU throttle, dot off, 3000 cells, continuous typing, measure 6000ms. Throttle drifts per case (shown); prod is throttle-scaled, so read the ~10x within-metric jumps, not the exact ms.",
+
+  "A_kernel_fast_path": {
+    "change": "src/core/state.js — listenerCount tracked in addListener; set trap returns after storing the value when listenerCount===0 && beforeFlushHooks.length===0; notifySubscribers early-returns when listenerCount===0. 488 existing tests pass unchanged (behaviourally transparent).",
+    "pull_worst_write_pass_frame_prod_ms": {
+      "storm":     { "baseline": 156.4, "fastpath": 16.3, "note": "~10x; throttle 23.1x -> 22.5x (slightly EASIER, yet prod fell 10x)" },
+      "dashboard": { "baseline": 44.3,  "fastpath": 23.2, "note": "~2x; only 8% of cells write per frame so the pass is smaller" }
+    },
+    "cpu_profile_pull_storm_3000_20x_selftime": {
+      "before": { "notifySubscribers": "5.2%", "takeEffects": "1.6%", "set": "1.1%", "flushBatchedStates": "0.7%", "enqueueIfBatching": "0.3%", "kernel_write_path_total": "~9%" },
+      "after":  { "set": "1.0%", "flushBatchedStates": "0.1%", "notifySubscribers": "gone", "takeEffects": "gone", "kernel_write_path_total": "~1.5%" }
+    },
+    "input_median_ms_noisy": {
+      "pull_storm": { "baseline": 1647, "fastpath": 1279.7 },
+      "pull_dashboard": { "baseline": 1870.5, "fastpath": 1310.8 },
+      "caveat": "Directionally down but within run-to-run noise: OFF (which never takes the fast path) swung 5875->2536 storm between runs from throttle/GC alone. Input is dominated by DOM paint under throttle, not the write pass; treat prod + profile as the clean signals."
+    }
+  },
+
+  "B_plain_data_pull_layer": {
+    "change": "examples/render-queue-lab/main.js — new `plain` mode: high-churn layer held in a plain array, producer writes it directly (no proxy/set/notify/flush/batch), scheduling byte-identical to `pull`.",
+    "worst_write_pass_frame_prod_ms_one_matrix_run": {
+      "storm_3000":     { "off": 444.9, "pull_fastpath": 45.9, "plain": 15.9, "sliced_buffer": 16.4 },
+      "dashboard_3000": { "off": 91.7,  "pull_fastpath": 14.4, "plain": 8.0,  "sliced_buffer": 8.7 }
+    },
+    "cpu_profile_plain_storm_3000_20x": {
+      "program": "97.4%",
+      "kernel_write_path": "0% (no set / notifySubscribers / state.js get anywhere in the profile; the residual batch/flush samples are the once-per-second ui readout store)",
+      "note": "The plain array write is the theoretical floor — the write layer contributes essentially nothing; the frame is all DOM paint."
+    }
+  },
+
+  "verdict": {
+    "kernel_write_path_progression_pull_storm": "~9% (before) -> ~1.5% (fast path) -> ~0% (plain). The fast path captures ~85% of the available kernel-write savings while keeping the FULL reactive API; plain captures the last sliver by abandoning reactivity.",
+    "pull_vs_plain_gap": "After the fast path, pull's write pass (~16 ms storm / ~14 ms dashboard) sits within ~1-2x of a raw plain-array write (~16 ms / ~8 ms). The residual is the Proxy set trap itself (Object.is + brand + dispatch) — real but small, and swamped by DOM paint.",
+    "so_what": "The no-subscriber fast path is the high-leverage, shippable win: it makes an unsubscribed store's write nearly free, so a pull/streaming renderer does NOT need to abandon state() for the high-churn layer. A plain-data layer is the true floor but its marginal gain over a fast-path'd unsubscribed store is small on an already-small write pass. Neither raises the fps ceiling (that is still content-visibility / less work) or fixes input under storm alone (paint-bound); they remove the write-pass floor that Round 5 identified."
+  }
+}

@@ -10,7 +10,8 @@ import { renderQueue } from 'lume-js/addons';
 // across modes — only *when* and *whether* it is deferred changes. That keeps
 // OFF vs ON vs alternatives an honest comparison of scheduling, not of work.
 //
-//   mode    = off | rq | simple | adaptive | cv      (how presentation is wired)
+//   mode    = off | rq | simple | adaptive | cv | bounded | pull | smart |
+//             sliced | plain                          (how presentation is wired)
 //   regime  = storm | dashboard | burst | quiet       (how state is written)
 //   cells   = grid size (default 3000)
 //   budget  = renderQueue budgetMs (default 2)
@@ -183,6 +184,60 @@ function pullLoop() {
   if (pullRunning) pullRaf = requestAnimationFrame(pullLoop);
 }
 
+// ── plain — pull renderer over PLAIN data (no state(), no kernel at all) ──────
+// The truest write-path floor and the counterpart to the kernel no-subscriber
+// fast path. `pull` still routes every write through the reactive `set` trap
+// (Object.is, brand, proxy dispatch) even though nothing subscribes; `plain`
+// holds the high-churn layer in a plain array and the producer writes it
+// directly — no proxy, no set trap, no notify, no flush, no batch. Scheduling
+// is byte-identical to `pull` (same budgeted, cursor-fair rAF poll); the ONLY
+// difference is the write layer, so plain-vs-pull isolates exactly the reactive
+// write cost that even the fast path cannot remove (the trap itself). If the
+// fast path has done its job, pull's `prod` should now sit right on plain's.
+let plainVals = [];
+let plainLast = [];
+let plainCursor = 0;
+let plainRaf = 0;
+let plainRunning = false;
+// Dedicated apply so the existing modes' hot path (applyCellRaw, which reads a
+// reactive store) is left byte-for-byte unchanged — measurement integrity.
+function applyPlainRaw(i) {
+  const v = plainVals[i];
+  if (cfg.render) {
+    const cell = cells[i];
+    cell.style.setProperty('--h', String((v * 3.6) | 0));
+    if (cfg.text) cell.firstChild.nodeValue = fmtInt(v);
+  }
+  appliedCount++;
+  applyCounts[i]++;
+  const p = pendingSince[i];
+  if (p !== 0) {
+    const age = performance.now() - p;
+    if (age > maxStaleness) maxStaleness = age;
+    pendingSince[i] = 0;
+  }
+}
+function plainLoop() {
+  plainRaf = 0;
+  const t0 = performance.now();
+  const N = plainVals.length;
+  let seen = 0;
+  let n = 0;
+  while (seen < N) {
+    const i = plainCursor;
+    plainCursor = (plainCursor + 1) % N;
+    seen++;
+    const v = plainVals[i];
+    if (v !== plainLast[i]) {
+      plainLast[i] = v;
+      applyPlainRaw(i);
+      n++;
+      if ((n & 7) === 0 && performance.now() - t0 > cfg.budgetMs) break;
+    }
+  }
+  if (plainRunning) plainRaf = requestAnimationFrame(plainLoop);
+}
+
 // ── smart — drop-stale pull + input-reserved dynamic budget ──────────────────
 // The maintainer's responsiveness-first design:
 //   (1) drop stale work: like `pull`, read CURRENT state and paint the latest
@@ -290,6 +345,8 @@ function clearWiring() {
   bCursor = 0;
   pullRunning = false;
   if (pullRaf) { cancelAnimationFrame(pullRaf); pullRaf = 0; }
+  plainRunning = false;
+  if (plainRaf) { cancelAnimationFrame(plainRaf); plainRaf = 0; }
   smartRunning = false;
   if (smartRaf) { cancelAnimationFrame(smartRaf); smartRaf = 0; }
   slicing = false;
@@ -312,6 +369,18 @@ function wire(mode) {
     pullCursor = 0;
     pullRunning = true;
     pullRaf = requestAnimationFrame(pullLoop);
+    return;
+  }
+
+  if (mode === 'plain') {
+    // Seed the plain layer from the stores' initial values, then never touch
+    // the reactive stores again — the producer and renderer use plainVals only.
+    plainVals = new Array(stores.length);
+    plainLast = new Array(stores.length);
+    for (let i = 0; i < stores.length; i++) { plainVals[i] = stores[i].value; plainLast[i] = plainVals[i]; applyPlainRaw(i); }
+    plainCursor = 0;
+    plainRunning = true;
+    plainRaf = requestAnimationFrame(plainLoop);
     return;
   }
 
@@ -387,6 +456,11 @@ function wire(mode) {
 function currentBacklog() {
   if (queue) return queue.size;
   if (slicing) return sliceCount; // pending writes not yet applied to state
+  if (plainRunning) {
+    let behind = 0;
+    for (let i = 0; i < plainVals.length; i++) if (plainVals[i] !== plainLast[i]) behind++;
+    return behind;
+  }
   // pull/smart keep no queue — their backlog is cells whose current value has
   // not yet been painted. O(N), only polled for convergence, so acceptable.
   const last = pullRunning ? pullLast : (smartRunning ? smartLast : null);
@@ -446,7 +520,9 @@ function nextVal(v) {
 }
 function writeCell(i) {
   if (pendingSince[i] === 0) pendingSince[i] = performance.now();
-  if (slicing) {
+  if (plainRunning) {
+    plainVals[i] = nextVal(plainVals[i]); // raw array write — no proxy, no kernel write path
+  } else if (slicing) {
     // Producer only buffers the latest incoming value (coalesced, drop-stale) —
     // cheap ingestion, like receiving a data point; no proxy read, no state
     // write. The expensive work (state write + paint) is deferred to sliceLoop.

@@ -357,6 +357,42 @@ The remaining floor after Round 4 was the synchronous write pass. `sliced` (in `
 
 **Net:** the write pass is chunkable, but under it lies the kernel write path, which scheduling cannot cheapen — only a cheaper kernel write (no-subscriber fast-path) or not using reactive state for the churny layer (plain-data pull) can. See [`HANDOFF.md`](HANDOFF.md) for the full menu of what's been tried and the next-session candidates.
 
+## Round 6: killing the write-path floor — kernel fast-path + plain-data pull
+
+Round 5 ended on the kernel write path as the last floor and named two levers for it. Round 6 built and measured both. Data: `results/round6-writepath-floor.json`, `results/exp1-fastpath.json`, `results/exp2-plain.json`. The clean metric throughout is **`maxProducerMs` (`prod` in the matrix): the worst synchronous write-pass frame** — a direct duration of the 3000-cell write loop, not paint-dominated like input-delay and not throttle-inflated like `worstBlock`. (Input-delay is reported too, but it clusters across every mode because under a 20× throttle input is bound by the DOM paint, not the write pass — OFF, which never uses the fast path, swung 5875→2536 ms storm between two runs from throttle/GC alone. Take `prod` and the CPU profile as the signal; input as noisy corroboration.)
+
+### Lever 1 — the kernel no-subscriber fast-path (`src/core/state.js`)
+
+An unsubscribed store still paid the entire notify/flush machinery on every write: `pendingNotifications.set` → `scheduleFlush` → (inside `batch()`) enqueue into `batchedStates` → a flush that ran `Array.from(pendingNotifications)` and `takeEffects()` **to notify nobody**. In the pull/`sliced` pattern (reactive cells, zero effects) Round 5's profile put that at ~9 % of active CPU per storm frame, entirely wasted. The fix: track a live `listenerCount` (both `$subscribe` and effect subscriptions register through `addListener`, so both are counted) and short-circuit the `set` trap when `listenerCount === 0 && beforeFlushHooks.length === 0` — store the value on the target and return, skipping all downstream scheduling. A later `subscribe()` still fires immediately with the current value, so nothing is missed; `notifySubscribers` keeps a matching zero-listener guard for the beforeFlush-only path. **All 488 existing tests pass unchanged** — the fast path is behaviourally transparent, which is the strongest evidence it is correct and could graduate.
+
+**Measured (20×, dot off, 3000 cells, throttle-controlled):**
+
+| case | before | after | change |
+|---|---|---|---|
+| `pull` storm — worst write-pass frame | 156.4 ms | **16.3 ms** | ~10× (throttle even eased 23.1→22.5×) |
+| `pull` dashboard — worst write-pass frame | 44.3 ms | **23.2 ms** | ~2× (only 8 % of cells write/frame) |
+
+The CPU profile is unambiguous: `notifySubscribers` (was 5.2 %) and `takeEffects` (was 1.6 %) **vanish from the profile**; `flushBatchedStates` 0.7 %→0.1 %, `enqueueIfBatching` gone. The kernel write path drops from **~9 % → ~1.5 %** of active CPU (only the bare `set` trap remains). A single `set` on a store nothing observes is now essentially the cost of an `Object.is` check plus a property store — the reactive write on an unsubscribed store is as cheap as a plain assignment.
+
+### Lever 2 — `plain`: pull renderer over plain data, no `state()` at all
+
+The truest floor and the counterpart to Lever 1: hold the high-churn layer in a plain array and have the producer write it directly (no proxy, no `set`, no notify, no flush, no batch). The new `plain` mode's scheduling is byte-identical to `pull` (same budgeted, cursor-fair rAF poll); the **only** difference is the write layer, so `plain`-vs-`pull` isolates exactly the reactive-write cost that even the fast path cannot remove — the `Proxy` trap itself.
+
+**Worst write-pass frame (`prod`), one matrix run:**
+
+| regime | `off` | `pull` (fast-path) | `plain` (raw array) | `sliced` (buffer) |
+|---|---|---|---|---|
+| storm 3000 | 444.9 | 45.9 | **15.9** | 16.4 |
+| dashboard 3000 | 91.7 | 14.4 | **8.0** | 8.7 |
+
+A CPU profile of `plain` storm shows **97.4 % `(program)` and zero kernel write path** — no `set`, no `notifySubscribers`, no state.js `get` anywhere (the trace's only kernel samples are the once-per-second `ui` readout store). The write layer contributes essentially nothing; the frame is all DOM paint.
+
+### What Round 6 settles
+
+The kernel write path, storm/3000, went **~9 % → ~1.5 % → ~0 %** of active CPU across `pull`-before-fastpath → `pull`-after-fastpath → `plain`. **The fast path captures ~85 % of the available write-path saving while keeping the full reactive API.** The residual `pull`-over-`plain` gap after the fast path is small (~16 ms vs ~16 ms storm; ~14 ms vs ~8 ms dashboard) and is just the `Proxy` set trap — real, but a minority of an already-small write pass, and swamped by paint. So a pull/streaming renderer does **not** need to abandon `state()` for the churny layer: an unsubscribed store is now nearly free to write, and dropping to plain data buys only the last sliver at the cost of all reactivity.
+
+Two caveats stand. Neither lever raises the **fps ceiling** — that is still Layer 1 (`content-visibility` / doing less render work); rescheduling and cheaper writes move the same total work around, they don't shrink the paint. And neither fixes **input under a pure storm** on its own, because at 3000 cells under 20× the frame is paint-bound; the write-pass win shows up as headroom (a shorter worst write frame, more thread left for input) rather than a clean input-latency drop in these throttled runs. What Round 6 removes is precisely the floor Round 5 diagnosed: the O(N) kernel write cost that scheduling could only spread, never reduce. The fast-path is the shippable half (a real, behaviourally-transparent core optimization worth graduating with the full artifact matrix); the plain-data layer is the theoretical floor that confirms how little is left underneath it.
+
 ## Reproducing
 
 ```bash
@@ -372,8 +408,12 @@ node examples/render-queue-lab/headroom.mjs storm 20   # fps ceiling + main-thre
 node examples/render-queue-lab/headroom.mjs dashboard 1 # native ceiling (1x); arg4 = custom cell counts
 node examples/render-queue-lab/smart.mjs            # smart (drop-stale + input-reserved budget) vs fixed-budget pull
 node examples/render-queue-lab/run.mjs --mode sliced --regime dashboard --cells 3000 --nodot --type  # layer 3
+# round-6 write-path floor (kernel fast-path + plain-data pull):
+node examples/render-queue-lab/matrix.mjs --modes off,pull,plain,sliced --regimes storm,dashboard --cells 3000 --nodot --type  # prod = worst write-pass frame
+node examples/render-queue-lab/profile.mjs --mode pull --regime storm --cells 3000   # before/after the fast-path: watch notifySubscribers/takeEffects vanish
+node examples/render-queue-lab/profile.mjs --mode plain --regime storm --cells 3000  # zero kernel write path (the floor)
 # single case:
 node examples/render-queue-lab/run.mjs --mode pull --regime storm --cells 3000 --nodot --type --out results/one.json
 ```
 
-Open `http://localhost:5199/examples/render-queue-lab/?mode=pull&regime=storm&cells=3000` and flip the URL params to drive it by hand: `mode` = `off`/`rq`/`simple`/`adaptive`/`cv`/`bounded`/`pull`/`smart`, plus `regime`, `cells`, `budget`, `churn`, `dot` (0 to remove the jank-dot artifact), `text` (0 for paint-only apply), `render` (0 to keep the flush but skip DOM writes). Every result JSON embeds its own throttle probe so numbers are self-describing.
+Open `http://localhost:5199/examples/render-queue-lab/?mode=pull&regime=storm&cells=3000` and flip the URL params to drive it by hand: `mode` = `off`/`rq`/`simple`/`adaptive`/`cv`/`bounded`/`pull`/`smart`/`sliced`/`plain`, plus `regime`, `cells`, `budget`, `churn`, `dot` (0 to remove the jank-dot artifact), `text` (0 for paint-only apply), `render` (0 to keep the flush but skip DOM writes). Every result JSON embeds its own throttle probe so numbers are self-describing. The Round-6 kernel fast-path lives in `src/core/state.js` (marked `// EXPERIMENT:`); to A/B it, `git stash` that file and re-run the profile/matrix above.
