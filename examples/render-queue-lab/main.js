@@ -11,7 +11,7 @@ import { renderQueue } from 'lume-js/addons';
 // OFF vs ON vs alternatives an honest comparison of scheduling, not of work.
 //
 //   mode    = off | rq | simple | adaptive | cv | bounded | pull | smart |
-//             sliced | plain | smartcv | canvas        (how presentation is wired)
+//             sliced | plain | smartcv | canvas | vis   (how presentation is wired)
 //   regime  = storm | dashboard | burst | quiet       (how state is written)
 //   cells   = grid size (default 3000)
 //   budget  = renderQueue budgetMs (default 2)
@@ -373,6 +373,58 @@ function smartLoop() {
   if (smartRunning) smartRaf = requestAnimationFrame(smartLoop);
 }
 
+// ── vis — occlusion-driven write culling (Layer 1 for the SWEEP, not just paint) ─
+// `content-visibility` (cv) culls offscreen PAINT, but every pull mode still sweeps
+// and writes cells in cursor order across the WHOLE grid — wasting render budget on
+// cells nobody can see, and making a visible cell wait up to O(N) cursor steps to be
+// revisited (why `smart` alone loses to `off` at 8000 cells — Round 7). `vis` keeps
+// an IntersectionObserver visible-set and sweeps/writes ONLY visible cells, cursor-
+// fair within that set, at full rate; offscreen cells are never written while hidden
+// and refresh lazily the instant they scroll in (their stale `visLast` differs from
+// the live value, so the loop repaints them on reveal — no bookkeeping). It stacks
+// the cv class (paint culling) and smart's input-reserved budget, so vis-vs-smartcv
+// isolates exactly the sweep/write-culling contribution on top of paint culling.
+let visObserver = null;
+let visVisible = [];   // per-cell visible flag (maintained by the IntersectionObserver)
+let visIndices = [];   // compact list of visible cell indices (rebuilt when the set changes)
+let visLast = [];
+let visCursor = 0;
+let visRaf = 0;
+let visRunning = false;
+let visListDirty = false;
+let visVisibleCount = 0;
+function visRebuild() {
+  visIndices.length = 0;
+  for (let i = 0; i < visVisible.length; i++) if (visVisible[i]) visIndices.push(i);
+  visVisibleCount = visIndices.length;
+  visListDirty = false;
+  if (visCursor >= visIndices.length) visCursor = 0;
+}
+function visLoop() {
+  visRaf = 0;
+  if (visListDirty) visRebuild();
+  const t0 = performance.now();
+  const interacting = t0 - lastInputAt < INPUT_WINDOW;
+  const budget = interacting ? cfg.budgetMs : cfg.budgetMs * 5;
+  const M = visIndices.length;
+  let seen = 0;
+  let n = 0;
+  while (seen < M) {
+    if (visCursor >= M) visCursor = 0;
+    const i = visIndices[visCursor];
+    visCursor++;
+    seen++;
+    const v = stores[i].value;
+    if (v !== visLast[i]) {
+      visLast[i] = v;
+      applyCellRaw(i);
+      n++;
+      if ((n & 7) === 0 && performance.now() - t0 > budget) break;
+    }
+  }
+  if (visRunning) visRaf = requestAnimationFrame(visLoop);
+}
+
 // ── sliced — LAYER 3: time-slice the write pass too ──────────────────────────
 // The recurring floor across every earlier round: the synchronous WRITE PASS
 // (updating state for every changed cell) is one long task no presentation
@@ -439,6 +491,10 @@ function clearWiring() {
   if (plainRaf) { cancelAnimationFrame(plainRaf); plainRaf = 0; }
   canvasRunning = false;
   if (canvasRaf) { cancelAnimationFrame(canvasRaf); canvasRaf = 0; }
+  visRunning = false;
+  if (visRaf) { cancelAnimationFrame(visRaf); visRaf = 0; }
+  if (visObserver) { visObserver.disconnect(); visObserver = null; }
+  visListDirty = false;
   smartRunning = false;
   if (smartRaf) { cancelAnimationFrame(smartRaf); smartRaf = 0; }
   slicing = false;
@@ -456,7 +512,7 @@ function wire(mode) {
   // under the smart pull renderer (Layer 1 + Layer 2 together). Note it only
   // culls when the grid overflows the viewport — at small cell counts the whole
   // grid is on-screen and cv is a no-op.
-  grid.classList.toggle('cv', mode === 'cv' || mode === 'smartcv');
+  grid.classList.toggle('cv', mode === 'cv' || mode === 'smartcv' || mode === 'vis');
 
   if (mode === 'canvas') {
     // The paint-floor probe replaces the DOM grid with a single canvas. Measure
@@ -496,6 +552,32 @@ function wire(mode) {
     plainCursor = 0;
     plainRunning = true;
     plainRaf = requestAnimationFrame(plainLoop);
+    return;
+  }
+
+  if (mode === 'vis') {
+    // Paint all cells once so the visible region isn't blank before the observer
+    // reports (its first callback is async, after this returns), then sweep only
+    // the visible set from then on.
+    visLast = new Array(stores.length);
+    for (let i = 0; i < stores.length; i++) { visLast[i] = stores[i].value; applyCellRaw(i); }
+    visVisible = new Array(stores.length).fill(false);
+    visIndices = [];
+    visVisibleCount = 0;
+    visCursor = 0;
+    visListDirty = true;
+    // rootMargin prefetches a band of just-offscreen cells so a scroll reveals
+    // already-fresh pixels; threshold 0 = "any pixel visible counts".
+    visObserver = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        const i = e.target.__cidx;
+        const vis = e.isIntersecting;
+        if (visVisible[i] !== vis) { visVisible[i] = vis; visListDirty = true; }
+      }
+    }, { root: null, rootMargin: '64px 0px', threshold: 0 });
+    for (let i = 0; i < cells.length; i++) visObserver.observe(cells[i]);
+    visRunning = true;
+    visRaf = requestAnimationFrame(visLoop);
     return;
   }
 
@@ -576,6 +658,16 @@ function currentBacklog() {
     for (let i = 0; i < plainVals.length; i++) if (plainVals[i] !== plainLast[i]) behind++;
     return behind;
   }
+  // vis intentionally never refreshes offscreen cells, so its meaningful backlog
+  // is VISIBLE cells behind — counting hidden ones would report the whole grid.
+  if (visRunning) {
+    let behind = 0;
+    for (let k = 0; k < visIndices.length; k++) {
+      const i = visIndices[k];
+      if (stores[i].value !== visLast[i]) behind++;
+    }
+    return behind;
+  }
   // pull/smart/canvas keep no queue — their backlog is cells whose current value
   // has not yet been painted. O(N), only polled for convergence, so acceptable.
   const last = pullRunning ? pullLast : (smartRunning ? smartLast : (canvasRunning ? canvasLast : null));
@@ -616,6 +708,7 @@ function setup(count) {
     stores[i] = state({ value: Math.random() * 100 });
     const cell = document.createElement('div');
     cell.className = 'cell';
+    cell.__cidx = i; // for the vis mode's IntersectionObserver → index lookup
     cell.appendChild(document.createTextNode('0'));
     frag.appendChild(cell);
     cells[i] = cell;
@@ -801,6 +894,7 @@ window.__lab = {
       smartBusyFraction: smartTotalFrames ? smartBusyFrames / smartTotalFrames : null,
       maxProducerMs: maxOnFrameMs,
       maxSliceMs,
+      visVisibleCount: visRunning ? visVisibleCount : null, // occlusion diagnostic: how many cells the sweep actually touches
     };
   },
 };

@@ -199,6 +199,7 @@ async function runCaseInner(opts, page) {
       freePct: measureWall > 0 ? round1(100 * (1 - Math.min(1, snap.longTasks.totalMs / measureWall))) : null,
     } : null,
     smartBusyFraction: snap.smartBusyFraction != null ? round1(snap.smartBusyFraction) : null,
+    visVisibleCount: snap.visVisibleCount != null ? snap.visVisibleCount : null,
     maxProducerMs: snap.maxProducerMs != null ? round1(snap.maxProducerMs) : null,
     maxSliceMs: snap.maxSliceMs != null ? round1(snap.maxSliceMs) : null,
     maxStalenessMs: round1(snap.maxStaleness),
