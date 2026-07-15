@@ -70,6 +70,15 @@
       content-visibility: auto;
       contain-intrinsic-size: 12px;
     }
+    /* Round 13 — per-cell paint containment probes (?contain=content|strict).
+       content = layout+paint+style containment (scopes invalidation to the cell);
+       strict adds size containment + a fixed intrinsic size (no reflow from content). */
+    #grid.pc-content .cell { contain: content; }
+    #grid.pc-strict .cell { contain: strict; contain-intrinsic-size: auto 12px; }
+    /* Round 13 — fixed-size cells (?fixed=1): explicit box so the browser never
+       measures intrinsic content size for layout. */
+    #grid.fixedcell { grid-auto-columns: 14px; }
+    #grid.fixedcell .cell { width: 14px; height: 12px; }
   </style>
 </head>
 <body>

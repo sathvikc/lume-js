@@ -1,0 +1,212 @@
+[
+  {
+    "mode": "off",
+    "regime": "dashboard",
+    "cells": 3000,
+    "budget": 2,
+    "churn": 0.08,
+    "rate": 20,
+    "warmup": 1500,
+    "measure": 6000,
+    "type": true,
+    "typeBursty": false,
+    "converge": false,
+    "dot": 0,
+    "text": 0,
+    "render": 1,
+    "headed": false,
+    "wthrottle": false,
+    "paint": "var",
+    "contain": "strict",
+    "fixed": false,
+    "throttle": {
+      "rate": 20,
+      "nativeMs": 5.6,
+      "throttledMs": 142.5,
+      "throttledMs2": 148,
+      "effectiveSlowdown": 25.4
+    },
+    "inputDelay": {
+      "worst": 992.1,
+      "p95": 917.3,
+      "median": 483.1,
+      "count": 60,
+      "keys": 60,
+      "eventWorst": 955.4,
+      "eventCount": 215
+    },
+    "frame": {
+      "p95Gap": 1199.9,
+      "worstGap": 1199.9,
+      "medianGap": 1033.3,
+      "fps": 1.1,
+      "frames": 8
+    },
+    "backlog": {
+      "peak": 0,
+      "atEnd": 0,
+      "convergeMs": null
+    },
+    "starvation": {
+      "min": 0,
+      "max": 4,
+      "zeroCount": 1558,
+      "total": 3000
+    },
+    "mainThread": {
+      "longTaskCount": 15,
+      "longTaskTotalMs": 7462,
+      "worstBlockMs": 1034,
+      "freePct": 0
+    },
+    "smartBusyFraction": null,
+    "visVisibleCount": null,
+    "worker": null,
+    "workerThrottled": false,
+    "maxProducerMs": 71.9,
+    "maxSliceMs": 0,
+    "maxStalenessMs": 64.6,
+    "appliedCount": 1864,
+    "errs": []
+  },
+  {
+    "mode": "cv",
+    "regime": "dashboard",
+    "cells": 3000,
+    "budget": 2,
+    "churn": 0.08,
+    "rate": 20,
+    "warmup": 1500,
+    "measure": 6000,
+    "type": true,
+    "typeBursty": false,
+    "converge": false,
+    "dot": 0,
+    "text": 0,
+    "render": 1,
+    "headed": false,
+    "wthrottle": false,
+    "paint": "var",
+    "contain": "strict",
+    "fixed": false,
+    "throttle": {
+      "rate": 20,
+      "nativeMs": 5.7,
+      "throttledMs": 128.2,
+      "throttledMs2": 128,
+      "effectiveSlowdown": 22.5
+    },
+    "inputDelay": {
+      "worst": 1151.6,
+      "p95": 1054.9,
+      "median": 527.8,
+      "count": 60,
+      "keys": 60,
+      "eventWorst": 1079,
+      "eventCount": 225
+    },
+    "frame": {
+      "p95Gap": 1349.9,
+      "worstGap": 1349.9,
+      "medianGap": 1083.2,
+      "fps": 0.9,
+      "frames": 7
+    },
+    "backlog": {
+      "peak": 0,
+      "atEnd": 0,
+      "convergeMs": null
+    },
+    "starvation": {
+      "min": 0,
+      "max": 4,
+      "zeroCount": 1725,
+      "total": 3000
+    },
+    "mainThread": {
+      "longTaskCount": 13,
+      "longTaskTotalMs": 7961,
+      "worstBlockMs": 1205,
+      "freePct": 0
+    },
+    "smartBusyFraction": null,
+    "visVisibleCount": null,
+    "worker": null,
+    "workerThrottled": false,
+    "maxProducerMs": 81.8,
+    "maxSliceMs": 0,
+    "maxStalenessMs": 65.2,
+    "appliedCount": 1608,
+    "errs": []
+  },
+  {
+    "mode": "smartcv",
+    "regime": "dashboard",
+    "cells": 3000,
+    "budget": 2,
+    "churn": 0.08,
+    "rate": 20,
+    "warmup": 1500,
+    "measure": 6000,
+    "type": true,
+    "typeBursty": false,
+    "converge": false,
+    "dot": 0,
+    "text": 0,
+    "render": 1,
+    "headed": false,
+    "wthrottle": false,
+    "paint": "var",
+    "contain": "strict",
+    "fixed": false,
+    "throttle": {
+      "rate": 20,
+      "nativeMs": 6.5,
+      "throttledMs": 144.3,
+      "throttledMs2": 121.3,
+      "effectiveSlowdown": 22.2
+    },
+    "inputDelay": {
+      "worst": 973,
+      "p95": 899.2,
+      "median": 463.4,
+      "count": 60,
+      "keys": 60,
+      "eventWorst": 919.9,
+      "eventCount": 215
+    },
+    "frame": {
+      "p95Gap": 1366.6,
+      "worstGap": 1366.6,
+      "medianGap": 1050,
+      "fps": 0.9,
+      "frames": 7
+    },
+    "backlog": {
+      "peak": 1547,
+      "atEnd": 1547,
+      "convergeMs": null
+    },
+    "starvation": {
+      "min": 0,
+      "max": 1,
+      "zeroCount": 2896,
+      "total": 3000
+    },
+    "mainThread": {
+      "longTaskCount": 14,
+      "longTaskTotalMs": 8432,
+      "worstBlockMs": 1046,
+      "freePct": 0
+    },
+    "smartBusyFraction": 1,
+    "visVisibleCount": null,
+    "worker": null,
+    "workerThrottled": false,
+    "maxProducerMs": 13.4,
+    "maxSliceMs": 0,
+    "maxStalenessMs": 6647.1,
+    "appliedCount": 104,
+    "errs": []
+  }
+]

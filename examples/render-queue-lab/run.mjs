@@ -27,7 +27,8 @@ const BASE = process.env.LAB_BASE || 'http://localhost:5199/examples/render-queu
 
 export function parseArgs(argv) {
   const a = { mode: 'off', regime: 'storm', cells: 3000, budget: 2, churn: 0.08,
-    rate: 20, warmup: 1500, measure: 5000, type: false, converge: false, dot: 1, text: 1, render: 1, headed: false, wthrottle: false, out: null };
+    rate: 20, warmup: 1500, measure: 5000, type: false, converge: false, dot: 1, text: 1, render: 1, headed: false, wthrottle: false,
+    paint: 'var', contain: 'off', fixed: false, out: null };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i];
     if (k === '--type') { a.type = true; continue; }
@@ -44,8 +45,11 @@ export function parseArgs(argv) {
     // its compute, modelling a device whose worker core is also slow — the
     // apples-to-apples case. See worker-paint.js.
     if (k === '--wthrottle') { a.wthrottle = true; continue; }
+    if (k === '--fixed') { a.fixed = true; continue; }
     const v = argv[++i];
     if (k === '--mode') a.mode = v;
+    else if (k === '--paint') a.paint = v;   // Round 13: var | bg
+    else if (k === '--contain') a.contain = v; // Round 13: off | content | strict
     else if (k === '--regime') a.regime = v;
     else if (k === '--cells') a.cells = Number(v);
     else if (k === '--budget') a.budget = Number(v);
@@ -100,7 +104,7 @@ async function runCaseInner(opts, page) {
   // Worker-mode parity: --wthrottle asks the worker to software-throttle itself at
   // --rate (passed as ?wrate=; the worker stretches each frame to rate× its compute).
   const wrate = (opts.mode === 'worker' && opts.wthrottle) ? opts.rate : 1;
-  const url = `${BASE}?mode=${opts.mode}&regime=${opts.regime}&cells=${opts.cells}&budget=${opts.budget}&churn=${opts.churn}&dot=${opts.dot}&text=${opts.text}&render=${opts.render}&wrate=${wrate}`;
+  const url = `${BASE}?mode=${opts.mode}&regime=${opts.regime}&cells=${opts.cells}&budget=${opts.budget}&churn=${opts.churn}&dot=${opts.dot}&text=${opts.text}&render=${opts.render}&wrate=${wrate}&paint=${opts.paint || 'var'}&contain=${opts.contain || 'off'}&fixed=${opts.fixed ? 1 : 0}`;
   await page.goto(url, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__lab && window.__lab.cfg);
   for (let i = 0; i < 4; i++) await busyProbe(page);

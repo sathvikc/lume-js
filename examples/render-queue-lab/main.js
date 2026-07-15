@@ -50,6 +50,9 @@ const cfg = {
   render: params.get('render') !== '0', // set ?render=0 to keep the flush but skip DOM writes (isolate flush vs rendering cost)
   text: params.get('text') !== '0', // set ?text=0 for paint-only apply (CSS var, no textContent) — matches the original prototype
   wrate: Number(params.get('wrate')) || 1, // mode=worker: software slow-device throttle for the worker thread (1 = native/free core)
+  paint: params.get('paint') || 'var', // Round 13: 'var' = setProperty('--h'), 'bg' = direct style.backgroundColor
+  contain: params.get('contain') || 'off', // Round 13: '' | 'content' | 'strict' — per-cell CSS containment
+  fixed: params.get('fixed') === '1', // Round 13: explicit fixed-size cells (no intrinsic measurement)
 };
 
 // ── Readouts (bound via Lume; updated once per second — negligible churn) ────
@@ -93,7 +96,10 @@ function applyCellRaw(i) {
   const v = stores[i].value; // tracked read (keeps effect wiring identical across render on/off)
   if (cfg.render) {
     const cell = cells[i];
-    cell.style.setProperty('--h', String((v * 3.6) | 0)); // paint (background hsl)
+    // Round 13: 'bg' writes the background directly (localized invalidation);
+    // 'var' (default) sets the inherited custom property `--h` that the CSS reads.
+    if (cfg.paint === 'bg') cell.style.backgroundColor = `hsl(${(v * 3.6) | 0} 75% 55%)`;
+    else cell.style.setProperty('--h', String((v * 3.6) | 0)); // paint (background hsl)
     if (cfg.text) cell.firstChild.nodeValue = fmtInt(v);   // layout (text) — skip for paint-only
   }
   appliedCount++;
@@ -641,6 +647,10 @@ function wire(mode) {
   // culls when the grid overflows the viewport — at small cell counts the whole
   // grid is on-screen and cv is a no-op.
   grid.classList.toggle('cv', mode === 'cv' || mode === 'smartcv' || mode === 'vis' || mode === 'dirty');
+  // Round 13 — per-cell paint knobs, orthogonal to the scheduler mode.
+  grid.classList.toggle('pc-content', cfg.contain === 'content');
+  grid.classList.toggle('pc-strict', cfg.contain === 'strict');
+  grid.classList.toggle('fixedcell', cfg.fixed);
 
   if (mode === 'worker') {
     // Everything runs in the worker; the main thread only ships it an
