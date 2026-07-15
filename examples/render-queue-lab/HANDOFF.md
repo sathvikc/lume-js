@@ -1,6 +1,28 @@
 # render-queue-lab — session handoff
 
-Read this first if you are picking up this research in a new session. It is the index of **what has been tried, what was found, and what has NOT been tried yet** — so you can continue without re-deriving anything and without re-running experiments that are already done. The full analysis is in [`FINDINGS.md`](FINDINGS.md); raw numbers are in [`results/`](results/). This branch is research/experiment only — nothing here ships, `src/` is untouched except the imported (frozen) `renderQueue` addon.
+Read this first if you are picking up this research in a new session. It is the index of **what has been tried, what was found, and what has NOT been tried yet** — so you can continue without re-deriving anything and without re-running experiments that are already done. The full analysis is in [`FINDINGS.md`](FINDINGS.md); raw numbers are in [`results/`](results/).
+
+## Ground rules for this branch (read this — it is deliberately permissive)
+
+This is a **pure research/experiment branch**. Explore freely:
+
+- **You may modify `src/` directly.** Fork a kernel file, patch `state.js`/`batch.js`/`effect.js`, add an experimental core primitive — whatever tests a hypothesis fastest. You do **NOT** need the AGENTS.md artifact matrix (tests + `.d.ts` + docs + changelog + decision entry) for experiments here; that is only required if a change later graduates to a real shipping branch off `main`. Mark experimental src edits with a `// EXPERIMENT:` comment so they are obvious, and note them in this file.
+- **Prefer reusing the scripts below over writing new ones** — writing a bespoke measurement script per experiment burns the session budget fast. `matrix.mjs` + `profile.mjs` + `run.mjs` cover almost everything via CLI args.
+- Only hard limits: don't push to `main` or `feature/render-queue`; keep work on this branch; keep `HANDOFF.md` current so the next session doesn't repeat you.
+
+`renderQueue` is settled (KILLed) — you never need to revisit it; it stays imported only so the lab has a `mode=rq` baseline to compare against.
+
+## Reusable scripts — USE THESE instead of writing a new one
+
+| script | what it does | example |
+|---|---|---|
+| `run.mjs` | one measurement case, all flags, `--out` JSON | `node run.mjs --mode smart --regime storm --cells 3000 --nodot --type` |
+| `matrix.mjs` | **the workhorse** — cross-product of modes × regimes × cells, prints a metric table + JSON. Add a mode to `main.js` and it's instantly runnable | `node matrix.mjs --modes off,pull,smart --regimes storm,dashboard --cells 1000,3000 --nodot --type` |
+| `profile.mjs` | CDP CPU profile → self-time % by function (how the kernel write-path floor was found) | `node profile.mjs --mode sliced --regime dashboard --cells 3000` |
+| `headroom.mjs` | fps ceiling + thread-free % across cell counts | `node headroom.mjs storm 20` / `dashboard 1` |
+| `round2.mjs` | `starve` \| `compare` \| `fidelity` sub-experiments | `node round2.mjs starve` |
+
+`matrix.mjs` metric columns: `in.med in.p95 fps worstBlock free% maxStale peakBL starved conv busyFrac prod slice`. All modes/flags are wired through `runCase` in `run.mjs`, so any new mode or `main.js` metric surfaces automatically once added to the snapshot + result. Reminder: `worstBlock`/`free%` are throttle-inflated (relative-only); lead with `in.med`.
 
 ## The question
 
@@ -14,7 +36,7 @@ PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i --no-save playwright-core   # research-
 ```
 Browser: `/opt/pw-browsers/chromium` via `playwright-core`. Throttle: CDP `Emulation.setCPUThrottlingRate {rate:20}`, verified every run with a busy-loop probe (embedded in each result JSON). Headed (real compositor): wrap the node command in `xvfb-run -a`.
 
-Drivers: `run.mjs` (one case, many flags), `sweep.mjs` (matrices), `round2.mjs` (starve/compare/fidelity), `headroom.mjs` (fps + thread-free), `smart.mjs` (smart vs fixed budget). Lab page: `index.html` + `main.js`, configured by URL query.
+Lab page: `index.html` + `main.js`, configured by URL query. To add a technique: add a `mode` branch in `main.js` `wire()` (+ any teardown in `clearWiring`, any metric in `snapshot`), then run it via `matrix.mjs --modes <yourmode>,...` — no driver changes needed.
 
 ## Modes implemented in the lab (URL `?mode=`)
 
@@ -56,7 +78,7 @@ URL knobs: `regime` (`storm`/`dashboard`/`burst`/`quiet`), `cells`, `budget`, `c
 
 ## What has NOT been tried yet (next-session candidates)
 
-1. **Kernel no-subscriber fast-path.** `notifySubscribers` (state.js:131) allocates `Array.from(pendingNotifications)` and iterates even with zero subscribers — ~10% of CPU in the pull/sliced pattern. Add a guard that clears and returns when a store has no listeners; measure the write-path cost drop. This is a concrete, shippable *core* optimization (would need the full artifact matrix if pursued).
+1. **Kernel no-subscriber fast-path.** `notifySubscribers` (state.js:131) allocates `Array.from(pendingNotifications)` and iterates even with zero subscribers — ~10% of CPU in the pull/sliced pattern. Patch `src/core/state.js` directly (mark it `// EXPERIMENT:`) to clear-and-return when a store has no listeners, then `profile.mjs --mode sliced` to measure the write-path drop. No artifact matrix needed here — it only matters when/if this graduates to a shipping branch.
 2. **Pull renderer over PLAIN data (bypass reactive state entirely).** Since a pull renderer has no subscribers, the high-churn layer could hold plain arrays/objects, skipping `set`/`notify`/`flush` (the 27%) completely. This is likely the biggest single lever for storm-scale throughput and has NOT been measured.
 3. **`smart` + `cv` combined** (input-reserved pull renderer on a content-visibility grid) — layer 1 + layer 2 together. Each measured alone; not together.
 4. **Recency-priority within the slice** (paint most-recently-changed first, with a fairness floor) — the "render the newest batch, drop older" half of principle 1 at sub-frame granularity. `bounded`/`pull` use index-order cursors; recency ordering is untested.
