@@ -11,7 +11,7 @@ import { renderQueue } from 'lume-js/addons';
 // OFF vs ON vs alternatives an honest comparison of scheduling, not of work.
 //
 //   mode    = off | rq | simple | adaptive | cv | bounded | pull | smart |
-//             sliced | plain                          (how presentation is wired)
+//             sliced | plain | smartcv                (how presentation is wired)
 //   regime  = storm | dashboard | burst | quiet       (how state is written)
 //   cells   = grid size (default 3000)
 //   budget  = renderQueue budgetMs (default 2)
@@ -360,7 +360,11 @@ function clearWiring() {
 
 function wire(mode) {
   clearWiring();
-  grid.classList.toggle('cv', mode === 'cv');
+  // cv (content-visibility) is a grid-level CSS modifier; `smartcv` stacks it
+  // under the smart pull renderer (Layer 1 + Layer 2 together). Note it only
+  // culls when the grid overflows the viewport — at small cell counts the whole
+  // grid is on-screen and cv is a no-op.
+  grid.classList.toggle('cv', mode === 'cv' || mode === 'smartcv');
 
   if (mode === 'pull') {
     // No effects. Paint everything once, then run the pull loop continuously.
@@ -384,7 +388,7 @@ function wire(mode) {
     return;
   }
 
-  if (mode === 'smart') {
+  if (mode === 'smart' || mode === 'smartcv') {
     smartLast = new Array(stores.length);
     for (let i = 0; i < stores.length; i++) { smartLast[i] = stores[i].value; applyCellRaw(i); }
     smartCursor = 0;

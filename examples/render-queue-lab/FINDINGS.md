@@ -393,6 +393,34 @@ The kernel write path, storm/3000, went **~9 % → ~1.5 % → ~0 %** of active C
 
 Two caveats stand. Neither lever raises the **fps ceiling** — that is still Layer 1 (`content-visibility` / doing less render work); rescheduling and cheaper writes move the same total work around, they don't shrink the paint. And neither fixes **input under a pure storm** on its own, because at 3000 cells under 20× the frame is paint-bound; the write-pass win shows up as headroom (a shorter worst write frame, more thread left for input) rather than a clean input-latency drop in these throttled runs. What Round 6 removes is precisely the floor Round 5 diagnosed: the O(N) kernel write cost that scheduling could only spread, never reduce. The fast-path is the shippable half (a real, behaviourally-transparent core optimization worth graduating with the full artifact matrix); the plain-data layer is the theoretical floor that confirms how little is left underneath it.
 
+## Round 7: composing the layers — `smart` + `content-visibility` (`smartcv`)
+
+With the write floor gone (Round 6), the last open item was stacking the two presentation layers that each helped alone: Layer 1 (reduce render work — `content-visibility`) and Layer 2 (drop-stale, input-reserved pull — `smart`). The new `smartcv` mode runs the `smart` pull renderer on a `content-visibility:auto` grid. Data: `results/exp3-smartcv.json`. Metric: median input delay (the clean absolute), dashboard regime (cv's sweet spot), dot off, 20×.
+
+**Dashboard, 3000 cells (all four at ~23×, clean):**
+
+| mode | median input | fps | what it is |
+|---|---|---|---|
+| `off` | 1887 ms | 0.3 | baseline |
+| `smart` | 1643 ms | 0.4 | scheduling only — barely helps |
+| `cv` | 662 ms | 0.7 | paint culling only — the dominant lever |
+| **`smartcv`** | **515 ms** | **1.0** | both — best input AND best fps |
+
+The ordering *is* the finding. **Paint, not scheduling, is the bottleneck here:** `smart` alone (input-reserved pull) shaves only ~13 % off `off`, because rescheduling the same paint work doesn't reduce it — exactly Round 3's "only reducing work raises the ceiling." `cv` reduces the work (offscreen cells skip layout + paint) and wins 2.9× by itself. But the two **compose**: once `cv` has made paint cheap, `smart`'s input reservation is no longer swamped by it and adds a further 1.3× (662→515 ms), lifting fps from 0.7 to 1.0. `smartcv` is the best responsiveness configuration measured in the whole study.
+
+**Dashboard, 8000 cells (taller grid → cv culls the offscreen rows; throttle drifted, read with care):**
+
+| mode | median input | fps | throttle |
+|---|---|---|---|
+| `off` | 10419 ms | 0.1 | 21.2× |
+| `smart` | 11382 ms | 0.1 | 24.9× |
+| `cv` | 2090 ms | 0.3 | 39.1× |
+| **`smartcv`** | **1744 ms** | **0.4** | 24.1× |
+
+At 8000 the effect is starker, and a wrinkle appears. `smartcv` cuts input from `off`'s **10.4 s → 1.7 s (~6×)** at comparable throttle. `smart` *alone* is now *worse* than `off` (11.4 s vs 10.4 s): the pull sweep visits all 8000 cells every frame, and without cv culling that per-frame sweep overhead exceeds what plain per-cell effects cost — pull only pays off when **paint** (not the sweep) dominates, which cv arranges. The `cv`-vs-`smartcv` gap here is muddied by throttle drift (cv ran at 39× vs smartcv's 24×, inflating cv's absolute ms), so take the clean 3000-cell block as the ordering and this as directional confirmation that the composition holds and widens with grid size.
+
+**Net — the constructive stack is now empirically complete and ordered.** **Layer 1 (`content-visibility`) is load-bearing** — the only lever that reduces the dominant cost (paint), and free CSS. **Layer 2 (`smart`) is a real but secondary multiplier** that only surfaces once Layer 1 has uncovered it (and can *hurt* at large grids if used without it). **Layer 3 (the write floor) is gone** (Round 6 fast-path), so it no longer caps either. The best-measured "smooth under heavy reactive load" configuration is `content-visibility` + a `smart`-style input-reserved pull renderer over fast-path'd (unsubscribed) stores — none of which is `renderQueue`, which sits in none of these layers cleanly. The KILL verdict stands; this is the thing to build instead.
+
 ## Reproducing
 
 ```bash
@@ -412,8 +440,10 @@ node examples/render-queue-lab/run.mjs --mode sliced --regime dashboard --cells 
 node examples/render-queue-lab/matrix.mjs --modes off,pull,plain,sliced --regimes storm,dashboard --cells 3000 --nodot --type  # prod = worst write-pass frame
 node examples/render-queue-lab/profile.mjs --mode pull --regime storm --cells 3000   # before/after the fast-path: watch notifySubscribers/takeEffects vanish
 node examples/render-queue-lab/profile.mjs --mode plain --regime storm --cells 3000  # zero kernel write path (the floor)
+# round-7 composing the presentation layers (smart + content-visibility):
+node examples/render-queue-lab/matrix.mjs --modes off,cv,smart,smartcv --regimes dashboard --cells 3000,8000 --nodot --type
 # single case:
 node examples/render-queue-lab/run.mjs --mode pull --regime storm --cells 3000 --nodot --type --out results/one.json
 ```
 
-Open `http://localhost:5199/examples/render-queue-lab/?mode=pull&regime=storm&cells=3000` and flip the URL params to drive it by hand: `mode` = `off`/`rq`/`simple`/`adaptive`/`cv`/`bounded`/`pull`/`smart`/`sliced`/`plain`, plus `regime`, `cells`, `budget`, `churn`, `dot` (0 to remove the jank-dot artifact), `text` (0 for paint-only apply), `render` (0 to keep the flush but skip DOM writes). Every result JSON embeds its own throttle probe so numbers are self-describing. The Round-6 kernel fast-path lives in `src/core/state.js` (marked `// EXPERIMENT:`); to A/B it, `git stash` that file and re-run the profile/matrix above.
+Open `http://localhost:5199/examples/render-queue-lab/?mode=pull&regime=storm&cells=3000` and flip the URL params to drive it by hand: `mode` = `off`/`rq`/`simple`/`adaptive`/`cv`/`bounded`/`pull`/`smart`/`sliced`/`plain`/`smartcv`, plus `regime`, `cells`, `budget`, `churn`, `dot` (0 to remove the jank-dot artifact), `text` (0 for paint-only apply), `render` (0 to keep the flush but skip DOM writes). Every result JSON embeds its own throttle probe so numbers are self-describing. The Round-6 kernel fast-path lives in `src/core/state.js` (marked `// EXPERIMENT:`); to A/B it, `git stash` that file and re-run the profile/matrix above.
