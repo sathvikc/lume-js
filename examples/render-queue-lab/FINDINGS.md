@@ -477,6 +477,25 @@ Round 8 put ~99 % of remaining input on "DOM-per-cell paint" but did not split t
 
 **But text is a *secondary* lever, not the floor.** Even colour-only, `smartcv` (318 ms) is still **19× above `canvas` (17 ms)**: once text/layout is gone, the residual is the per-cell **style recalc + background paint** of individual DOM boxes, which only leaving the per-cell DOM model (`canvas`) removes. So Round 10 refines Round 8 without overturning it: of the DOM-per-cell cost, per-cell text/layout is a real slice worth ~a quarter to a half depending on how much paint the scheduler already spread — worth shipping as guidance — but the dominant residual is still the DOM box itself. (Untested adjacent lever, next session: a direct `style.backgroundColor` write vs the inheriting custom property `--h`, to see whether custom-property style invalidation is a further slice of that residual.)
 
+## Round 11: O(changed) dirty-list pull (`dirty`) — the sweep was never the bottleneck, so removing it doesn't help
+
+Item 10 asked whether replacing the O(N) per-frame sweep with an O(changed) dirty-list — fed by the cheapest possible kernel change-signal — moves the needle. The signal is a new kernel `EXPERIMENT` (`src/core/state.js`): an opt-in `__setDirtySink(set)` that, inside the **no-subscriber fast path**, adds each changed store's target to a sink Set — O(1), no notify/flush, so it preserves the Round-6 fast path (unlike a `$subscribe`/`beforeFlush` per store, which would pull the write back onto the full notify path). `mode=dirty` installs the sink, stacks `cv` + `smart`'s input-reserved budget, and drains the sink each frame (drop-stale: reads current value; budget leftovers persist, no starvation). So `dirty`-vs-`smartcv` isolates exactly **O(changed) drain vs O(N) sweep**, everything else equal. **All 488 tests pass** with the kernel change (the null-check is free when no sink is installed — behaviourally transparent, like the Round-6 fast path). Data: `results/round11-dirty-*.json`.
+
+| case | `smartcv` (sweep) | `dirty` (drain) | throttle (smartcv/dirty) | read |
+|---|---|---|---|---|
+| dashboard 3000 | 449 ms | 483 ms | 23.4× / 21.4× | indistinguishable |
+| dashboard 12000 (clean) | 1824 ms | 2464 ms | 23.3× / 24.2× | dirty ~35 % **worse** |
+| storm 3000 | 458 ms | 360 ms | 17.9× / 23.6× | dirty better *despite harsher throttle* |
+
+**No consistent input advantage — the direction changes with the regime and stays inside the study's throttle-drift noise band** (recall `smartcv` alone swung 1847→2465 between two 12000 runs in Round 9). This is the Round-8 verdict a third time: input is paint-bound, so a change to how the renderer *finds* what changed operates on the ~1 % of the frame that isn't paint and cannot move input. The sweep it removes was never the bottleneck — and, importantly, the O(N) sweep is not actually O(N) *per frame*: the budget breaks it after a few paints, and locating those paints scans only ~paints/churn cells (a few hundred at most), not all N. There was little scan to remove.
+
+Two concrete, non-noise findings do stand out, and both cut *against* the dirty list:
+
+- **The change-signal taxes the hot write path.** At dashboard 12000 the write-pass `prod` is **61 ms for `dirty` vs 42 ms for `smartcv`** — the per-write `sink.add` is real cost, paid on every changed write (the hot path) to save work on the sweep (a cold path that wasn't the bottleneck). O(changed) is not free; it moves cost onto writes and partially gives back what the Round-6 fast path won. This is exactly the "would it defeat the fast path?" tension the handoff flagged — measured, the answer is "it adds measurable write-path cost."
+- **A Set is the wrong structure.** The clean 12000 result has `dirty` losing to the plain array sweep, plausibly because `Set` add/delete/iterate churn on a backlog of thousands is costlier than the sweep's monomorphic array reads (which V8 makes almost free). A flat dirty-*array* with a per-store dedupe flag (the handoff's "dirty ring") would likely close that constant-factor gap — but it cannot change the structural verdict, because the frame is paint-bound regardless of how cheaply you enumerate the changes.
+
+The one unambiguous win is **measurement, not performance**: `dirty`'s backlog is `dirtySink.size`, an O(1) read — the only mode that sidesteps the O(N) convergence-poll that Round 4 flagged as saturating the throttled thread. If a future round wants clean freshness/convergence curves, `dirty` is the mode to measure them on. **Verdict: O(changed) dirty pull is not a responsiveness lever** (input is paint-bound; the sweep was never the cost; the signal taxes writes) — it is, at best, an O(1)-backlog measurement aid. Item 10 joins item 9 as a scheduling/data-side idea that Round 8 correctly predicted would not move input.
+
 ## Reproducing
 
 ```bash
@@ -505,6 +524,8 @@ node examples/render-queue-lab/matrix.mjs --modes cv,smartcv,vis --regimes dashb
 # round-10 paint-cost: per-cell text (layout) share — run twice, with and without text:
 node examples/render-queue-lab/matrix.mjs --modes off,cv,smartcv,canvas --regimes dashboard --cells 3000 --nodot --type --measure 6000            # text=1
 node examples/render-queue-lab/matrix.mjs --modes off,cv,smartcv,canvas --regimes dashboard --cells 3000 --nodot --notext --type --measure 6000   # text=0
+# round-11 O(changed) dirty pull vs O(N) sweep (isolate drain-vs-sweep: both stack cv+smart budget):
+node examples/render-queue-lab/matrix.mjs --modes smartcv,dirty --regimes dashboard,storm --cells 3000,12000 --nodot --type --measure 6000
 # single case:
 node examples/render-queue-lab/run.mjs --mode pull --regime storm --cells 3000 --nodot --type --out results/one.json
 ```
