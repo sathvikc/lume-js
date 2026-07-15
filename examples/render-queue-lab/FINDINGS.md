@@ -447,6 +447,36 @@ Round 7 concluded "paint, not scheduling, is the bottleneck" but did not quantif
 
 One caveat worth noting for interpreting `canvas`'s numbers: its low input comes partly at the cost of staleness (backlog peak 2795, max staleness ~6 s), because it kept the same tiny 2 ms budget while painting far more cheaply than DOM — it *could* run a much larger budget and stay both fresh and responsive (cheap paint has budget headroom DOM does not). That larger-budget canvas point is a one-line follow-up, but it does not change the floor: 16 ms is what the same schedule costs once per-cell DOM is gone.
 
+## Round 9: occlusion-driven write culling (`vis`) — a null result that confirms Round 8
+
+Round 8 predicted the outcome of item 9 before it was built: if the O(N) sweep is not the bottleneck (paint is), then culling the sweep to only visible cells cannot move input. Round 9 built it and measured it. `vis` is `smartcv` plus an `IntersectionObserver` visible-set: the pull sweep and DOM writes touch **only** visible cells (cursor-fair within that set); offscreen cells are never written while hidden and refresh lazily on reveal (their stale `visLast` differs from the live value, so the loop repaints them the instant they scroll in). It stacks the `cv` class (paint culling) and `smart`'s input-reserved budget, so `vis`-vs-`smartcv` isolates exactly the sweep/write-culling contribution on top of paint culling. Data: `results/round9-item9-vis-8000.json`, `results/round9-item9-vis-scale.json`, `results/round9-vis-confirm.json`.
+
+The occlusion is real and active: `visVisibleCount` reports the sweep touches **3556/8000** (44 %) and **4340/12000** (36 %) cells — the rest are culled from the sweep entirely. But it buys nothing on input. **Dashboard 12000, two clean runs (~22–23× both):**
+
+| run | `smartcv` median input | `vis` median input |
+|---|---|---|
+| scale sweep | 1847 ms | 2508 ms |
+| confirm | 2465 ms | 2419 ms |
+
+**The direction flips between runs** — `smartcv` alone swings 1847→2465 ms (a 33 % spread) from throttle/GC noise — so `vis` and `smartcv` are **statistically indistinguishable on input**. Occlusion write-culling delivers no input benefit, exactly as Round 8's decomposition predicts: the sweep it removes was never a meaningful share of the frame (writes are ~3 % of input per Round 8), and the visible **paint** it can't remove is the bottleneck. If anything, concentrating the whole render budget on visible cells makes `vis` paint *more* visible boxes per frame than `smartcv` (which spreads its budget across the grid, some of it onto offscreen cells `cv` then defers) — so there is a mild mechanism *against* `vis` on input, not for it. (The 8000-cell runs are omitted from the comparison: the `vis` case drifted to 1.0× throttle twice — a known CDP flake — making its absolute ms meaningless there. The 12000 block ran clean.)
+
+The one axis where `vis` moves is the **visible backlog**: it holds 920–1365 cells-behind vs `smartcv`'s 3061–3256, i.e. the visible region falls less far behind. But this is confounded — `vis`'s backlog counts only its ~4340 visible cells while `smartcv`'s counts all 12000 — and it does not surface in either input latency or worst-case staleness (both indistinguishable). **Verdict: occlusion write-culling does not raise the ceiling the way `cv` did.** The asymmetry is the whole point of Round 8: `cv` raised the ceiling because it culls **paint** (the dominant cost); `vis` only culls the **sweep/writes** (cheap), so it can't. The one scenario where occlusion *should* pay — active **scrolling**, where it avoids work on cells scrolling away and cheaply prioritizes newly-revealed rows — is untested here (the headless driver types but never scrolls); that, not static-viewport culling, is where a future occlusion experiment should look. `mode=vis` stays in the lab as the settled negative.
+
+## Round 10: the paint-cost decomposition — per-cell text (layout) is a real secondary lever
+
+Round 8 put ~99 % of remaining input on "DOM-per-cell paint" but did not split that into its parts. The apply does two things to each cell: sets a CSS custom property `--h` (background **paint**) and writes `textContent` (a number — which forces **layout**, because text metrics reflow). The lab's existing `text=0` flag drops the second, leaving colour-only cells. Round 10 runs the same modes with and without per-cell text to measure layout's share. Data: `results/round10-text1.json`, `results/round10-text0.json`. Dashboard 3000, 20×, dot off.
+
+| mode | text=1 (number + colour) | text=0 (colour only) | change | throttle t1 / t0 |
+|---|---|---|---|---|
+| `off` | 1935 ms | 1569 ms | −19 % | 18.5× / 20.8× |
+| `cv` | 889 ms | 437 ms | **−51 %** | 24.2× / 25.3× |
+| `smartcv` | 411 ms | 318 ms | −23 % | 22.7× / 23.5× |
+| `canvas` | 26 ms | 17 ms | −34 % | 22.8× / 27.9× |
+
+**Dropping per-cell text roughly halves `cv`'s input cost and cuts `smartcv`'s by ~a quarter** — and note every `text=0` case ran at an *equal-or-harsher* throttle than its `text=1` pair (e.g. `cv` 25.3× vs 24.2×, `canvas` 27.9× vs 22.8×), which inflates the `text=0` number, so the true text/layout savings are **understated**. Per-cell text reflow is a genuine, in-scope lever: a colour-only dashboard cell (drive the visual with a CSS custom property or a class, keep the number out of the churny path or render it less often) is materially cheaper under heavy churn. The share is larger for `cv` (−51 %) than `smartcv` (−23 %) because `cv` applies every changed cell synchronously each frame (more text layouts per frame), while `smartcv`'s budget caps cells-per-frame, shrinking text's absolute contribution.
+
+**But text is a *secondary* lever, not the floor.** Even colour-only, `smartcv` (318 ms) is still **19× above `canvas` (17 ms)**: once text/layout is gone, the residual is the per-cell **style recalc + background paint** of individual DOM boxes, which only leaving the per-cell DOM model (`canvas`) removes. So Round 10 refines Round 8 without overturning it: of the DOM-per-cell cost, per-cell text/layout is a real slice worth ~a quarter to a half depending on how much paint the scheduler already spread — worth shipping as guidance — but the dominant residual is still the DOM box itself. (Untested adjacent lever, next session: a direct `style.backgroundColor` write vs the inheriting custom property `--h`, to see whether custom-property style invalidation is a further slice of that residual.)
+
 ## Reproducing
 
 ```bash
@@ -470,6 +500,11 @@ node examples/render-queue-lab/profile.mjs --mode plain --regime storm --cells 3
 node examples/render-queue-lab/matrix.mjs --modes off,cv,smart,smartcv --regimes dashboard --cells 3000,8000 --nodot --type
 # round-8 paint-floor probe (canvas) — the decomposition that shows DOM-per-cell is ~99% of remaining input delay:
 node examples/render-queue-lab/matrix.mjs --modes off,cv,smart,smartcv,pull,plain,canvas --regimes dashboard --cells 3000 --nodot --type --measure 6000
+# round-9 occlusion write-culling (vis) — null result on input (use the 12000 block; 8000 vis-throttle is flaky):
+node examples/render-queue-lab/matrix.mjs --modes cv,smartcv,vis --regimes dashboard --cells 8000,12000 --nodot --type --measure 6000
+# round-10 paint-cost: per-cell text (layout) share — run twice, with and without text:
+node examples/render-queue-lab/matrix.mjs --modes off,cv,smartcv,canvas --regimes dashboard --cells 3000 --nodot --type --measure 6000            # text=1
+node examples/render-queue-lab/matrix.mjs --modes off,cv,smartcv,canvas --regimes dashboard --cells 3000 --nodot --notext --type --measure 6000   # text=0
 # single case:
 node examples/render-queue-lab/run.mjs --mode pull --regime storm --cells 3000 --nodot --type --out results/one.json
 ```
