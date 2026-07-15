@@ -421,6 +421,32 @@ At 8000 the effect is starker, and a wrinkle appears. `smartcv` cuts input from 
 
 **Net — the constructive stack is now empirically complete and ordered.** **Layer 1 (`content-visibility`) is load-bearing** — the only lever that reduces the dominant cost (paint), and free CSS. **Layer 2 (`smart`) is a real but secondary multiplier** that only surfaces once Layer 1 has uncovered it (and can *hurt* at large grids if used without it). **Layer 3 (the write floor) is gone** (Round 6 fast-path), so it no longer caps either. The best-measured "smooth under heavy reactive load" configuration is `content-visibility` + a `smart`-style input-reserved pull renderer over fast-path'd (unsubscribed) stores — none of which is `renderQueue`, which sits in none of these layers cleanly. The KILL verdict stands; this is the thing to build instead.
 
+## Round 8: the paint-floor probe (`canvas`) — how much headroom is even left
+
+Round 7 concluded "paint, not scheduling, is the bottleneck" but did not quantify how much of the remaining input delay is *irreducible pixels* versus *DOM-per-cell overhead* that could still be won back. Round 8 answers that with the paint-floor probe — the exact counterpart to Round 6's `plain`. `plain` removed the reactive **write** cost to expose its floor; the new `canvas` mode removes the DOM **paint** cost: it keeps the reactive stores and the byte-identical `pull` schedule (budgeted, cursor-fair rAF, tracked `stores[i].value` reads), but paints each changed cell as a filled rect (+ number) into **one** `<canvas>` instead of mutating N individual DOM boxes. The only thing removed between `pull` and `canvas` is the per-cell DOM. Diagnostic only — it abandons the whole `data-*`/DOM model, so it can never ship; its job is to decide whether more scheduling research has any headroom. Data: `results/round8-item12-paintfloor.json`.
+
+**Dashboard, 3000 cells, 20×, continuous typing, dot off (all cases within one 18–23× throttle band):**
+
+| mode | median input | fps | worstBlock | what it isolates |
+|---|---|---|---|---|
+| `off` | 1977 ms | 0.3 | 3457 ms | baseline (sync effect per cell) |
+| `smart` | 1432 ms | 0.4 | 2587 ms | pull scheduling only |
+| `pull` | 1420 ms | 0.4 | 2401 ms | reactive read + DOM paint |
+| `plain` | 1378 ms | 0.4 | 2485 ms | **write floor** (raw array, DOM paint) |
+| `cv` | 648 ms | 0.9 | 1583 ms | offscreen paint culling |
+| **`smartcv`** | **388 ms** | 1.3 | 842 ms | best shippable config |
+| **`canvas`** | **16 ms** | **12.8** | 122 ms | **paint floor** (reactive read, no per-cell DOM) |
+
+**The paint floor is 16 ms — 24× below the best shippable config (`smartcv`, 388 ms) and 89× below `off`.** `canvas` faced the *harshest* throttle of the batch (23.5× vs 18–23×), so the gap is if anything understated. The decomposition is now complete and each layer's share is measured, not inferred:
+
+- **Reactive write cost is negligible.** `pull` (1420) vs `plain` (1378) differ by ~3 % — the Round-6 fast-path did its job; writing 240 unsubscribed stores/frame is no longer a meaningful share of input delay. (Confirms Round 6 on the input axis, where Round 6 could only show it on `prod`.)
+- **DOM-per-cell paint is ~99 % of the remaining cost.** `pull` (1420) → `canvas` (16) with *identical* reactive reads and *identical* schedule: the entire 1404 ms difference is the browser styling, laying out, and painting individual DOM boxes. Removing them collapses input 89× and lifts fps from 0.4 to 12.8.
+- **Even `smartcv` — with `content-visibility` containment already scoping invalidation — sits 24× above the floor.** `smartcv` (388) vs `canvas` (16): once you commit to a DOM element per cell, roughly 370 ms of style/layout/paint for the touched boxes is unavoidable at this scale, and no amount of scheduling touches it.
+
+**What Round 8 decides (this was item 12's whole purpose): scheduling headroom is essentially exhausted.** Every scheduling idea in this study — `rq`, `simple`, `bounded`, `pull`, `smart`, `sliced` — moves *when* the same DOM writes happen; none change that there are N DOM writes, and Round 8 shows those writes are 99 % of the cost. `smartcv` is within a small constant of the best any *scheduler* can do inside the per-cell DOM model. The only remaining large levers both attack the DOM-box count directly, not the schedule: **(a) reduce the boxes the browser must render** — `content-visibility` (culls offscreen paint — already in `smartcv`), occlusion-driven write culling (don't even *write* offscreen cells — item 9), or true virtualization (no DOM at all for offscreen rows); **(b) leave the per-cell DOM model** — `canvas`/`OffscreenCanvas` (the 16 ms floor, but outside Lume's `data-*` scope). This reframes the remaining research: stop optimizing the schedule, start reducing the live DOM-box count.
+
+One caveat worth noting for interpreting `canvas`'s numbers: its low input comes partly at the cost of staleness (backlog peak 2795, max staleness ~6 s), because it kept the same tiny 2 ms budget while painting far more cheaply than DOM — it *could* run a much larger budget and stay both fresh and responsive (cheap paint has budget headroom DOM does not). That larger-budget canvas point is a one-line follow-up, but it does not change the floor: 16 ms is what the same schedule costs once per-cell DOM is gone.
+
 ## Reproducing
 
 ```bash
@@ -442,6 +468,8 @@ node examples/render-queue-lab/profile.mjs --mode pull --regime storm --cells 30
 node examples/render-queue-lab/profile.mjs --mode plain --regime storm --cells 3000  # zero kernel write path (the floor)
 # round-7 composing the presentation layers (smart + content-visibility):
 node examples/render-queue-lab/matrix.mjs --modes off,cv,smart,smartcv --regimes dashboard --cells 3000,8000 --nodot --type
+# round-8 paint-floor probe (canvas) — the decomposition that shows DOM-per-cell is ~99% of remaining input delay:
+node examples/render-queue-lab/matrix.mjs --modes off,cv,smart,smartcv,pull,plain,canvas --regimes dashboard --cells 3000 --nodot --type --measure 6000
 # single case:
 node examples/render-queue-lab/run.mjs --mode pull --regime storm --cells 3000 --nodot --type --out results/one.json
 ```

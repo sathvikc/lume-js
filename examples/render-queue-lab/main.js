@@ -11,7 +11,7 @@ import { renderQueue } from 'lume-js/addons';
 // OFF vs ON vs alternatives an honest comparison of scheduling, not of work.
 //
 //   mode    = off | rq | simple | adaptive | cv | bounded | pull | smart |
-//             sliced | plain | smartcv                (how presentation is wired)
+//             sliced | plain | smartcv | canvas        (how presentation is wired)
 //   regime  = storm | dashboard | burst | quiet       (how state is written)
 //   cells   = grid size (default 3000)
 //   budget  = renderQueue budgetMs (default 2)
@@ -238,6 +238,96 @@ function plainLoop() {
   if (plainRunning) plainRaf = requestAnimationFrame(plainLoop);
 }
 
+// ── canvas — PAINT-FLOOR probe: one <canvas>, no per-cell DOM boxes ───────────
+// The counterpart to `plain` for the OTHER side of the frame. `plain` removed the
+// reactive WRITE cost to expose the floor; `canvas` removes the DOM PAINT cost.
+// Round 7 found paint (not scheduling, not the write path) is the bottleneck under
+// throttle — smartcv's 515 ms is mostly the browser laying out + style-recalc'ing
+// + painting N individual layout boxes. `canvas` keeps the reactive stores and the
+// byte-identical `pull` schedule (budgeted, cursor-fair rAF), but paints each
+// changed cell as a filled rect into ONE canvas element — a single layout box,
+// single composited layer, no per-element style recalc or layout. It is a
+// diagnostic only (never shippable — it abandons the whole data-* DOM model), and
+// it answers the one question that decides whether more scheduling research has any
+// headroom: how much of smartcv's remaining input delay is irreducible pixel cost
+// vs. DOM-per-cell overhead that occlusion/dirty-list work (items 9,10) could win.
+let canvasEl = null;
+let canvasCtx = null;
+let canvasLast = [];
+let canvasCursor = 0;
+let canvasRaf = 0;
+let canvasRunning = false;
+let cvCols = 0, cvRows = 0, cvCellW = 0, cvCellH = 0, cvGap = 1;
+function computeCanvasGeom(count) {
+  cvCols = Math.ceil(Math.sqrt(count * 2));
+  cvRows = Math.ceil(count / cvCols);
+  cvCellH = 12;
+  const W = grid.getBoundingClientRect().width || 900;
+  cvCellW = (W - (cvCols - 1) * cvGap) / cvCols;
+  return { W, H: cvRows * (cvCellH + cvGap) - cvGap };
+}
+function ensureCanvas(count) {
+  const { W, H } = computeCanvasGeom(count);
+  if (!canvasEl) {
+    canvasEl = document.createElement('canvas');
+    canvasEl.id = 'paintcanvas';
+    canvasEl.style.marginTop = '12px';
+    grid.parentNode.insertBefore(canvasEl, grid.nextSibling);
+  }
+  canvasEl.width = Math.round(W);
+  canvasEl.height = Math.round(H);
+  canvasEl.style.width = W + 'px';
+  canvasEl.style.height = H + 'px';
+  canvasEl.style.display = '';
+  canvasCtx = canvasEl.getContext('2d');
+}
+// Paint one cell as a filled rect (+ number) at its grid position — the same
+// "colour + number" a DOM cell shows, but with zero DOM cost. String work
+// (hsl(...) + integer text) mirrors what the DOM path pays via setProperty/nodeValue.
+function applyCanvasRaw(i) {
+  const v = stores[i].value; // tracked read — keeps the reactive path identical to pull
+  if (cfg.render) {
+    const col = i % cvCols;
+    const row = (i / cvCols) | 0;
+    const x = col * (cvCellW + cvGap);
+    const y = row * (cvCellH + cvGap);
+    canvasCtx.fillStyle = `hsl(${(v * 3.6) | 0} 75% 55%)`;
+    canvasCtx.fillRect(x, y, cvCellW, cvCellH);
+    if (cfg.text) {
+      canvasCtx.fillStyle = 'rgba(0,0,0,0.55)';
+      canvasCtx.fillText(fmtInt(v), x + 1, y + cvCellH - 3);
+    }
+  }
+  appliedCount++;
+  applyCounts[i]++;
+  const p = pendingSince[i];
+  if (p !== 0) {
+    const age = performance.now() - p;
+    if (age > maxStaleness) maxStaleness = age;
+    pendingSince[i] = 0;
+  }
+}
+function canvasLoop() {
+  canvasRaf = 0;
+  const t0 = performance.now();
+  const N = stores.length;
+  let seen = 0;
+  let n = 0;
+  while (seen < N) {
+    const i = canvasCursor;
+    canvasCursor = (canvasCursor + 1) % N;
+    seen++;
+    const v = stores[i].value;
+    if (v !== canvasLast[i]) {
+      canvasLast[i] = v;
+      applyCanvasRaw(i);
+      n++;
+      if ((n & 7) === 0 && performance.now() - t0 > cfg.budgetMs) break;
+    }
+  }
+  if (canvasRunning) canvasRaf = requestAnimationFrame(canvasLoop);
+}
+
 // ── smart — drop-stale pull + input-reserved dynamic budget ──────────────────
 // The maintainer's responsiveness-first design:
 //   (1) drop stale work: like `pull`, read CURRENT state and paint the latest
@@ -347,6 +437,8 @@ function clearWiring() {
   if (pullRaf) { cancelAnimationFrame(pullRaf); pullRaf = 0; }
   plainRunning = false;
   if (plainRaf) { cancelAnimationFrame(plainRaf); plainRaf = 0; }
+  canvasRunning = false;
+  if (canvasRaf) { cancelAnimationFrame(canvasRaf); canvasRaf = 0; }
   smartRunning = false;
   if (smartRaf) { cancelAnimationFrame(smartRaf); smartRaf = 0; }
   slicing = false;
@@ -365,6 +457,25 @@ function wire(mode) {
   // culls when the grid overflows the viewport — at small cell counts the whole
   // grid is on-screen and cv is a no-op.
   grid.classList.toggle('cv', mode === 'cv' || mode === 'smartcv');
+
+  if (mode === 'canvas') {
+    // The paint-floor probe replaces the DOM grid with a single canvas. Measure
+    // geometry from the still-visible grid, THEN hide it (getBoundingClientRect on
+    // a display:none element reports 0).
+    ensureCanvas(stores.length);
+    grid.style.display = 'none';
+    canvasLast = new Array(stores.length);
+    canvasCtx.font = '7px system-ui, sans-serif';
+    canvasCtx.textBaseline = 'alphabetic';
+    for (let i = 0; i < stores.length; i++) { canvasLast[i] = stores[i].value; applyCanvasRaw(i); }
+    canvasCursor = 0;
+    canvasRunning = true;
+    canvasRaf = requestAnimationFrame(canvasLoop);
+    return;
+  }
+  // Every other mode paints into the DOM grid: keep it visible, hide any canvas.
+  grid.style.display = '';
+  if (canvasEl) canvasEl.style.display = 'none';
 
   if (mode === 'pull') {
     // No effects. Paint everything once, then run the pull loop continuously.
@@ -465,9 +576,9 @@ function currentBacklog() {
     for (let i = 0; i < plainVals.length; i++) if (plainVals[i] !== plainLast[i]) behind++;
     return behind;
   }
-  // pull/smart keep no queue — their backlog is cells whose current value has
-  // not yet been painted. O(N), only polled for convergence, so acceptable.
-  const last = pullRunning ? pullLast : (smartRunning ? smartLast : null);
+  // pull/smart/canvas keep no queue — their backlog is cells whose current value
+  // has not yet been painted. O(N), only polled for convergence, so acceptable.
+  const last = pullRunning ? pullLast : (smartRunning ? smartLast : (canvasRunning ? canvasLast : null));
   if (last) {
     let behind = 0;
     for (let i = 0; i < stores.length; i++) if (stores[i].value !== last[i]) behind++;
