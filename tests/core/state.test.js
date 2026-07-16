@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { state } from 'src/core/state.js';
+import { batch } from 'src/core/batch.js';
 import { effect } from 'src/core/effect.js';
 import { isReactive } from 'src/addons/index.js';
 import * as log from 'src/utils/log.js';
@@ -560,5 +561,107 @@ describe('state edge cases', () => {
 
     cleanup();
     logErrorSpy.mockRestore();
+  });
+});
+
+describe('no-subscriber fast path', () => {
+  it('writes to an unobserved store update the value and a later $subscribe sees it', async () => {
+    const store = state({ count: 0 });
+
+    store.count = 5;
+    expect(store.count).toBe(5);
+    await Promise.resolve();
+
+    const spy = vi.fn();
+    store.$subscribe('count', spy);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(5);
+  });
+
+  it('subscribing between a write and the microtask delivers no duplicate notification', async () => {
+    const store = state({ count: 0 });
+
+    store.count = 1; // no listeners yet — nothing scheduled
+    const spy = vi.fn();
+    store.$subscribe('count', spy); // immediate call with current value
+
+    await Promise.resolve();
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(1);
+  });
+
+  it('unsubscribing the last listener re-arms the fast path without losing state', async () => {
+    const store = state({ count: 0 });
+    const spy = vi.fn();
+    const unsub = store.$subscribe('count', spy);
+    spy.mockClear();
+    unsub();
+
+    store.count = 7;
+    await Promise.resolve();
+    expect(spy).not.toHaveBeenCalled();
+    expect(store.count).toBe(7);
+
+    const spy2 = vi.fn();
+    store.$subscribe('count', spy2);
+    expect(spy2).toHaveBeenCalledWith(7);
+  });
+
+  it('double-unsubscribe does not corrupt listener accounting', async () => {
+    const store = state({ count: 0 });
+    const removed = vi.fn();
+    const kept = vi.fn();
+    const unsub = store.$subscribe('count', removed);
+    store.$subscribe('count', kept);
+    kept.mockClear();
+
+    unsub();
+    unsub(); // must be a no-op — a double decrement would zero the count and skip notify
+
+    store.count = 3;
+    await Promise.resolve();
+    expect(kept).toHaveBeenCalledWith(3);
+    expect(removed).toHaveBeenCalledTimes(1); // only the immediate call
+  });
+
+  it('writes to a store with only beforeFlush hooks still run the hooks', async () => {
+    const store = state({ count: 0 });
+    const hook = vi.fn();
+    store.$beforeFlush(hook);
+
+    store.count = 1;
+    await Promise.resolve();
+    expect(hook).toHaveBeenCalledTimes(1);
+
+    const spy = vi.fn();
+    store.$subscribe('count', spy);
+    expect(spy).toHaveBeenCalledWith(1);
+  });
+
+  it('batch() writes to an unobserved store update the value without notifications', async () => {
+    const store = state({ a: 0, b: 0 });
+    batch(() => {
+      store.a = 1;
+      store.b = 2;
+    });
+    expect(store.a).toBe(1);
+    expect(store.b).toBe(2);
+    await Promise.resolve();
+
+    const spy = vi.fn();
+    store.$subscribe('a', spy);
+    expect(spy).toHaveBeenCalledWith(1);
+  });
+
+  it('effect subscriptions keep writes on the notify path', async () => {
+    const store = state({ count: 0 });
+    const runs = vi.fn(() => { void store.count; });
+    const cleanup = effect(runs);
+    runs.mockClear();
+
+    store.count = 1;
+    await Promise.resolve();
+    expect(runs).toHaveBeenCalledTimes(1);
+    cleanup();
   });
 });

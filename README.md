@@ -5,7 +5,7 @@
   <p>
     Minimal reactive state management using only standard JavaScript and HTML.<br>
     No custom syntax &nbsp;·&nbsp; No build step &nbsp;·&nbsp; No framework lock-in.<br>
-    <strong><!-- lume:size-state -->1.46<!-- /lume:size-state --> KB universal core</strong> &nbsp;·&nbsp; <strong><!-- lume:size-index -->2.73<!-- /lume:size-index --> KB with DOM</strong>
+    <strong><!-- lume:size-state -->1.49<!-- /lume:size-state --> KB universal core</strong> &nbsp;·&nbsp; <strong><!-- lume:size-index -->2.77<!-- /lume:size-index --> KB with DOM</strong>
   </p>
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
@@ -15,15 +15,15 @@
 <!-- /lume:badge-version -->
     &nbsp;
 <!-- lume:badge-tests -->
-    <a href="tests/"><img src="https://img.shields.io/badge/tests-468%20passing-brightgreen.svg" alt="468 tests"></a>
+    <a href="tests/"><img src="https://img.shields.io/badge/tests-475%20passing-brightgreen.svg" alt="475 tests"></a>
 <!-- /lume:badge-tests -->
     &nbsp;
 <!-- lume:badge-size-state -->
-    <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/universal%20core-1.46KB-blue.svg" alt="universal core 1.46KB"></a>
+    <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/universal%20core-1.49KB-blue.svg" alt="universal core 1.49KB"></a>
 <!-- /lume:badge-size-state -->
     &nbsp;
 <!-- lume:badge-size-index -->
-    <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core%20%2B%20DOM-2.73KB-blue.svg" alt="core + DOM 2.73KB"></a>
+    <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core%20%2B%20DOM-2.77KB-blue.svg" alt="core + DOM 2.77KB"></a>
 <!-- /lume:badge-size-index -->
   </p>
   <p><code>npm install lume-js</code></p>
@@ -38,7 +38,7 @@
 |---------|---------|-----------|-----|-------|
 | Custom Syntax | ❌ No | ✅ `x-data` | ✅ `v-bind` | ✅ JSX |
 | Build Step | ❌ Optional | ❌ Optional | ⚠️ Recommended | ✅ Required |
-| Bundle Size | <!-- lume:size-state -->1.46<!-- /lume:size-state -->–<!-- lume:size-index -->2.73<!-- /lume:size-index -->KB | ~15KB | ~35KB | ~45KB |
+| Bundle Size | <!-- lume:size-state -->1.49<!-- /lume:size-state -->–<!-- lume:size-index -->2.77<!-- /lume:size-index -->KB | ~15KB | ~35KB | ~45KB |
 | HTML Validation | ✅ Pass | ⚠️ Warnings | ⚠️ Warnings | ❌ JSX |
 | Extensible Handlers | ✅ | ❌ Built-in only | ❌ Built-in only | N/A |
 
@@ -52,8 +52,8 @@
 
 | Entry | Size (gz) | Contents | For |
 |-------|-----------|----------|-----|
-| `lume-js/state` | **<!-- lume:size-state -->1.46<!-- /lume:size-state --> KB** | `state`, `batch`, `withReadObserver` | Node, Deno, Bun, workers, CLI — anywhere without a DOM |
-| `lume-js` | **<!-- lume:size-index -->2.73<!-- /lume:size-index --> KB** | + `bindDom`, `effect` | Browsers |
+| `lume-js/state` | **<!-- lume:size-state -->1.49<!-- /lume:size-state --> KB** | `state`, `batch`, `withReadObserver` | Node, Deno, Bun, workers, CLI — anywhere without a DOM |
+| `lume-js` | **<!-- lume:size-index -->2.77<!-- /lume:size-index --> KB** | + `bindDom`, `effect` | Browsers |
 | `lume-js/addons` | pay per import | `computed`, `watch`, `repeat`, `persist`, … | Optional patterns |
 | `lume-js/handlers` | pay per import | `show`, `classToggle`, `on`, … | Extra reactive attributes |
 
@@ -82,7 +82,7 @@ npm install lume-js
 ```javascript
 import { state, bindDom } from 'lume-js';        // browser: full core
 <!-- lume:comment-size-state -->
-import { state, batch } from 'lume-js/state';    // Node/CLI/workers: 1.46 KB kernel
+import { state, batch } from 'lume-js/state';    // Node/CLI/workers: 1.49 KB kernel
 <!-- /lume:comment-size-state -->
 ```
 
