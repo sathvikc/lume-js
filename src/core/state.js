@@ -106,6 +106,11 @@ export function state(obj) {
   const pendingEffects = new Set(); // Dedupe effects per state
   const beforeFlushHooks = [];
   let flushScheduled = false;
+  // Live count of listeners across all keys ($subscribe callbacks and effect
+  // subscriptions both register through addListener, which keeps this in
+  // sync). Lets the set trap skip the whole notify/flush pipeline for a
+  // store nothing observes — see the no-subscriber fast path in the trap.
+  let listenerCount = 0;
 
   // ── Flush steps ──────────────────────────────────────────────────────
   // Named pieces shared by the per-state microtask flush and batch().
@@ -128,6 +133,15 @@ export function state(obj) {
     // batch() would re-deliver every in-flight entry through the wave's
     // re-entrant call. Draining first means write-backs land in the now-
     // empty live Map and are delivered by the next flush iteration/wave.
+    // No listeners on any key: drop the coalesced pending writes without the
+    // Array.from allocation or the delivery loop. Only reachable when a flush
+    // was scheduled by something other than a plain observed write (e.g. a
+    // store with beforeFlush hooks but no subscribers) — the set trap
+    // short-circuits the common no-observer write before scheduling at all.
+    if (listenerCount === 0) {
+      pendingNotifications.clear();
+      return;
+    }
     const entries = Array.from(pendingNotifications);
     pendingNotifications.clear();
     for (const [key, value] of entries) {
@@ -236,11 +250,13 @@ export function state(obj) {
       return noopUnsubscribe;
     }
     listeners[key].push(fn);
+    listenerCount++;
     return () => {
       if (listeners[key]) {
         const idx = listeners[key].indexOf(fn);
         if (idx !== -1) {
           listeners[key].splice(idx, 1);
+          listenerCount--; // inside the idx guard: a double-unsubscribe is a no-op
           if (listeners[key].length === 0) delete listeners[key];
         }
       }
@@ -288,6 +304,16 @@ export function state(obj) {
       if (Object.is(oldValue, value)) return true;
 
       target[key] = value;
+
+      // No-subscriber fast path: with zero listeners and no beforeFlush
+      // hooks, nothing observes this write — populating the pending map,
+      // enqueuing into a batch, and flushing would notify nobody. Storing
+      // the value is the whole job, so skip the scheduling cost (it is O(N)
+      // per frame for a store written N times a frame, e.g. a high-churn
+      // data layer read back by a rAF poll instead of subscribers). A later
+      // $subscribe still delivers the current value immediately, and effects
+      // subscribe before they can depend on a key, so no update is missed.
+      if (listenerCount === 0 && beforeFlushHooks.length === 0) return true;
 
       // Batch notifications at the state level (per-state, not global)
       pendingNotifications.set(key, value);

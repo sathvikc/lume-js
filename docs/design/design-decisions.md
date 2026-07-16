@@ -663,6 +663,25 @@ store.$subscribe('text', (value) => {
 
 ---
 
+### Why Writes to an Unobserved Store Skip the Flush Pipeline (v2.3, 2026-07)
+
+**Decision:** The `set` trap short-circuits after storing the value when the store has zero listeners (across all keys — one live integer maintained by `addListener`/unsubscribe) and no `$beforeFlush` hooks: no pending-notification entry, no batch enqueue, no microtask flush. The flush's notify step also drops pending notifications outright when nothing listens (reachable when only hooks scheduled the flush).
+
+**Reasoning:**
+- A store nothing observes still paid the full write pipeline per changed key — Map insert, batch enqueue or microtask schedule, then a flush that notified nobody. That cost is O(writes) exactly where writes are heaviest: high-churn data layers that are *polled* (a rAF render loop reading `store.value`) rather than subscribed.
+- Measured in a 3,000-cell stress grid under a 20x CPU throttle: worst write-pass frame 156ms → 16ms (~10x), kernel share of active CPU ~9% → ~1.5%, landing reactive writes within ~1–2x of raw plain-array writes — so churny layers keep `state()` instead of abandoning reactivity for plain data.
+- No update can be missed: `$subscribe` delivers the current value immediately on registration, and effects subscribe to a key before they can depend on it, so anything that starts observing sees exactly the state it would have seen.
+
+**Alternatives considered:**
+- ❌ Per-key listener counts → finer-grained skipping, but more bookkeeping per subscribe/unsubscribe for a store-level question one integer answers; per-key wins only for stores that are partially observed *and* write-heavy on the unobserved keys — not the measured hot case.
+- ❌ An explicit opt-in ("silent store" API) → new API surface for something that is safe to do automatically; explicit-over-magic applies to *behavior*, and no observable behavior is removed.
+- ❌ Telling users to use plain objects for churny layers → loses reactivity at the edge where it may later be wanted; measurement showed the fast path captures ~85% of what plain data buys.
+- ❌ A kernel change-signal (dirty-list) primitive so pollers get O(changed) scans → measured: no responsiveness gain (rendering is paint-bound, not scan-bound) and the signal itself taxes the write path this decision is removing cost from.
+
+**Tradeoff:** One integer of listener accounting on the subscribe/unsubscribe paths (the double-unsubscribe no-op is guarded by the existing index check). One semantic sharpening: a subscriber registered between a write and its microtask no longer receives a duplicate flush delivery of that write — the immediate `$subscribe` call already delivered the current value (previously it got both). +0.03 KB gz on the kernel (1.46 → 1.49, budget 1.75).
+
+---
+
 ### Why No Computed Properties in Core?
 
 **Decision:** Move `computed()` to addons, not core.

@@ -29,6 +29,8 @@ store.count;     // read — tracked inside an effect
 store.count = 5; // write — notification queued via microtask
 ```
 
+Writes to a store that nothing observes take a fast path: with no subscribers on any key and no `$beforeFlush` hooks registered, a write stores the value and stops — no notification is queued and no flush is scheduled. This makes `state()` cheap enough for high-churn data layers that are read back by polling (e.g. a render loop sweeping `store.value` each frame) instead of subscriptions. Nothing is missed: a later `$subscribe` still receives the current value immediately, and effects subscribe before they can depend on a key.
+
 ## Nested reactivity
 
 Nested objects are **not** automatically reactive. The `get` trap returns the raw value — it does not wrap sub-objects in a proxy. To make a nested object reactive, wrap it in its own `state()` call:

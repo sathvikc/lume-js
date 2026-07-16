@@ -69,12 +69,19 @@ describe('persist', () => {
     const setSpy = vi.spyOn(Storage.prototype, 'setItem');
 
     const stop = persist(store, 'app');
-    await tick(); // hydration flush notifies the persist subscription
+    await tick(); // hydration happens before persist subscribes — no echo flush
 
     // Value matches what storage already holds — no write
     expect(setSpy).not.toHaveBeenCalled();
 
     store.count = 5; // same value: Object.is guard, no notification at all
+    await tick();
+    expect(setSpy).not.toHaveBeenCalled();
+
+    // Write-and-revert within one tick: the coalesced notification delivers the
+    // original value, so the serialized snapshot equals what storage holds — skip
+    store.count = 9;
+    store.count = 5;
     await tick();
     expect(setSpy).not.toHaveBeenCalled();
 
