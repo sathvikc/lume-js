@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lume.js — repeat() playground</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='1' y='1' width='6' height='6' rx='1.5' fill='%23f87171'/><rect x='9' y='1' width='6' height='6' rx='1.5' fill='%23fbbf24'/><rect x='1' y='9' width='6' height='6' rx='1.5' fill='%2334d399'/><rect x='9' y='9' width='6' height='6' rx='1.5' fill='%236366f1'/></svg>" />
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --panel: #121826;
+      --border: #1f2937;
+      --fg: #e5e7eb;
+      --muted: #7c8698;
+      --accent: #6366f1;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --bad: #f87171;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 20px 20px 40px;
+    }
+
+    header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+    h1 { font-size: 20px; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+    h1 code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; color: var(--accent); background: none; }
+    .hint { color: var(--muted); font-size: 14px; }
+
+    .bar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 7px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #1a2234;
+      color: var(--fg);
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease;
+    }
+    button:hover { background: #232e47; border-color: #2c3a57; }
+    button.storm-on { background: var(--bad); border-color: var(--bad); color: #14060a; }
+    .spacer { flex: 1; }
+    .count-control { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+    .count-control input { width: 130px; accent-color: var(--accent); }
+    .count-control output { color: var(--fg); font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
+
+    .readouts { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .readout {
+      flex: 1; min-width: 110px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 14px;
+    }
+    .readout .v {
+      font-size: 24px; font-weight: 700; line-height: 1.25;
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    .readout .l { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .fps-good { color: var(--ok); }
+    .fps-mid { color: var(--warn); }
+    .fps-bad { color: var(--bad); }
+    .moves-low { color: var(--ok); }
+
+    #board {
+      position: relative;
+      border-radius: 12px;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #board .tile {
+      position: absolute;
+      top: 0; left: 0;
+      width: var(--tile, 30px);
+      height: var(--tile, 30px);
+      border-radius: 6px;
+      background: hsl(var(--h, 220) 72% 58%);
+      box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.22);
+      transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 300ms ease-out;
+      cursor: grab;
+      will-change: transform;
+    }
+    #board .tile.dragging {
+      transition: none;
+      z-index: 10;
+      cursor: grabbing;
+      box-shadow: 0 10px 28px rgb(0 0 0 / 0.55);
+    }
+
+    footer { margin-top: 14px; color: var(--muted); font-size: 13px; }
+    footer a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><code>repeat()</code> playground</h1>
+    <span class="hint">drag any tile — everything else stays put</span>
+  </header>
+
+  <div class="bar">
+    <button id="shuffle">Shuffle</button>
+    <button id="sort">Sort</button>
+    <button id="reverse">Reverse</button>
+    <button id="add">+24</button>
+    <button id="remove">−24</button>
+    <button id="storm">Storm</button>
+    <div class="spacer"></div>
+    <label class="count-control">
+      tiles
+      <input id="count" type="range" min="100" max="2400" step="100" value="800" />
+      <output data-bind="count"></output>
+    </label>
+  </div>
+
+  <div class="readouts">
+    <div class="readout"><div class="v" id="moves" data-bind="moves">—</div><div class="l">DOM moves, last update</div></div>
+    <div class="readout"><div class="v" data-bind="ms">—</div><div class="l">update ms</div></div>
+    <div class="readout"><div class="v" id="fps" data-bind="fps">—</div><div class="l">fps</div></div>
+  </div>
+
+  <div id="board"></div>
+
+  <footer>
+    One drag across the whole grid is <strong>1</strong> DOM move — <a href="../../docs/api/addons/repeat.md">repeat()</a> keeps every tile that's already in order and moves only what isn't.
+  </footer>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
