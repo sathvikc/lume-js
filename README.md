@@ -11,7 +11,7 @@
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
     &nbsp;
 <!-- lume:badge-version -->
-    <a href="package.json"><img src="https://img.shields.io/badge/version-2.3.1-orange.svg" alt="v2.3.1"></a>
+    <a href="package.json"><img src="https://img.shields.io/badge/version-2.4.0-orange.svg" alt="v2.4.0"></a>
 <!-- /lume:badge-version -->
     &nbsp;
 <!-- lume:badge-tests -->

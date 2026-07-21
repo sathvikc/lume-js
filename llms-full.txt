@@ -8,7 +8,7 @@
 > microtask-batched per store with an explicit batch() escape hatch for
 > cross-store writes.
 
-Version: 2.3.1. Install: `npm install lume-js` or import from
+Version: 2.4.0. Install: `npm install lume-js` or import from
 `https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs`.
 
 Key facts agents get wrong without reading the docs: arrays and nested
@@ -267,7 +267,7 @@ FILE: README.md
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
     &nbsp;
-<a href="package.json"><img src="https://img.shields.io/badge/version-2.3.1-orange.svg" alt="v2.3.1"></a>
+<a href="package.json"><img src="https://img.shields.io/badge/version-2.4.0-orange.svg" alt="v2.4.0"></a>
     &nbsp;
 <a href="tests/"><img src="https://img.shields.io/badge/tests-475%20passing-brightgreen.svg" alt="475 tests"></a>
     &nbsp;
@@ -623,7 +623,7 @@ For production, pin to an exact version so your page can't break on a new releas
 
 ```html
 <!-- exact version (recommended for production) -->
-'https://cdn.jsdelivr.net/npm/lume-js@2.3.1/dist/index.min.mjs'
+'https://cdn.jsdelivr.net/npm/lume-js@2.4.0/dist/index.min.mjs'
 
 <!-- latest stable -->
 'https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs'
@@ -6888,7 +6888,7 @@ FILE: docs/guides/faq.md
 
 ## Is Lume.js production-ready?
 
-Yes. Lume 2.x is stable — the current release on npm is v2.3.1 (`npm install lume-js`), backed by 475 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
+Yes. Lume 2.x is stable — the current release on npm is v2.4.0 (`npm install lume-js`), backed by 475 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
 
 ## Does Lume work without a build step?
 

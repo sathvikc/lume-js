@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-07-20
+
 ### Changed
 
 - **Writes to an unobserved store now skip the flush pipeline entirely:** when a store has no subscribers on any key and no `$beforeFlush` hooks, the `set` trap stores the value and returns — no pending-notification bookkeeping, no batch enqueue, no microtask flush. High-churn stores read back by polling (e.g. a render loop) get reactive writes within ~1–2x of plain-object writes: in a 3,000-cell stress grid under a 20x CPU throttle, the worst write-pass frame dropped from 156ms to 16ms (~10x) and the kernel's share of active CPU fell from ~9% to ~1.5%. Observed stores are unchanged, and a later `$subscribe` still sees the current value immediately. One subtle sharpening: a subscriber registered between a write and its microtask no longer receives a duplicate delivery of that write on the flush — the immediate `$subscribe` call already handed it the current value. Kernel cost: +0.03 KB gz (1.46 → 1.49, budget 1.75).
