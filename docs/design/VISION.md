@@ -2,7 +2,8 @@
 
 > **Purpose:** Consolidated reference document synthesizing all architectural ideas, philosophy, and future plans.  
 > **Last Updated:** 2026-07-08  
-> **Status:** Living document - update as vision evolves
+> **Status:** Living document - update as vision evolves  
+> **Execution backlog:** the prioritized, verified list of next work (what/why/how per item) lives in [`ROADMAP.md`](ROADMAP.md). This file keeps philosophy and direction.
 
 ---
 

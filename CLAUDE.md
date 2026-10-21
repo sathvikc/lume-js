@@ -14,8 +14,9 @@ Never hard-wrap prose at a fixed column — not in markdown files, not in commit
 
 1. `AGENTS.md` — the process contract. Non-negotiable.
 2. `docs/design/design-decisions.md` — ratified decisions. If your change contradicts an entry, the entry wins until amended.
-3. `docs/design/VISION.md` — direction, roadmap, open problems.
-4. `docs/ARCHITECTURE.md` — how the code actually works (module walkthrough, data flow).
+3. `docs/design/VISION.md` — direction, philosophy, open problems.
+4. `docs/design/ROADMAP.md` — the prioritized execution backlog: what to build next, why, and how. Start here when asked "what should we work on?".
+5. `docs/ARCHITECTURE.md` — how the code actually works (module walkthrough, data flow).
 
 ## Directory map
 

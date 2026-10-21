@@ -9,7 +9,7 @@ Standards-only reactivity: `data-*` attributes, plain JavaScript, no build step,
 Two documents are the source of truth — read them **before** designing anything:
 
 1. `docs/design/design-decisions.md` — ratified decisions (the contract). If your change contradicts an entry, the entry wins until it is amended.
-2. `docs/design/VISION.md` — direction, roadmap, open problems.
+2. `docs/design/VISION.md` — direction, roadmap, open problems. The concrete, prioritized backlog lives in `docs/design/ROADMAP.md`.
 
 ## Hard constraints (never violate)
 
@@ -81,6 +81,7 @@ npm run typecheck           # tsc --noEmit against handwritten .d.ts
 |---|---|---|
 | `docs/design/design-decisions.md` | **why** (ratified) | any decision is made/amended — same commit |
 | `docs/design/VISION.md` | direction, open problems | roadmap items ship (mark ✅) or strategy shifts; dated notes log |
+| `docs/design/ROADMAP.md` | prioritized backlog (what/why/how per item) | an item ships (tick it), is re-scoped, or a new item is verified |
 | `docs/api/**` | reference semantics | the API they describe changes |
 | `docs/guides/**` | how-to | workflows change |
 | `README.md` | the pitch + numbers | features, sizes, test counts change |
