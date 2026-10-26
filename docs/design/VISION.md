@@ -238,6 +238,8 @@ Addons (tree-shakeable):
 | 10,000 state updates | ~8ms | ~15ms | 2x slower |
 | List update (1 in 1000) | ~0.5ms | ~25ms | 50x slower |
 
+> 2026-10: the canonical 1-in-1000 case, row selection, is now O(1) via `repeat()`'s `select` option (two class writes per change). The table above has not been re-measured since.
+
 ### The Fundamental Trade-off
 
 - **Chose:** Standards compliance, longevity, zero build

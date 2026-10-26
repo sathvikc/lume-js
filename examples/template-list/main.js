@@ -11,6 +11,7 @@ const store = state({
   ],
   newName: '',
   newCity: '',
+  selected: null,
 });
 
 bindDom(document.body, store);
@@ -19,9 +20,13 @@ bindDom(document.body, store);
 repeat('#people', store, 'people', {
   key: p => p.id,
   template: true,
-  // create is only needed for behavior (the remove button) — not structure
+  // Moves the 'selected' class between two rows when store.selected changes
+  select: { key: 'selected' },
+  // create is only needed for behavior (select, remove) — not structure
   create: (p, el) => {
-    el.querySelector('.remove').addEventListener('click', () => {
+    el.addEventListener('click', () => { store.selected = p.id; });
+    el.querySelector('.remove').addEventListener('click', (e) => {
+      e.stopPropagation();
       store.people = store.people.filter(x => x.id !== p.id);
     });
   },

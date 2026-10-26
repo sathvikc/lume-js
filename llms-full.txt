@@ -195,6 +195,8 @@ repeat(listEl, store, 'items', {
 
 `repeat` diffs by `key` against the previous array — which is why rule #1 (immutable array updates) is non-negotiable.
 
+To highlight a selected row, use the `select` option instead of comparing `item.id === store.selected` in `update` (which re-checks every row): `repeat(el, store, 'items', { key: it => it.id, select: { key: 'selected', className: 'active' } })`. The selection value must have the same type as `key(item)`; for a list from `computed()`, add `store` to `select`.
+
 ## Canonical app skeleton
 
 ```html
@@ -273,7 +275,7 @@ FILE: README.md
     &nbsp;
 <a href="package.json"><img src="https://img.shields.io/badge/version-2.4.0-orange.svg" alt="v2.4.0"></a>
     &nbsp;
-<a href="tests/"><img src="https://img.shields.io/badge/tests-495%20passing-brightgreen.svg" alt="495 tests"></a>
+<a href="tests/"><img src="https://img.shields.io/badge/tests-503%20passing-brightgreen.svg" alt="503 tests"></a>
     &nbsp;
 <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/universal%20core-1.49KB-blue.svg" alt="universal core 1.49KB"></a>
     &nbsp;
@@ -1627,6 +1629,7 @@ The `render` function receives `(item, el, index)` and should mutate `el` direct
 | `create` | One of | `(item, el, index) => void` — called once when an element is created. Set DOM structure and event listeners here. |
 | `update` | One of | `(item, el, index, { isFirstRender }) => void` — called on every data change. Bind data here. |
 | `element` | — | Tag name or factory for the wrapper element. Default: `'div'`. |
+| `select` | — | `{ key, className?, store? }` — marks the row whose key equals `store[key]`; a selection change costs two class writes, however long the list. See [Selection](../api/addons/repeat.md#selection). |
 
 Use `render` alone for simple, read-only lists. Use `create` + `update` for lists that have interactive elements (buttons, checkboxes) — `create` runs once per DOM element so you only attach listeners once, and `update` runs on every data change to keep the display in sync.
 
@@ -2961,6 +2964,7 @@ function repeat(
     element?: string | (() => HTMLElement);
     preserveFocus?: Function | null;
     preserveScroll?: Function | null;
+    select?: { key: string; className?: string; store?: object };
   }
 ): () => void
 ```
@@ -2980,6 +2984,7 @@ Imported from `lume-js/addons`.
 - `options.element` — Tag name or factory for the wrapper element. Default: `'div'`. Ignored when `template` is set.
 - `options.preserveFocus` — Optional strategy for preserving focus during re-renders. Default: `defaultFocusPreservation`.
 - `options.preserveScroll` — Optional strategy for preserving scroll position during re-renders. Default: `defaultScrollPreservation`.
+- `options.select` — Keeps one row marked as selected. See [Selection](#selection).
 
 Use `render` alone for simple read-only lists. Use `create + update` for lists with event listeners — `create` runs once when the element is created, `update` runs on every data change.
 
@@ -3137,6 +3142,26 @@ repeat(listEl, filtered, 'value', {
   render: (t, el) => { el.textContent = t.text; }
 });
 ```
+
+## Selection
+
+`select` marks the row whose key equals a state value, and moves the mark when that value changes:
+
+```js
+const store = state({ items: [...], selected: null });
+
+repeat(list, store, 'items', {
+  key: item => item.id,
+  template: true,
+  select: { key: 'selected', className: 'active' }, // className defaults to 'selected'
+  create: (item, el) => el.addEventListener('click', () => { store.selected = item.id; }),
+});
+```
+
+- A selection change touches exactly two rows (`classList.remove` on the old one, `classList.add` on the new one) through `repeat`'s key-to-element map, whether the list has 10 rows or 10,000. Doing the same with `update` or an effect checks every row.
+- `store.selected` must hold the same value `key(item)` returns (`5`, not `'5'`). A value that matches no row clears the mark.
+- Rows created later with the selected key get the class, and the selected row keeps it even if `render` assigns `el.className`.
+- When the list comes from a `computed()`, pass the store that holds the selection: `select: { key: 'selected', store }`. Without it `repeat()` throws, because a computed has no keys to watch.
 
 ## Caveats
 
@@ -6322,6 +6347,24 @@ repeat('#list', store, 'people', { key: p => p.id, template: true });
 **Tradeoff:** `data-bind` inside a repeat template resolves against the item rather than the store — context-dependent meaning for one attribute, consistent with `data-bind`'s existing context-awareness (input vs span).
 
 
+### Why Selection Is a `repeat()` Option (2026-10)
+
+**Decision:** `repeat(..., { select: { key, className?, store? } })` subscribes once to a state key holding the selected item's key, and on change removes the class from the previously selected row and adds it to the new one, looked up through `repeat()`'s key-to-element map.
+
+**Reasoning:**
+- "Highlight the selected row" is the canonical single-row update, and VISION.md lists "List update (1 in 1000)" as Lume's largest performance gap. Without help it is O(n): every row re-checks `selected === item.id` in `update`, or the user writes the bookkeeping by hand. With the option it is two `classList` calls regardless of list size (asserted in tests with a MutationObserver over 1,000 rows).
+- The key-to-element map lives inside `repeat()`, and addons cannot import addons, so a separate `selection()` addon would have to rebuild that map from the DOM.
+- It is a class toggle, which is how lists already express state in CSS, not a new rendering concept.
+
+**Alternatives considered:**
+- ❌ A standalone `selection()` addon → cannot reach the map without an addon-to-addon import or a DOM scan per change.
+- ❌ Synchronous "direct observers" bypassing batching (Gea's approach) → special-cases the benchmark and breaks the flush guarantees.
+- ❌ A generic `relational: [{ key, className }]` list → more API for a pattern that appears once per list in practice.
+
+**Tradeoff:** One option on an already large function, and one `===` per rendered row so the selected row survives a `render` that rewrites `className`. +0.09 KB gz on the global bundle, which leaves it ~0.07 KB under its 8 KB budget.
+
+---
+
 ### Why `create` + `update` Instead of Just `render`?
 
 **Problem:** A single `render` function forces users to guard one-time setup:
@@ -7036,7 +7079,7 @@ FILE: docs/guides/faq.md
 
 ## Is Lume.js production-ready?
 
-Yes. Lume 2.x is stable — the current release on npm is v2.4.0 (`npm install lume-js`), backed by 495 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
+Yes. Lume 2.x is stable — the current release on npm is v2.4.0 (`npm install lume-js`), backed by 503 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
 
 ## Does Lume work without a build step?
 

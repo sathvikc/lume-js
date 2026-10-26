@@ -60,6 +60,8 @@
       border-bottom: 1px solid var(--border);
     }
     ul#people li:last-child { border-bottom: 0; }
+    ul#people li { cursor: pointer; border-radius: 6px; }
+    ul#people li.selected { background: #eef2ff; box-shadow: inset 3px 0 0 var(--accent); }
     .idx {
       color: var(--muted);
       font-style: normal;
@@ -85,6 +87,8 @@
     The row structure is a standard <code>&lt;template&gt;</code> in the HTML.
     <code>data-bind</code> paths bind into each item — no <code>createElement</code>,
     no <code>innerHTML</code>, no manual <code>textContent</code> in JS.
+    Click a row to select it: the <code>select</code> option moves one class between two rows,
+    however long the list is.
   </p>
 
   <div class="card">

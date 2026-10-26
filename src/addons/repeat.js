@@ -150,6 +150,27 @@ function stableChainMarkers(positions) {
 }
 
 /**
+ * options.select: one subscription to the selected key, and two classList
+ * writes per selection change (old row off, new row on) via the key→element
+ * map, however long the list is. mark() re-applies the class to the selected
+ * row whenever the list renders it (new rows, or render() rewriting className).
+ */
+function trackSelection(select, store, elementsByKey) {
+  const cls = select.className || 'selected';
+  const source = select.store || store;
+  let current;
+  const unsub = source.$subscribe(select.key, next => {
+    elementsByKey.get(current)?.classList.remove(cls);
+    current = next;
+    elementsByKey.get(next)?.classList.add(cls);
+  });
+  return {
+    unsub,
+    mark(k, el) { if (k === current) el.classList.add(cls); }
+  };
+}
+
+/**
  * Resolve the template option to the <template> element.
  * Accepts true (first <template> inside the container), a CSS selector,
  * or an HTMLTemplateElement directly.
@@ -331,7 +352,8 @@ export function repeat(container, store, arrayKey, options) {
     template = null,
     element = 'div',
     preserveFocus = defaultFocusPreservation,
-    preserveScroll = defaultScrollPreservation
+    preserveScroll = defaultScrollPreservation,
+    select
   } = options;
 
   // Resolve container
@@ -531,6 +553,9 @@ export function repeat(container, store, arrayKey, options) {
         logError(`[Lume.js] repeat(): error rendering key "${k}":`, err);
       }
 
+      // New rows, and a render that rewrote className, keep the mark
+      if (selection) selection.mark(k, el);
+
       nextEls.push(el);
     }
 
@@ -567,6 +592,36 @@ export function repeat(container, store, arrayKey, options) {
     }, isReorder);
   }
 
+  // Subscribed before the list so the first render knows the selected key
+  const selection = select && trackSelection(select, store, elementsByKey);
+
+  // Run create-returned cleanups and remove callbacks for every row, then
+  // empty the container (preserving the source template, if any).
+  function teardown() {
+    if (selection) selection.unsub();
+    for (const [k, el] of elementsByKey) {
+      const prevItem = prevItemsByKey.get(k);
+      const cleanup = cleanupByKey.get(k);
+      if (typeof cleanup === 'function') {
+        try {
+          cleanup();
+        } catch (err) {
+          logError(`[Lume.js] repeat(): cleanup error for key "${k}":`, err);
+        }
+      }
+      if (typeof remove === 'function') {
+        remove(prevItem, el);
+      }
+    }
+    clearContainer();
+    elementsByKey.clear();
+    prevItemsByKey.clear();
+    prevIndexByKey.clear();
+    cleanupByKey.clear();
+    bindingsByKey.clear();
+    seenKeys.clear();
+  }
+
   // Subscription — $subscribe calls updateList immediately (initial render),
   // so no separate updateList() call is needed for reactive stores.
   let unsubscribe;
@@ -584,57 +639,11 @@ export function repeat(container, store, arrayKey, options) {
     // Non-reactive store — render once and return cleanup
     updateList();
     logWarn('[Lume.js] repeat(): store is not reactive (no $subscribe or subscribe method)');
-    return () => {
-      for (const [k, el] of elementsByKey) {
-        const prevItem = prevItemsByKey.get(k);
-        const cleanup = cleanupByKey.get(k);
-        if (typeof cleanup === 'function') {
-          try {
-            cleanup();
-          } catch (err) {
-            logError(`[Lume.js] repeat(): cleanup error for key "${k}":`, err);
-          }
-        }
-        if (typeof remove === 'function') {
-          remove(prevItem, el);
-        }
-      }
-      clearContainer();
-      elementsByKey.clear();
-      prevItemsByKey.clear();
-      prevIndexByKey.clear();
-      cleanupByKey.clear();
-      bindingsByKey.clear();
-      seenKeys.clear();
-    };
+    return teardown;
   }
 
   return () => {
-    if (typeof unsubscribe === 'function') {
-      unsubscribe();
-    }
-    // Invoke cleanup and remove callback for all remaining elements before clearing
-    for (const [k, el] of elementsByKey) {
-      const prevItem = prevItemsByKey.get(k);
-      const cleanup = cleanupByKey.get(k);
-      if (typeof cleanup === 'function') {
-        try {
-          cleanup();
-        } catch (err) {
-          logError(`[Lume.js] repeat(): cleanup error for key "${k}":`, err);
-        }
-      }
-      if (typeof remove === 'function') {
-        remove(prevItem, el);
-      }
-    }
-    // Clear DOM elements (preserving the source template, if any)
-    clearContainer();
-    elementsByKey.clear();
-    prevItemsByKey.clear();
-    prevIndexByKey.clear();
-    cleanupByKey.clear();
-    bindingsByKey.clear();
-    seenKeys.clear();
+    unsubscribe();
+    teardown();
   };
 }
