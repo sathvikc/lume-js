@@ -2,7 +2,7 @@
 
 > **Purpose:** The execution plan — what to build next, in what order, and *why*. Every item says what it is, why it matters, where it lives in the code, how to approach it, what artifacts it needs, and when it counts as done. A new session should be able to pick up any item from this file alone.
 > **Created:** 2026-10-21 · **Baseline:** v2.4.0 · 475 tests · 100% coverage · sizes (gz): `state` 1.49 / 1.75 KB, `index` 2.77 / 3.00 KB, `handlers` 1.23 / 2.00 KB, `addons` 4.96 / 6.00 KB, `global` 7.75 KB
-> **Last execution pass:** 2026-10-26, see [Execution log](#execution-log-2026-10-26). Implementation lives on branch `feat/roadmap-backlog` (8 commits off `main` 4efcf41).  
+> **Last execution pass:** 2026-10-26, see [Execution log](#execution-log-2026-10-26). Implementation lives on branch `feat/roadmap-backlog` (8 commits off `main` 4efcf41). Independently verified the same day, with three documentation gaps to close before merging; see [Independent verification](#independent-verification-of-featroadmap-backlog-2026-10-26).  
 > **Status:** Living document. When an item ships, tick it here, mark it ✅ in `VISION.md` if it appears there, and add a dated note.
 
 ---
@@ -48,6 +48,67 @@ Every item was attempted in phase order on a separate branch, `feat/roadmap-back
 4. **Caveats need the same verification as bugs.** R5's caveat was asserted, not run, and was wrong.
 5. **Commits must not reference this file.** Implementation commits, decision entries and docs on `feat/roadmap-backlog` describe each change in their own words, with no roadmap or item-ID references, because this file will go stale or be deleted. Step 4 of "How to use this document" is amended accordingly. The pointers this branch's own commit added to `AGENTS.md`, `CLAUDE.md` and `VISION.md` were deliberately **not** carried over, for the same reason.
 6. **Local environment trap:** on Node 26, the built-in `localStorage` shadows jsdom's and 19 `persist` tests fail even on `main`. Run gates with `NODE_OPTIONS=--no-experimental-webstorage`. CI pins Node 22 and is unaffected.
+
+---
+
+## Independent verification of `feat/roadmap-backlog` (2026-10-26)
+
+A second session re-checked the execution pass instead of trusting the log above. Branch state at the time: 8 commits ahead of `main` (4efcf41), 0 behind, so it merges cleanly.
+
+**Gates (Node 22):** `vitest --coverage` 503/503 passing, 100/100/100/100; `npm run lint`, `node scripts/complexity.js`, `npm run typecheck` clean; `npm run size` within every budget (`global` 7.93 / 8.00, `index` 2.87 / 3.00); `build-llms --check` and `sync-docs --check` in sync.
+
+**Original repros re-run against the branch:**
+
+| Repro | Before | On the branch |
+|---|---|---|
+| R1 clamp effect + `computed(() => s.a * 2)`, write 50 | `100` (stale) | `20` |
+| R2 replace `store.user` | old value shown, typing wrote to the old object | new value shown, typing writes to the new object, old object no longer drives the DOM; the `data-hidden` handler follows too |
+| R2 `profile: null`, assigned later | dead binding | activates |
+| R2 set path to `null`, then restore | — | renders empty, input writes nowhere (no throw), then re-links |
+| R2 after `bindDom()` cleanup | — | no further updates |
+| R3 nested roots, outer-first and inner-first | outer store polluted with the inner key | outer store untouched, inner store drives the input, in both orders |
+| R5 `watch` transitions | one argument | `undefined->idle`, `idle->loading`, `loading->done` |
+
+No console warnings during the run. A code review of every `src/` diff (`bindDom.js`, `computed.js`, `watch.js`, `repeat.js`, `stringAttr.js`) found no correctness bugs.
+
+**Note on the R3 correction above:** the "input shows A's value" symptom *does* reproduce in the outer-first order when the user types first: typing leaves a pending write on the outer store, which flushes after the inner store and overwrites the input. The original repro did not spell out that sequence. Moot now, since the boundary prevents both symptoms.
+
+### Open documentation gaps (fix before merging `feat/roadmap-backlog`)
+
+All three were found by running edge cases against the branch. None is a code bug.
+
+1. **`select` uses strict equality, undocumented.** `selectedId: '2'` against item key `2` selects nothing, silently. Keys read from the DOM (`dataset`, input values) are strings, so this will be hit. Add one line to `docs/api/addons/repeat.md` (and the `select` JSDoc): the selected value must be `===` the row key, same type.
+2. **Server-rendered placeholders under a `null` parent are now cleared at bind time.** `<span data-bind="user.name">Loading…</span>` with `user: null` used to keep "Loading…" (dead binding plus a warning); it now renders empty and waits. This matches how a flat `undefined` value already behaved, but it is a visible change for server-rendered pages. Add one line to `docs/guides/ssr-hydration.md` and to the nested-path entry under `### Changed` in `CHANGELOG.md`.
+3. **Unclear error for `select` over a `computed()` list without `select.store`:** it throws `source.$subscribe is not a function`. The clearer message was removed to save bytes, which is acceptable with 0.07 KB left in the global budget. At minimum, `docs/api/addons/repeat.md` should say `select.store` is required when the list source is a `computed()`.
+
+---
+
+## Retrospective: what this roadmap's original spec got wrong, and why
+
+The spec was written on 2026-10-21. The execution pass and the verification above showed where it was wrong. One pattern explains every miss: **every claim that something was a problem was executed; the proposed solutions, caveats, and performance premises were reasoned out and written down with the same confidence.**
+
+| Claim in the original spec | Executed before writing? | What went wrong |
+|---|---|---|
+| The three Phase 1 bugs (R1, R2, R3) | **Yes**, reproduced against `src/` | Held up. All three were real and are fixed. |
+| R1 fix direction: retry when the guard clears | No, reasoned | Verified the bug, not the fix. A retry cannot tell a self-triggered run from an external one, so a computed that never converges loops forever across microtasks. The item said "decide test-first" and still put an untested direction under "How". |
+| R5 caveat: in-place nested edit gives `previous === next` | No, asserted | Wrong. Editing `store.user.name` writes the nested store, never the watched key `user`, so the watcher does not fire at all. One probe would have shown it. |
+| R4 fix: read through `Reflect.get(target, key, proxy)` | Bug yes, fix **no** | The fix was never benchmarked (+40% on raw reads, the hottest path) and the spec missed a well-known Proxy gotcha: with the proxy as the getter's `this`, class getters reading `#private` fields throw. |
+| R6 head/tail trimming, R9 delegated `on()` | No, the technique was borrowed from other libraries | Proposed because Vue/Regor/Gea do them, not because Lume had a measured cost. Measurement closed both: the common list updates already make the minimum DOM moves, and 10,000 listeners cost 1.5 ms. |
+| "Headroom is tight on `index`" | The numbers were read and used badly | `docs/metrics.json` already showed `global` at 7.75 / 8.00. The header listed four budgets and left out the one that binds. |
+| R2 "zero overhead for flat paths" | Not testable before code | A design goal phrased as a requirement; the result costs one extra closure call per update. Should have been written as a goal. |
+| R2 behavior for a `null` intermediate | Not specified | The spec said what to render but not whether to warn, which became a user-visible decision during implementation. |
+| R3 symptom "input shows A's value" | Yes, observed | Correct but under-specified: it depends on typing first, which the repro did not state. |
+
+**Genuinely only discoverable while building** (normal, not spec errors): the cognitive-complexity limit forcing `bindElement()`/`inNestedScope()` out of `performBinding`; the flat-path closure cost; `select.store` being needed for `computed()` lists; a `render` that rewrites `className` wiping the selection class.
+
+### Rules for writing or updating items in this file
+
+1. **Tag every claim** as *executed* (with the command or repro) or *reasoned*. Never mix the two at the same confidence.
+2. **A proposed fix gets a prototype before it goes under "How".** Otherwise label it "direction, unverified".
+3. **Performance items carry a measured baseline from Lume itself**, not "library X does this".
+4. **Report every size budget** and name the one closest to its limit.
+5. **Specify warning and error behavior** for every edge state an item introduces (null, missing key, wrong type).
+6. **Re-run repros in every call order and input sequence** where ordering can matter, and write the exact sequence into the repro.
 
 ---
 
