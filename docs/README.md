@@ -123,6 +123,7 @@ console.log(total.value);  // cached until items changes
 - [Handlers](guides/handlers.md)
 - [Two-way binding](guides/two-way-binding.md)
 - [Lists & repeat](guides/lists.md)
+- [Security model](guides/security.md)
 - [Forms](guides/forms.md)
 - [Routing](guides/routing.md)
 - [Animations](guides/animations.md)

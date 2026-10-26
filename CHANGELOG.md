@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Security model guide** (`docs/guides/security.md`): what Lume guarantees (attributes are state paths, never expressions; text set as text; URL scheme filtering; prototype-key guard; subscriber and flush caps), what it does not, and how to keep user data out of markup in your own `render`/`update` code. The `repeat()` JSDoc example in `index.d.ts`, which interpolated item text into `innerHTML`, now sets it as text.
 - **`repeat()` `select` option, O(1) row selection:** `select: { key: 'selected', className: 'active' }` marks the row whose key equals `store.selected` and, when it changes, moves the class with two `classList` writes (old row off, new row on) through the existing key-to-element map, however long the list is. Previously this took an O(n) pass over every row. Rows created later with the selected key get the class, and a `render` that rewrites `className` does not drop it. For lists that come from `computed()`, pass `select.store`.
 - **`data-bind-scope` boundary for nested `bindDom()` roots:** an outer `bindDom()` now skips everything inside an element marked `data-bind-scope`, so a widget bound to its own store no longer gets bound to the page store too. Previously typing into such a widget's input wrote the key into both stores. The scope element's own attributes still bind to the outer store; it works in either call order and at any nesting depth.
 

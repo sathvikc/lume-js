@@ -36,6 +36,7 @@ data-* attribute values are state keys, never expressions.
 - [docs/guides/handlers.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/handlers.md): Extending bindDom with new data-* attributes
 - [docs/guides/two-way-binding.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/two-way-binding.md): Inputs and data-bind
 - [docs/guides/lists.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/lists.md): Rendering arrays
+- [docs/guides/security.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/security.md): Paths not expressions, text not HTML, URL filtering, prototype guard
 - [docs/guides/forms.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/forms.md): Form patterns
 - [docs/guides/routing.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/routing.md): Client-side routing patterns
 - [docs/guides/animations.md](https://raw.githubusercontent.com/sathvikc/lume-js/main/docs/guides/animations.md): Animating on state change
