@@ -43,6 +43,8 @@ The built-in `data-bind` attribute is **two-way** on form controls and **one-way
 <input type="checkbox" data-bind="agreed">   <!-- reads and writes store.agreed -->
 ```
 
+Several stores can drive one page: bind each region to its own store, and mark nested regions with `data-bind-scope` so an outer `bindDom()` leaves them alone. See [Nested roots](../api/core/bindDom.md#nested-roots-data-bind-scope).
+
 For visibility, classes, attributes, and more, use **handlers** — or write your own. A handler is just a plain object with `attr` and `apply`. See [Handlers](handlers.md).
 
 > **→ Why one `data-bind` attribute?** [Why `data-bind` only, not `data-model` or `data-text`](../design/design-decisions.md#why-data-bind-only-not-data-model-or-data-text)

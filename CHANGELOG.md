@@ -4,6 +4,8 @@
 
 ### Added
 
+- **`data-bind-scope` boundary for nested `bindDom()` roots:** an outer `bindDom()` now skips everything inside an element marked `data-bind-scope`, so a widget bound to its own store no longer gets bound to the page store too. Previously typing into such a widget's input wrote the key into both stores. The scope element's own attributes still bind to the outer store; it works in either call order and at any nesting depth.
+
 - **`watch()` callbacks receive the previous value:** the callback is now called as `(newValue, previousValue)`, so transition logic (`idle → loading`) needs no hand-kept copy. `previousValue` is the last value delivered to that watcher: `undefined` on the immediate call, and with `{ immediate: false }` the subscribe-time value is the baseline for the first change. One-argument callbacks are unaffected, but a callback that already declares an optional second parameter (for example a function reference like `watch(store, 'n', format)` where `format(value, options)`) now receives the previous value there.
 
 ### Fixed

@@ -56,7 +56,7 @@ store.count++;                          // DOM + title update on next microtask
 
 | Import | Size (gz) | Gives you | Use in |
 |---|---|---|---|
-| `lume-js` | 2.77 KB | `state`, `effect`, `bindDom`, `batch`, `withReadObserver` | browsers |
+| `lume-js` | 2.83 KB | `state`, `effect`, `bindDom`, `batch`, `withReadObserver` | browsers |
 | `lume-js/state` | 1.49 KB | `state`, `batch`, `withReadObserver` (no DOM code) | Node, workers, CLI, SSR |
 | `lume-js/addons` | pay per import | `computed`, `watch`, `repeat`, `persist`, `hydrateState`, `createCleanupGroup`, `debug` | optional patterns |
 | `lume-js/handlers` | pay per import | `show`, `classToggle`, `boolAttr`, `ariaAttr`, `stringAttr`, `className`, `on`, `htmlAttrs`, presets | extra `data-*` attributes |
@@ -145,7 +145,10 @@ Anti-pattern: calling `$subscribe` for a key inside an `effect` that also reads 
 <div  data-hidden="isLoading">…</div>     <!-- boolean attrs: hidden/disabled/checked/required -->
 <button data-disabled="isSubmitting">Go</button>
 <button data-aria-expanded="menuOpen">Menu</button>  <!-- ARIA: "true"/"false" strings -->
+<div data-bind-scope>…</div>              <!-- boundary: outer bindDom() skips everything inside -->
 ```
+
+When a region is bound to a different store than its surroundings (a widget inside a page-level `bindDom`), put `data-bind-scope` on the region's root element. Without it the outer `bindDom` binds the region's elements too, and two-way inputs write into both stores.
 
 More attributes are opt-in handlers, passed to `bindDom`:
 
@@ -262,18 +265,18 @@ FILE: README.md
   <p>
     Minimal reactive state management using only standard JavaScript and HTML.<br>
     No custom syntax &nbsp;·&nbsp; No build step &nbsp;·&nbsp; No framework lock-in.<br>
-    <strong>1.49 KB universal core</strong> &nbsp;·&nbsp; <strong>2.77 KB with DOM</strong>
+    <strong>1.49 KB universal core</strong> &nbsp;·&nbsp; <strong>2.83 KB with DOM</strong>
   </p>
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
     &nbsp;
 <a href="package.json"><img src="https://img.shields.io/badge/version-2.4.0-orange.svg" alt="v2.4.0"></a>
     &nbsp;
-<a href="tests/"><img src="https://img.shields.io/badge/tests-482%20passing-brightgreen.svg" alt="482 tests"></a>
+<a href="tests/"><img src="https://img.shields.io/badge/tests-487%20passing-brightgreen.svg" alt="487 tests"></a>
     &nbsp;
 <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/universal%20core-1.49KB-blue.svg" alt="universal core 1.49KB"></a>
     &nbsp;
-<a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core%20%2B%20DOM-2.77KB-blue.svg" alt="core + DOM 2.77KB"></a>
+<a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core%20%2B%20DOM-2.83KB-blue.svg" alt="core + DOM 2.83KB"></a>
   </p>
   <p><code>npm install lume-js</code></p>
   <p><a href="https://sathvikc.github.io/lume-js/"><strong>Docs & live examples →</strong></a></p>
@@ -287,7 +290,7 @@ FILE: README.md
 |---------|---------|-----------|-----|-------|
 | Custom Syntax | ❌ No | ✅ `x-data` | ✅ `v-bind` | ✅ JSX |
 | Build Step | ❌ Optional | ❌ Optional | ⚠️ Recommended | ✅ Required |
-| Bundle Size | 1.49–2.77KB | ~15KB | ~35KB | ~45KB |
+| Bundle Size | 1.49–2.83KB | ~15KB | ~35KB | ~45KB |
 | HTML Validation | ✅ Pass | ⚠️ Warnings | ⚠️ Warnings | ❌ JSX |
 | Extensible Handlers | ✅ | ❌ Built-in only | ❌ Built-in only | N/A |
 
@@ -302,7 +305,7 @@ FILE: README.md
 | Entry | Size (gz) | Contents | For |
 |-------|-----------|----------|-----|
 | `lume-js/state` | **1.49 KB** | `state`, `batch`, `withReadObserver` | Node, Deno, Bun, workers, CLI — anywhere without a DOM |
-| `lume-js` | **2.77 KB** | + `bindDom`, `effect` | Browsers |
+| `lume-js` | **2.83 KB** | + `bindDom`, `effect` | Browsers |
 | `lume-js/addons` | pay per import | `computed`, `watch`, `repeat`, `persist`, … | Optional patterns |
 | `lume-js/handlers` | pay per import | `show`, `classToggle`, `on`, … | Extra reactive attributes |
 
@@ -815,6 +818,8 @@ The built-in `data-bind` attribute is **two-way** on form controls and **one-way
 <input type="checkbox" data-bind="agreed">   <!-- reads and writes store.agreed -->
 ```
 
+Several stores can drive one page: bind each region to its own store, and mark nested regions with `data-bind-scope` so an outer `bindDom()` leaves them alone. See [Nested roots](../api/core/bindDom.md#nested-roots-data-bind-scope).
+
 For visibility, classes, attributes, and more, use **handlers** — or write your own. A handler is just a plain object with `attr` and `apply`. See [Handlers](handlers.md).
 
 > **→ Why one `data-bind` attribute?** [Why `data-bind` only, not `data-model` or `data-text`](../design/design-decisions.md#why-data-bind-only-not-data-model-or-data-text)
@@ -1018,7 +1023,7 @@ import { state, batch } from 'lume-js/state';
 If you're building for the browser and want DOM binding, use the full core instead — same `state`, plus `bindDom` and `effect`:
 
 ```js
-import { state, bindDom, effect, batch } from 'lume-js';   // 2.77 KB
+import { state, bindDom, effect, batch } from 'lume-js';   // 2.83 KB
 ```
 
 Both entries share one implementation — `lume-js/state` is not a fork, it's a smaller slice of the same modules.
@@ -1127,7 +1132,7 @@ console.log(sum, deps);   // 3, ['a', 'b']
 | Entry | Gzipped | CI budget |
 |-------|---------|-----------|
 | `lume-js/state` (`dist/state.min.mjs`) | 1.49 KB | ≤ 1.75 KB |
-| `lume-js` (`dist/index.min.mjs`) | 2.77 KB | ≤ 3.00 KB |
+| `lume-js` (`dist/index.min.mjs`) | 2.83 KB | ≤ 3.00 KB |
 
 Both numbers are enforced by `scripts/check-size.js` on every CI run — they can't silently drift.
 
@@ -2374,6 +2379,28 @@ A cleanup function. Call it to remove all bindings and event listeners created b
 |-----------|--------|
 | `data-aria-expanded="key"` | `el.setAttribute('aria-expanded', 'true'/'false')` |
 | `data-aria-hidden="key"` | `el.setAttribute('aria-hidden', 'true'/'false')` |
+
+### Nested roots: `data-bind-scope`
+
+`bindDom(root)` binds every matching element under `root`, including elements inside a region you bind separately to another store. Mark that region with `data-bind-scope` and outer `bindDom()` calls skip everything inside it:
+
+```html
+<div id="page">
+  <h1 data-bind="title"></h1>
+  <div id="search" data-bind-scope data-hidden="searchOff">
+    <input data-bind="query">  <!-- belongs to the search store only -->
+  </div>
+</div>
+```
+
+```js
+bindDom(document.getElementById('page'), pageStore);
+bindDom(document.getElementById('search'), searchStore);
+```
+
+- The boundary covers the element's **descendants**. Its own attributes (`data-hidden="searchOff"` above) still bind to the outer store, so the page can show or hide the widget.
+- It works in either call order, at any nesting depth, and keeps the outer root's delegated `input` listener from writing into the inner store.
+- Without it, both roots bind the inner elements: typing into the `<input>` writes `query` into **both** stores.
 
 ## Examples
 
@@ -6437,6 +6464,24 @@ store.$subscribe('text', (value) => {
 
 ---
 
+### Why `data-bind-scope` Marks Nested Roots (2026-10)
+
+**Decision:** An element carrying `data-bind-scope` is a boundary: `bindDom()` skips every element whose nearest scope ancestor sits inside its root (and is not the root). The scope element's own attributes are not affected, so the outer store can still bind them.
+
+**Reasoning:**
+- `bindDom(root)` uses `root.querySelectorAll()`, which reaches into regions bound to other stores. Reproduced with a page store `A` and an inner widget store `B`: typing into the widget's `<input data-bind="query">` wrote `query` into both stores, and `A` gained a stray key. Islands inside a page-level binding are a core Lume use case (WordPress/Shopify widgets).
+- Skipping at bind time means the outer root never registers those elements, so its delegated `input` listener cannot write to them either. No new runtime machinery.
+- Covering descendants but not the scope element itself lets a page show or hide a widget with ordinary attributes on the widget's container, and nothing binds twice: `bindDom()` never binds its own root element.
+
+**Alternatives considered:**
+- ❌ Automatic: `bindDom()` marks its root so others skip it → depends on call order. If the outer root is bound first, it has already claimed the inner elements, and the result changes with script load order.
+- ❌ A `bindDom()` option listing excluded selectors → puts layout knowledge in JavaScript far from the markup it describes; the attribute is visible where the boundary is.
+- ❌ Reusing an existing attribute (`data-bind` on the container) → overloads a binding attribute with a structural meaning.
+
+**Tradeoff:** One `closest()` lookup per matched element at bind time (bindings resolve once, so there is no per-update cost). Authors must remember the attribute; the API page and AGENT_GUIDE call out the double-write symptom it prevents.
+
+---
+
 ## Performance Decisions
 
 ### Why No Virtual DOM?
@@ -6950,7 +6995,7 @@ FILE: docs/guides/faq.md
 
 ## Is Lume.js production-ready?
 
-Yes. Lume 2.x is stable — the current release on npm is v2.4.0 (`npm install lume-js`), backed by 482 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
+Yes. Lume 2.x is stable — the current release on npm is v2.4.0 (`npm install lume-js`), backed by 487 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
 
 ## Does Lume work without a build step?
 
@@ -6979,7 +7024,7 @@ bindDom(document.getElementById('nav'), store);
 
 ## How does Lume compare to Alpine.js?
 
-Both work inline with server-rendered HTML. Lume uses standard `data-*` attributes; Alpine uses `x-*` directives with a custom expression syntax. Lume is smaller (2.77 KB vs ~15 KB gzipped — 1.49 KB for the DOM-free kernel) and has no custom expression evaluator — logic lives in plain JS, not attribute strings.
+Both work inline with server-rendered HTML. Lume uses standard `data-*` attributes; Alpine uses `x-*` directives with a custom expression syntax. Lume is smaller (2.83 KB vs ~15 KB gzipped — 1.49 KB for the DOM-free kernel) and has no custom expression evaluator — logic lives in plain JS, not attribute strings.
 
 ## How does Lume compare to Vue 3's reactivity?
 

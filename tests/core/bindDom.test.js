@@ -784,6 +784,103 @@ describe('bindDom', () => {
     });
   });
 
+  describe('data-bind-scope boundaries', () => {
+    const typeInto = (input, value) => {
+      input.value = value;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    it('keeps an outer bindDom out of a nested island', async () => {
+      const root = setupDOM(`
+        <div id="page">
+          <h1 data-bind="title"></h1>
+          <div id="island" data-bind-scope><input data-bind="query" /></div>
+        </div>`);
+      const outer = state({ title: 'Page' });
+      const inner = state({ query: 'b0' });
+
+      const stopOuter = bindDom(root.querySelector('#page'), outer);
+      const stopInner = bindDom(root.querySelector('#island'), inner);
+      const input = root.querySelector('input');
+
+      expect(root.querySelector('h1').textContent).toBe('Page');
+      expect(input.value).toBe('b0');
+
+      typeInto(input, 'typed');
+      await Promise.resolve();
+      expect(inner.query).toBe('typed');
+      expect('query' in outer).toBe(false); // no stray key written to the outer store
+
+      inner.query = 'fromInner';
+      await Promise.resolve();
+      expect(input.value).toBe('fromInner');
+
+      stopOuter();
+      stopInner();
+    });
+
+    it('skips handler attributes inside the scope too, regardless of bind order', async () => {
+      const root = setupDOM(`
+        <div id="page">
+          <div id="island" data-bind-scope><p data-hidden="closed">hi</p></div>
+        </div>`);
+      const outer = state({ closed: true });
+      const inner = state({ closed: false });
+
+      // Inner first, then outer: the outer must still not take the <p> over
+      const stopInner = bindDom(root.querySelector('#island'), inner);
+      const stopOuter = bindDom(root.querySelector('#page'), outer);
+      expect(root.querySelector('p').hidden).toBe(false);
+
+      outer.closed = false;
+      inner.closed = true;
+      await Promise.resolve();
+      expect(root.querySelector('p').hidden).toBe(true);
+
+      stopOuter();
+      stopInner();
+    });
+
+    it("still binds the scope element's own attributes from the outer store", async () => {
+      const root = setupDOM(`
+        <div id="page"><div id="island" data-bind-scope data-hidden="widgetOff"></div></div>`);
+      const outer = state({ widgetOff: false });
+
+      const cleanup = bindDom(root.querySelector('#page'), outer);
+      const island = root.querySelector('#island');
+      expect(island.hidden).toBe(false);
+
+      outer.widgetOff = true;
+      await Promise.resolve();
+      expect(island.hidden).toBe(true);
+
+      cleanup();
+    });
+
+    it('lets each level of deeply nested scopes bind only its own region', () => {
+      const root = setupDOM(`
+        <div id="a"><span data-bind="v"></span>
+          <div id="b" data-bind-scope><span data-bind="v"></span>
+            <section><div id="c" data-bind-scope><span data-bind="v"></span></div></section>
+          </div>
+        </div>`);
+      // Outermost last, so an outer binding would win if it reached inside
+      const stops = ['c', 'b', 'a'].map(id => bindDom(root.querySelector('#' + id), state({ v: id })));
+
+      expect([...root.querySelectorAll('span')].map(s => s.textContent)).toEqual(['a', 'b', 'c']);
+      stops.forEach(stop => stop());
+    });
+
+    it('binds normally when the root itself sits inside a scope', () => {
+      const root = setupDOM(`
+        <div data-bind-scope><div id="inner"><span data-bind="v"></span></div></div>`);
+      const cleanup = bindDom(root.querySelector('#inner'), state({ v: 'ok' }));
+
+      expect(root.querySelector('span').textContent).toBe('ok');
+      cleanup();
+    });
+  });
+
   describe('path resolution', () => {
     it('binds flat key (no path splitting)', async () => {
       const root = setupDOM(`<div><span data-bind="count"></span></div>`);

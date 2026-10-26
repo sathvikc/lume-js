@@ -607,6 +607,24 @@ store.$subscribe('text', (value) => {
 
 ---
 
+### Why `data-bind-scope` Marks Nested Roots (2026-10)
+
+**Decision:** An element carrying `data-bind-scope` is a boundary: `bindDom()` skips every element whose nearest scope ancestor sits inside its root (and is not the root). The scope element's own attributes are not affected, so the outer store can still bind them.
+
+**Reasoning:**
+- `bindDom(root)` uses `root.querySelectorAll()`, which reaches into regions bound to other stores. Reproduced with a page store `A` and an inner widget store `B`: typing into the widget's `<input data-bind="query">` wrote `query` into both stores, and `A` gained a stray key. Islands inside a page-level binding are a core Lume use case (WordPress/Shopify widgets).
+- Skipping at bind time means the outer root never registers those elements, so its delegated `input` listener cannot write to them either. No new runtime machinery.
+- Covering descendants but not the scope element itself lets a page show or hide a widget with ordinary attributes on the widget's container, and nothing binds twice: `bindDom()` never binds its own root element.
+
+**Alternatives considered:**
+- ❌ Automatic: `bindDom()` marks its root so others skip it → depends on call order. If the outer root is bound first, it has already claimed the inner elements, and the result changes with script load order.
+- ❌ A `bindDom()` option listing excluded selectors → puts layout knowledge in JavaScript far from the markup it describes; the attribute is visible where the boundary is.
+- ❌ Reusing an existing attribute (`data-bind` on the container) → overloads a binding attribute with a structural meaning.
+
+**Tradeoff:** One `closest()` lookup per matched element at bind time (bindings resolve once, so there is no per-update cost). Authors must remember the attribute; the API page and AGENT_GUIDE call out the double-write symptom it prevents.
+
+---
+
 ## Performance Decisions
 
 ### Why No Virtual DOM?
