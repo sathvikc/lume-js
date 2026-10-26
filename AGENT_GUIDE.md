@@ -29,7 +29,7 @@ store.count++;                          // DOM + title update on next microtask
 
 | Import | Size (gz) | Gives you | Use in |
 |---|---|---|---|
-| `lume-js` | <!-- lume:size-index -->2.77<!-- /lume:size-index --> KB | `state`, `effect`, `bindDom`, `batch`, `withReadObserver` | browsers |
+| `lume-js` | <!-- lume:size-index -->2.83<!-- /lume:size-index --> KB | `state`, `effect`, `bindDom`, `batch`, `withReadObserver` | browsers |
 | `lume-js/state` | <!-- lume:size-state -->1.49<!-- /lume:size-state --> KB | `state`, `batch`, `withReadObserver` (no DOM code) | Node, workers, CLI, SSR |
 | `lume-js/addons` | pay per import | `computed`, `watch`, `repeat`, `persist`, `hydrateState`, `createCleanupGroup`, `debug` | optional patterns |
 | `lume-js/handlers` | pay per import | `show`, `classToggle`, `boolAttr`, `ariaAttr`, `stringAttr`, `className`, `on`, `htmlAttrs`, presets | extra `data-*` attributes |
@@ -118,7 +118,10 @@ Anti-pattern: calling `$subscribe` for a key inside an `effect` that also reads 
 <div  data-hidden="isLoading">…</div>     <!-- boolean attrs: hidden/disabled/checked/required -->
 <button data-disabled="isSubmitting">Go</button>
 <button data-aria-expanded="menuOpen">Menu</button>  <!-- ARIA: "true"/"false" strings -->
+<div data-bind-scope>…</div>              <!-- boundary: outer bindDom() skips everything inside -->
 ```
+
+When a region is bound to a different store than its surroundings (a widget inside a page-level `bindDom`), put `data-bind-scope` on the region's root element. Without it the outer `bindDom` binds the region's elements too, and two-way inputs write into both stores.
 
 More attributes are opt-in handlers, passed to `bindDom`:
 

@@ -12,6 +12,8 @@
  *   data-required="key"       → Toggles required (truthy = required)
  *   data-aria-expanded="key"  → Sets aria-expanded to "true"/"false"
  *   data-aria-hidden="key"    → Sets aria-hidden to "true"/"false"
+ *   data-bind-scope           → Boundary: an outer bindDom() skips everything
+ *                               inside it (the element's own attributes still bind)
  *
  * Extensible via handlers option:
  *   import { show, classToggle } from 'lume-js/handlers';
@@ -90,19 +92,7 @@ export function bindDom(root, store, options = {}) {
     const elements = root.querySelectorAll(selector);
 
     for (const el of elements) {
-      // data-bind (two-way) — always in core, special handling
-      if (el.hasAttribute('data-bind')) {
-        const c = handleDataBind(el, store, el.getAttribute('data-bind'), bindingMap);
-        if (c) cleanups.push(c);
-      }
-
-      // All registered handlers (default + user)
-      for (const handler of handlers) {
-        if (el.hasAttribute(handler.attr)) {
-          const c = applyHandler(el, store, el.getAttribute(handler.attr), handler);
-          if (c) cleanups.push(c);
-        }
-      }
+      if (!inNestedScope(el, root)) bindElement(el, store, handlers, bindingMap, cleanups);
     }
 
     // Event delegation for two-way bindings
@@ -125,6 +115,34 @@ export function bindDom(root, store, options = {}) {
   }
 
   return performBinding();
+}
+
+/**
+ * Bind one element's data-bind and handler attributes, collecting cleanups.
+ */
+function bindElement(el, store, handlers, bindingMap, cleanups) {
+  // data-bind (two-way) — always in core, special handling
+  if (el.hasAttribute('data-bind')) {
+    const c = handleDataBind(el, store, el.getAttribute('data-bind'), bindingMap);
+    if (c) cleanups.push(c);
+  }
+
+  // All registered handlers (default + user)
+  for (const handler of handlers) {
+    if (el.hasAttribute(handler.attr)) {
+      const c = applyHandler(el, store, el.getAttribute(handler.attr), handler);
+      if (c) cleanups.push(c);
+    }
+  }
+}
+
+/**
+ * True when el sits inside a data-bind-scope below root: that region
+ * belongs to another bindDom(). The scope element itself is not inside.
+ */
+function inNestedScope(el, root) {
+  const scope = el.parentElement.closest('[data-bind-scope]');
+  return scope !== null && scope !== root && root.contains(scope);
 }
 
 /**

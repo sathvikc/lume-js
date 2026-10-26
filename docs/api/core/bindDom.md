@@ -60,6 +60,28 @@ A cleanup function. Call it to remove all bindings and event listeners created b
 | `data-aria-expanded="key"` | `el.setAttribute('aria-expanded', 'true'/'false')` |
 | `data-aria-hidden="key"` | `el.setAttribute('aria-hidden', 'true'/'false')` |
 
+### Nested roots: `data-bind-scope`
+
+`bindDom(root)` binds every matching element under `root`, including elements inside a region you bind separately to another store. Mark that region with `data-bind-scope` and outer `bindDom()` calls skip everything inside it:
+
+```html
+<div id="page">
+  <h1 data-bind="title"></h1>
+  <div id="search" data-bind-scope data-hidden="searchOff">
+    <input data-bind="query">  <!-- belongs to the search store only -->
+  </div>
+</div>
+```
+
+```js
+bindDom(document.getElementById('page'), pageStore);
+bindDom(document.getElementById('search'), searchStore);
+```
+
+- The boundary covers the element's **descendants**. Its own attributes (`data-hidden="searchOff"` above) still bind to the outer store, so the page can show or hide the widget.
+- It works in either call order, at any nesting depth, and keeps the outer root's delegated `input` listener from writing into the inner store.
+- Without it, both roots bind the inner elements: typing into the `<input>` writes `query` into **both** stores.
+
 ## Examples
 
 ### Basic
