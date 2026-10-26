@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { state } from 'src/core/state.js';
+import { effect } from 'src/core/effect.js';
 import { computed } from 'src/addons/computed.js';
 
 describe('computed', () => {
@@ -159,25 +160,19 @@ describe('computed', () => {
     expect(calc).not.toHaveBeenCalled();
   });
 
-  it('does not recompute from stale microtasks after dispose', async () => {
+  it('does not recompute when disposed by an effect earlier in the same flush', async () => {
     const store = state({ count: 1 });
+    let c;
+    // Subscribed before the computed, so it runs first in the flush that
+    // has already collected the computed's effect
+    effect(() => { if (store.count > 1) c.dispose(); });
     const calc = vi.fn(() => store.count * 2);
-    const c = computed(calc);
-
-    expect(c.value).toBe(2);
-    expect(calc).toHaveBeenCalledTimes(1);
-
-    // Trigger a change that queues a microtask inside the effect
-    store.count = 2;
-
-    // Dispose immediately BEFORE the microtask clears isInComputation
-    c.dispose();
+    c = computed(calc);
     calc.mockClear();
 
-    // Wait for any pending microtasks
+    store.count = 2;
     await new Promise(resolve => setTimeout(resolve, 0));
 
-    // Should NOT have recomputed from the stale microtask
     expect(calc).not.toHaveBeenCalled();
   });
 
@@ -228,38 +223,48 @@ describe('computed', () => {
     // If effect becomes async in the future, this test will catch it
   });
 
-  it('suppresses self-triggered flush to prevent circular dependency hang', async () => {
-    const store = state({ count: 0 });
+  it('stays correct when another effect rewrites a dependency in the same flush', async () => {
+    const store = state({ a: 1 });
+    const dbl = computed(() => store.a * 2);
+    effect(() => { if (store.a > 10) store.a = 10; }); // clamp
 
-    // Circular: computed reads count, then mutates count
+    store.a = 50;
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(store.a).toBe(10);
+    expect(dbl.value).toBe(20);
+  });
+
+  it('settles when it writes a converging value to its own dependency', async () => {
+    const store = state({ a: 1 });
+    const c = computed(() => {
+      if (store.a > 10) store.a = 10;
+      return store.a * 2;
+    });
+
+    store.a = 50;
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(store.a).toBe(10);
+    expect(c.value).toBe(20);
+  });
+
+  it('stops a never-converging self-mutation at the flush cap with an error', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const store = state({ count: 0 });
     const c = computed(() => {
       const val = store.count;
-      store.count = val + 1; // Mutates what we depend on
+      store.count = val + 1; // Mutates what it depends on, never converges
       return val;
     });
 
-    expect(c.value).toBe(0); // Initial run sets store.count = 1
+    await new Promise(resolve => setTimeout(resolve, 20));
+    const settled = store.count;
+    await new Promise(resolve => setTimeout(resolve, 20));
 
-    // Wait for microtasks to flush — without suppression this would infinite-loop
-    await new Promise(resolve => setTimeout(resolve, 50));
-
-    // The flush triggered by store.count = 1 was suppressed.
-    // Value stays at 0; the computed did not re-run.
-    expect(c.value).toBe(0);
-    expect(store.count).toBe(1);
-
-    // External mutations still work after the self-trigger was suppressed
-    store.count = 10;
-    await new Promise(resolve => setTimeout(resolve, 10));
-    // Now the effect ran from the external mutation, which also did store.count = 11
-    expect(c.value).toBe(10);
-    expect(store.count).toBe(11);
-
-    // Another external mutation
-    store.count = 100;
-    await new Promise(resolve => setTimeout(resolve, 10));
-    expect(c.value).toBe(100);
-    expect(store.count).toBe(101);
+    expect(store.count).toBe(settled); // terminated, not still looping
+    expect(c.value).toBe(settled - 1);
+    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('Maximum flush iterations'));
   });
 
   it('throws error when accessing value before initialization completes', () => {

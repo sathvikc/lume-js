@@ -16,7 +16,7 @@ Imported from `lume-js/addons`.
 
 ## Parameters
 
-- `fn` — A getter function. Must be synchronous. Should have no side effects.
+- `fn` — A getter function. Must be synchronous. Should have no side effects. If it writes a key it reads, it re-runs like any `effect()`: a converging write (clamping, normalizing) settles after one extra run, and one that never converges is stopped by the flush cap with a logged error.
 
 ## Returns
 
