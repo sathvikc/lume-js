@@ -1,7 +1,7 @@
 # Lume.js Vision & Strategic Direction
 
 > **Purpose:** Consolidated reference document synthesizing all architectural ideas, philosophy, and future plans.  
-> **Last Updated:** 2026-07-08  
+> **Last Updated:** 2026-10-26  
 > **Status:** Living document - update as vision evolves
 
 ---
@@ -63,10 +63,10 @@
 |----------|------|-----|
 | ~~**1**~~ | ~~**Event delegation in bindDom**~~ | ✅ **DONE** - Single listener on root, 29 tests pass |
 | ~~**2**~~ | ~~**Keyed diffing in repeat()**~~ | ✅ **DONE** - create/update separation, reference optimization |
-| **3** | **V2 Final Polish** | Fix issues from PR review: <br>1. [ ] Add `create`/`update` types to `RepeatOptions` in `index.d.ts`<br>2. [ ] Use `WeakMap` in `bindDom` for memory safety |
-| **4** | **data-show handler** | Most requested feature after data-bind, ~50 bytes |
-| **5** | **data-class handler** | Second most requested, ~150 bytes |
-| **6** | **Debug addon** | Critical for adoption - hard to debug = hard to adopt |
+| ~~**3**~~ | ~~**V2 Final Polish**~~ | ✅ **DONE** - `create`/`update` in `RepeatOptions` (`src/addons/index.d.ts`), `WeakMap` binding map in `bindDom` |
+| ~~**4**~~ | ~~**data-show handler**~~ | ✅ **DONE** - `show` in `lume-js/handlers` |
+| ~~**5**~~ | ~~**data-class handler**~~ | ✅ **DONE** - `classToggle()` and `className` in `lume-js/handlers` |
+| ~~**6**~~ | ~~**Debug addon**~~ | ✅ **DONE** - `createDebugPlugin` in `lume-js/addons` |
 
 ### 🟡 Do Later (High Impact, High Effort)
 
@@ -409,6 +409,8 @@ import { state, bindDom, effect } from 'lume-js';
 ---
 
 ## Optional Build Step (Future Idea)
+
+> **Superseded (2026-10):** since v2.3, auto-tracked effects reuse their subscriptions and allocate nothing on stable re-runs (decision "Why Effects Reuse Their Subscriptions Across Runs"), so compiling them to explicit deps would buy almost nothing. Kept for history.
 
 ### Concept
 
