@@ -399,6 +399,26 @@ describe('handlers module', () => {
       cleanup();
     });
 
+    it('filters <object data> like the other URL attributes', async () => {
+      const root = setupDOM(`<div><object data-data="src"></object></div>`);
+      const store = state({ src: '/media/chart.svg' });
+
+      const cleanup = bindDom(root, store, { handlers: [stringAttr('data')] });
+      const obj = root.querySelector('object');
+
+      expect(obj.getAttribute('data')).toBe('/media/chart.svg');
+
+      store.src = ' javascript:alert(1)';
+      await Promise.resolve();
+      expect(obj.hasAttribute('data')).toBe(false);
+
+      store.src = 'data:text/html,<script>alert(1)</script>';
+      await Promise.resolve();
+      expect(obj.hasAttribute('data')).toBe(false);
+
+      cleanup();
+    });
+
     it('does not block legitimate URLs that merely start with a scheme word', async () => {
       const root = setupDOM(`<div><a data-href="url">Link</a></div>`);
       const store = state({ url: 'javascript-tutorial.html' });

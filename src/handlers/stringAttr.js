@@ -4,6 +4,10 @@
  *
  * @param {string} name - HTML attribute name (e.g., 'href', 'src', 'title')
  * @returns {{ attr: string, apply: function }}
+ *
+ * @security For URL attributes (href, src, action, srcset, poster, formaction,
+ * and data for <object data>), values with a javascript:, vbscript:, or
+ * data:text/html scheme remove the attribute instead of setting it.
  */
 
 // Matched against a normalized copy of the value (C0 controls, space, and
@@ -13,7 +17,7 @@
 // relative URLs like "javascript-tutorial.html" are not blocked.
 const DANGEROUS_SCHEME = /^(?:javascript:|vbscript:|data:text\/html)/;
 const IGNORED_URL_CHARS = /[\u0000-\u0020\u007F]/g;
-const URI_ATTRS = new Set(['href', 'src', 'action', 'srcset', 'poster', 'formaction']);
+const URI_ATTRS = new Set(['href', 'src', 'action', 'srcset', 'poster', 'formaction', 'data']);
 
 export function stringAttr(name) {
   return {

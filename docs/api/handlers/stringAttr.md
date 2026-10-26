@@ -50,6 +50,14 @@ When the value is `null` or `undefined`, the attribute is **removed** (`el.remov
 store.profileUrl = null; // <a> loses its href attribute entirely
 ```
 
+## URL safety
+
+For URL attributes (`href`, `src`, `action`, `srcset`, `poster`, `formaction`, and `data` for `<object data>`), a value whose scheme is `javascript:`, `vbscript:`, or `data:text/html` removes the attribute instead of setting it. The check normalizes the value the way the browser's URL parser does first, so `"\tjavascript:..."` and `" JaVaScRiPt:..."` are caught too, while a relative URL like `javascript-tutorial.html` is not blocked. Other attributes (`title`, `alt`, ...) are set as-is; they are never parsed as URLs or HTML.
+
+```js
+store.profileUrl = 'javascript:alert(1)'; // <a> loses its href instead
+```
+
 ## Common use cases
 
 ```js
