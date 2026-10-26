@@ -160,7 +160,7 @@ export interface RepeatOptions<T> {
 
   /**
    * Function called ONCE when element is created (for DOM structure setup)
-   * Recommended for event listeners and innerHTML setup.
+   * Recommended for event listeners and static structure (data goes in update).
    * May return a cleanup function — it is called automatically when the
    * element is removed (by list update or full cleanup).
    */
@@ -307,11 +307,11 @@ export function defaultScrollPreservation(container: HTMLElement, context?: Pres
  * // Basic usage (preservation enabled by default)
  * const cleanup = repeat('#todo-list', store, 'todos', {
  *   key: todo => todo.id,
- *   render: (todo, el) => {
- *     if (!el.dataset.init) {
- *       el.innerHTML = `<input value="${todo.text}">`;
- *       el.dataset.init = 'true';
- *     }
+ *   create: (todo, el) => {
+ *     el.appendChild(document.createElement('input'));
+ *   },
+ *   update: (todo, el) => {
+ *     el.querySelector('input')!.value = todo.text; // never interpolate data into innerHTML
  *   }
  * });
  * 

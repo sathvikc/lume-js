@@ -25,6 +25,8 @@
         { "path": "docs/guides/handlers.md", "title": "Handlers", "description": "Extending bindDom with new data-* attributes" },
         { "path": "docs/guides/two-way-binding.md", "title": "Two-way binding", "description": "Inputs and data-bind" },
         { "path": "docs/guides/lists.md", "title": "Lists & repeat", "description": "Rendering arrays" },
+
+{ "path": "docs/guides/security.md", "title": "Security model", "description": "Paths not expressions, text not HTML, URL filtering, prototype guard" },
         { "path": "docs/guides/forms.md", "title": "Forms", "description": "Form patterns" },
         { "path": "docs/guides/routing.md", "title": "Routing", "description": "Client-side routing patterns" },
         { "path": "docs/guides/animations.md", "title": "Animations", "description": "Animating on state change" },
