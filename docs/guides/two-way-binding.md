@@ -18,6 +18,8 @@ A single `data-bind` attribute handles all form controls. Lume inspects the elem
 | `<select>` | `value` | `input` |
 | Anything else | `textContent` | (one-way) |
 
+Paths work for inputs too: `<input data-bind="user.email">` writes to whichever `state()` object `store.user` holds at the moment you type, so replacing `store.user` moves both the displayed value and future writes to the new object. While the path is broken (`store.user` is `null`), typing writes nowhere.
+
 ## Text inputs
 
 ```html

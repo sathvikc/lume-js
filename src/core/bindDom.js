@@ -27,8 +27,8 @@
  *   import { bindDom } from "lume-js";
  *   const cleanup = bindDom(document.body, store);
  *
- * @security `data-bind` attribute values are resolved once at bind time and
- * trusted as state path expressions. If an attacker can inject `data-bind`
+ * @security `data-bind` attribute values are trusted as state paths (never
+ * evaluated as expressions). If an attacker can inject `data-bind`
  * attributes into the DOM, they can subscribe to any reachable reactive state.
  * Ensure your HTML is trusted or sanitize it before calling bindDom().
  */
@@ -98,7 +98,7 @@ export function bindDom(root, store, options = {}) {
     // Event delegation for two-way bindings
     const inputHandler = e => {
       const binding = bindingMap.get(e.target);
-      if (binding) binding.target[binding.key] = getInputValue(e.target);
+      if (binding?.target) binding.target[binding.key] = getInputValue(e.target);
     };
     root.addEventListener("input", inputHandler);
     cleanups.push(() => root.removeEventListener("input", inputHandler));
@@ -147,79 +147,65 @@ function inNestedScope(el, root) {
 
 /**
  * Apply a handler to an element via subscription.
- * Resolves the state path and subscribes to changes.
  */
 function applyHandler(el, store, path, handler) {
-  const result = resolveProp(store, path);
-  if (!result) return null;
-  const { target, key } = result;
-  return target.$subscribe(key, val => handler.apply(el, val));
+  return watchPath(store, path, val => handler.apply(el, val));
 }
 
 /**
- * Handle data-bind (two-way for inputs, textContent for others)
+ * Handle data-bind (two-way for inputs, textContent for others).
+ * For inputs, the delegated input listener writes to whichever object the
+ * path currently ends on, so typing follows a replaced intermediate state.
  */
 function handleDataBind(el, store, path, bindingMap) {
-  const result = resolveProp(store, path);
-  if (!result) return null;
-
-  const { target, key } = result;
-  const unsub = target.$subscribe(key, val => applyBindValue(el, val));
-
-  if (isFormInput(el)) {
-    bindingMap.set(el, { target, key });
-  }
-
-  return unsub;
+  const input = isFormInput(el);
+  return watchPath(store, path, (val, target, key) => {
+    if (input && bindingMap.get(el)?.target !== target) bindingMap.set(el, { target, key });
+    applyBindValue(el, val);
+  });
 }
 
 /**
- * Resolve a nested path in an object.
- * Example: resolvePath(obj, ['user', 'address']) returns obj.user.address
+ * Subscribe to a state path, calling onValue(val, target, key) with the leaf
+ * value and the object that currently holds it. Returns an unsubscribe, or
+ * null when there is nothing to bind.
  */
-function resolvePath(obj, pathArr) {
-  if (!pathArr || pathArr.length === 0) {
-    return obj;
-  }
-  let current = obj;
-  for (let i = 0; i < pathArr.length; i++) {
-    const key = pathArr[i];
-    if (current === null || current === undefined) {
-      return null;
-    }
-    if (!(key in current)) {
-      return null;
-    }
-    current = current[key];
-  }
-  return current;
-}
-
-/**
- * Resolve path to target and key.
- *
- * ⚠️ Path bindings are resolved once at bind time. If an intermediate
- * object in the path is null/undefined at bindDom call time, the binding
- * is permanently dead and will not self-heal when the path later becomes valid.
- */
-function resolveProp(store, path) {
+function watchPath(store, path, onValue) {
   if (!path) return null;
-
-  const pathArr = path.split(".");
-  const key = pathArr.pop();
-  const target = resolvePath(store, pathArr);
-
-  if (target === null || target === undefined) {
-    logWarn(`[Lume.js] Invalid path "${path}"`);
-    return null;
-  }
-
-  if (!target?.$subscribe) {
+  if (!store.$subscribe) {
     logWarn(`[Lume.js] Target for "${path}" is not reactive`);
     return null;
   }
+  return follow(store, path.split('.'), 0, path, onValue);
+}
 
-  return { target, key };
+/**
+ * Subscribe to keys[i] on obj. The leaf key calls onValue directly (a flat
+ * path is exactly one $subscribe). An intermediate key re-links everything
+ * below it whenever it changes, so replacing user (or assigning it after
+ * null) moves the binding to the new object. A null/undefined intermediate
+ * renders undefined until a reactive state is assigned; a missing key or a
+ * plain object is warned about (nested state must be wrapped in state()).
+ */
+function follow(obj, keys, i, path, onValue) {
+  const key = keys[i];
+  if (i === keys.length - 1) return obj.$subscribe(key, val => onValue(val, obj, key));
+  let unlinkInner = null;
+  const unsub = obj.$subscribe(key, next => {
+    if (unlinkInner) unlinkInner();
+    unlinkInner = null;
+    if (next?.$subscribe) {
+      unlinkInner = follow(next, keys, i + 1, path, onValue);
+      return;
+    }
+    if (next != null || !(key in obj)) logWarn(`[Lume.js] Path "${path}" is not reactive at "${key}"`);
+    onValue(undefined, null, keys[keys.length - 1]);
+  });
+  return () => {
+    unsub();
+    if (unlinkInner) unlinkInner();
+    unlinkInner = null;
+  };
 }
 
 /**

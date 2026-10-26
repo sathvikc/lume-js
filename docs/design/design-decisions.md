@@ -607,6 +607,24 @@ store.$subscribe('text', (value) => {
 
 ---
 
+### Why Path Bindings Follow Object Replacement (2026-10)
+
+**Decision:** A binding with a dotted path (`data-bind="user.name"`, and every handler attribute) subscribes along the whole path. Each intermediate key gets its own `$subscribe`; when it changes, everything below it is unsubscribed and re-linked to the new value. A null/undefined intermediate renders `undefined` and waits without a warning; a plain object or a missing key warns. Single-key paths stay one `$subscribe`. Elements are still matched once when `bindDom()` runs.
+
+**Reasoning:**
+- Async data is the normal case: `user: null` at bind time, then `store.user = state({...})` after a fetch. Resolving the path once at bind time attached the binding to whatever object existed then. Reproduced four failures: a replaced user kept showing the old name, typing wrote into the old object, mutating the old object still updated the DOM, and a path that started at `null` never activated.
+- `$subscribe` already fires immediately with the current value, so a chain of them builds itself at bind time and rebuilds on change with no new kernel API, and cleanup is just the unsubscribes.
+- One path semantics for `data-bind` and all handlers: they share the same resolver, and two behaviors would be a trap.
+
+**Alternatives considered:**
+- ❌ Keep bind-time resolution and document it → the failures above are silent and hit the most common async pattern.
+- ❌ Re-scan or MutationObserver on change → global machinery for a problem that is local to one path, and still blind to which object a write should go to.
+- ❌ Auto-wrap nested objects so paths always resolve → contradicts "Why Nested State Must Be Explicitly Wrapped?".
+
+**Tradeoff:** Nested paths hold one extra subscription per intermediate key per element. Flat paths gain one closure call per update, and two-way inputs a WeakMap lookup. A `null` intermediate no longer warns at bind time; a missing key still does, so typos stay visible. +0.04 KB gz on the `index` entry.
+
+---
+
 ### Why `data-bind-scope` Marks Nested Roots (2026-10)
 
 **Decision:** An element carrying `data-bind-scope` is a boundary: `bindDom()` skips every element whose nearest scope ancestor sits inside its root (and is not the root). The scope element's own attributes are not affected, so the outer store can still bind them.

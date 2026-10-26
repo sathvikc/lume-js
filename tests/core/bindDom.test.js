@@ -890,14 +890,172 @@ describe('bindDom', () => {
       cleanup();
     });
 
-    it('warns and skips when intermediate path is null', () => {
+    it('stays quiet for a null intermediate and activates when it is assigned', async () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const root = setupDOM(`<div><span data-bind="profile.name">static</span></div>`);
+      const store = state({ profile: null });
+      const cleanup = bindDom(root, store);
+      const span = root.querySelector('span');
+
+      expect(warnSpy).not.toHaveBeenCalled(); // null is normal async state
+      expect(span.textContent).toBe('');
+
+      store.profile = state({ name: 'Ada' });
+      await Promise.resolve();
+      expect(span.textContent).toBe('Ada');
+
+      store.profile.name = 'Grace';
+      await Promise.resolve();
+      expect(span.textContent).toBe('Grace');
+
+      store.profile = null;
+      await Promise.resolve();
+      expect(span.textContent).toBe('');
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      cleanup();
+    });
+
+    it('follows a replaced intermediate state and drops the old one', async () => {
       const root = setupDOM(`<div><span data-bind="user.name"></span></div>`);
+      const oldUser = state({ name: 'Alex' });
+      const store = state({ user: oldUser });
+      const cleanup = bindDom(root, store);
+      const span = root.querySelector('span');
+      expect(span.textContent).toBe('Alex');
+
+      store.user = state({ name: 'Sam' });
+      await Promise.resolve();
+      expect(span.textContent).toBe('Sam');
+
+      oldUser.name = 'Ghost'; // the replaced object no longer drives the DOM
+      await Promise.resolve();
+      expect(span.textContent).toBe('Sam');
+
+      cleanup();
+    });
+
+    it('writes typed input to the current object after replacement', async () => {
+      const root = setupDOM(`<div><input data-bind="user.name" /></div>`);
+      const oldUser = state({ name: 'Alex' });
+      const store = state({ user: oldUser });
+      const cleanup = bindDom(root, store);
+      const input = root.querySelector('input');
+
+      const newUser = state({ name: 'Sam' });
+      store.user = newUser;
+      await Promise.resolve();
+      expect(input.value).toBe('Sam');
+
+      input.value = 'Samuel';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(newUser.name).toBe('Samuel');
+      expect(oldUser.name).toBe('Alex');
+
+      // A broken chain has no target: typing writes nowhere
+      store.user = null;
+      await Promise.resolve();
+      input.value = 'lost';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(newUser.name).toBe('Samuel');
+      expect(store.user).toBe(null);
+
+      cleanup();
+    });
+
+    it('re-links deep paths when a middle object is replaced', async () => {
+      const root = setupDOM(`<div><span data-bind="user.address.city"></span></div>`);
+      const store = state({ user: state({ address: state({ city: 'Oslo' }) }) });
+      const cleanup = bindDom(root, store);
+      const span = root.querySelector('span');
+      expect(span.textContent).toBe('Oslo');
+
+      store.user.address = state({ city: 'Lima' });
+      await Promise.resolve();
+      expect(span.textContent).toBe('Lima');
+
+      store.user = state({ address: state({ city: 'Pune' }) });
+      await Promise.resolve();
+      expect(span.textContent).toBe('Pune');
+
+      cleanup();
+    });
+
+    it('applies the same path semantics to handler attributes', async () => {
+      const root = setupDOM(`<div><p data-hidden="user.banned">hi</p></div>`);
       const store = state({ user: null });
       const cleanup = bindDom(root, store);
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[Lume.js]'));
+      const p = root.querySelector('p');
+      expect(p.hidden).toBe(false);
+
+      store.user = state({ banned: true });
+      await Promise.resolve();
+      expect(p.hidden).toBe(true);
+
+      store.user = state({ banned: false });
+      await Promise.resolve();
+      expect(p.hidden).toBe(false);
+
       cleanup();
-      warnSpy.mockRestore();
+    });
+
+    it('leaves zero subscriptions after cleanup, across every link', async () => {
+      let live = 0;
+      const counted = (s) => new Proxy(s, {
+        get(target, key, receiver) {
+          if (key !== '$subscribe') return Reflect.get(target, key, receiver);
+          return (k, fn) => {
+            live++;
+            const unsub = target.$subscribe(k, fn);
+            let done = false;
+            return () => { if (!done) { done = true; live--; } unsub(); };
+          };
+        }
+      });
+      const root = setupDOM(`<div><input data-bind="user.address.city" /><p data-hidden="user.banned"></p></div>`);
+      const store = counted(state({ user: counted(state({ banned: false, address: counted(state({ city: 'Oslo' })) })) }));
+
+      const cleanup = bindDom(root, store);
+      expect(live).toBe(5); // user + address + city, user + banned
+
+      store.user = counted(state({ banned: true, address: counted(state({ city: 'Lima' })) }));
+      await Promise.resolve();
+      expect(live).toBe(5); // old links released, new ones made
+
+      cleanup();
+      expect(live).toBe(0);
+      cleanup(); // idempotent
+      expect(live).toBe(0);
+    });
+
+    it('warns when an intermediate is later replaced by a plain object', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const root = setupDOM(`<div><span data-bind="user.name"></span></div>`);
+      const store = state({ user: state({ name: 'A' }) });
+      const cleanup = bindDom(root, store);
+
+      store.user = { name: 'plain' };
+      await Promise.resolve();
+      expect(root.querySelector('span').textContent).toBe('');
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('not reactive at "user"'));
+      cleanup();
+    });
+
+    it('warns when an intermediate key does not exist (likely a typo)', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const root = setupDOM(`<div><span data-bind="usr.name"></span></div>`);
+      const cleanup = bindDom(root, state({ user: null }));
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('"usr.name"'));
+      cleanup();
+    });
+
+    it('warns and skips when the root store is not reactive', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const root = setupDOM(`<div><span data-bind="count">0</span></div>`);
+      const cleanup = bindDom(root, { count: 5 });
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('not reactive'));
+      expect(root.querySelector('span').textContent).toBe('0');
+      cleanup();
     });
 
     it('warns and skips when property does not exist in path', () => {

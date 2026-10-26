@@ -60,6 +60,24 @@ A cleanup function. Call it to remove all bindings and event listeners created b
 | `data-aria-expanded="key"` | `el.setAttribute('aria-expanded', 'true'/'false')` |
 | `data-aria-hidden="key"` | `el.setAttribute('aria-hidden', 'true'/'false')` |
 
+### Nested paths
+
+Every binding attribute accepts a dotted path to nested state. Each object along the path must be its own `state()`:
+
+```js
+const store = state({ user: null });
+bindDom(root, store);
+```
+
+```html
+<span data-bind="user.name"></span>
+<input data-bind="user.email">
+```
+
+- The binding follows the path, not the object that was there at bind time. Assigning `store.user = state({...})` (after `null`, or replacing a previous user) re-links the binding to the new object; the old object no longer drives the element, and typing writes to the new one.
+- A `null`/`undefined` intermediate renders as empty (like a missing value) and waits quietly; this is the normal shape of data that is still loading.
+- A plain (unwrapped) object or a key that does not exist logs a `[Lume.js]` warning, since nested objects are only reactive when wrapped in `state()`.
+
 ### Nested roots: `data-bind-scope`
 
 `bindDom(root)` binds every matching element under `root`, including elements inside a region you bind separately to another store. Mark that region with `data-bind-scope` and outer `bindDom()` calls skip everything inside it:

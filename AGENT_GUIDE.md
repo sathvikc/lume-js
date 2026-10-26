@@ -29,7 +29,7 @@ store.count++;                          // DOM + title update on next microtask
 
 | Import | Size (gz) | Gives you | Use in |
 |---|---|---|---|
-| `lume-js` | <!-- lume:size-index -->2.83<!-- /lume:size-index --> KB | `state`, `effect`, `bindDom`, `batch`, `withReadObserver` | browsers |
+| `lume-js` | <!-- lume:size-index -->2.87<!-- /lume:size-index --> KB | `state`, `effect`, `bindDom`, `batch`, `withReadObserver` | browsers |
 | `lume-js/state` | <!-- lume:size-state -->1.49<!-- /lume:size-state --> KB | `state`, `batch`, `withReadObserver` (no DOM code) | Node, workers, CLI, SSR |
 | `lume-js/addons` | pay per import | `computed`, `watch`, `repeat`, `persist`, `hydrateState`, `createCleanupGroup`, `debug` | optional patterns |
 | `lume-js/handlers` | pay per import | `show`, `classToggle`, `boolAttr`, `ariaAttr`, `stringAttr`, `className`, `on`, `htmlAttrs`, presets | extra `data-*` attributes |
@@ -56,6 +56,7 @@ CDN (no build): `https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs` (also 
    // or replace the whole object:
    s.user = { ...s.user, name: 'Z' };          // ✅ notifies subscribers of 'user'
    ```
+   Path bindings (`data-bind="user.name"`) need the wrapped form: they watch each link, so `s2.user = state({...})` (or assigning it after `user: null`) re-links them, while a plain nested object only logs a warning.
 
 3. **Updates are asynchronous (microtask-batched per store).** After a write, the DOM updates on the next microtask, not synchronously. In tests, flush before asserting:
    ```javascript
