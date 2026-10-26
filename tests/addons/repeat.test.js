@@ -2237,3 +2237,124 @@ describe('repeat', () => {
     });
   });
 });
+
+describe('repeat select option', () => {
+  let container;
+  const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+  const rows = (n) => Array.from({ length: n }, (_, i) => ({ id: i + 1, label: `row ${i + 1}` }));
+  const marked = () => [...container.querySelectorAll('.active')].map(el => el.textContent);
+  const opts = (extra) => ({
+    key: item => item.id,
+    element: 'li',
+    render: (item, el) => { el.textContent = item.label; },
+    select: { key: 'selected', className: 'active' },
+    ...extra
+  });
+
+  beforeEach(() => {
+    container = document.createElement('ul');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    container.remove();
+  });
+
+  it('marks the selected row on first render', () => {
+    const store = state({ items: rows(5), selected: 3 });
+    const cleanup = repeat(container, store, 'items', opts());
+    expect(marked()).toEqual(['row 3']);
+    cleanup();
+  });
+
+  it('touches exactly two rows when the selection moves, whatever the list size', async () => {
+    const store = state({ items: rows(1000), selected: 10 });
+    const cleanup = repeat(container, store, 'items', opts());
+    const classWrites = [];
+    const observer = new MutationObserver(records => classWrites.push(...records));
+    observer.observe(container, { attributes: true, subtree: true, attributeFilter: ['class'] });
+
+    store.selected = 900;
+    await tick();
+    observer.takeRecords().forEach(r => classWrites.push(r));
+    observer.disconnect();
+
+    expect(classWrites.length).toBe(2);
+    expect(marked()).toEqual(['row 900']);
+    cleanup();
+  });
+
+  it('marks a row created later with the selected key, and clears on a missing key', async () => {
+    const store = state({ items: rows(2), selected: 7 });
+    const cleanup = repeat(container, store, 'items', opts());
+    expect(marked()).toEqual([]);
+
+    store.items = [...store.items, { id: 7, label: 'row 7' }];
+    await tick();
+    expect(marked()).toEqual(['row 7']);
+
+    store.selected = 'nope';
+    await tick();
+    expect(marked()).toEqual([]);
+    cleanup();
+  });
+
+  it('keeps the mark when render() overwrites className on update', async () => {
+    const store = state({ items: rows(3), selected: 2 });
+    const cleanup = repeat(container, store, 'items', opts({
+      render: (item, el) => { el.className = 'row'; el.textContent = item.label; }
+    }));
+    expect(marked()).toEqual(['row 2']);
+
+    store.items = store.items.map(item => ({ ...item, label: item.label + '!' }));
+    await tick();
+    expect(marked()).toEqual(['row 2!']);
+    expect(container.children[1].classList.contains('row')).toBe(true);
+    cleanup();
+  });
+
+  it("defaults the class name to 'selected'", () => {
+    const store = state({ items: rows(2), selected: 1 });
+    const cleanup = repeat(container, store, 'items', opts({ select: { key: 'selected' } }));
+    expect(container.children[0].classList.contains('selected')).toBe(true);
+    cleanup();
+  });
+
+  it('reads the selection from select.store when the list comes from computed()', async () => {
+    const store = state({ items: rows(4), selected: 4, odd: true });
+    const visible = computed(() => store.items.filter(item => !store.odd || item.id % 2 === 0));
+    const cleanup = repeat(container, visible, 'value', opts({ select: { key: 'selected', className: 'active', store } }));
+    expect(marked()).toEqual(['row 4']);
+
+    store.selected = 2;
+    await tick();
+    expect(marked()).toEqual(['row 2']);
+    cleanup();
+    visible.dispose();
+  });
+
+  it('throws at the call when the selection store has no $subscribe (computed without select.store)', () => {
+    const visible = computed(() => rows(2));
+    expect(() => repeat(container, visible, 'value', opts())).toThrow(/\$subscribe/);
+    visible.dispose();
+  });
+
+  it('stops following the selection after cleanup, for reactive and plain stores', async () => {
+    const store = state({ items: rows(3), selected: 1 });
+    const cleanup = repeat(container, store, 'items', opts());
+    cleanup();
+    store.selected = 2;
+    await tick();
+    expect(container.children.length).toBe(0);
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const selection = state({ selected: 1 });
+    const stop = repeat(container, { items: rows(2) }, 'items', opts({ select: { key: 'selected', className: 'active', store: selection } }));
+    expect(marked()).toEqual(['row 1']);
+    stop();
+    selection.selected = 2;
+    await tick();
+    expect(marked()).toEqual([]);
+    expect(warn).toHaveBeenCalled();
+  });
+});

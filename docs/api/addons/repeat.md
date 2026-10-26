@@ -18,6 +18,7 @@ function repeat(
     element?: string | (() => HTMLElement);
     preserveFocus?: Function | null;
     preserveScroll?: Function | null;
+    select?: { key: string; className?: string; store?: object };
   }
 ): () => void
 ```
@@ -37,6 +38,7 @@ Imported from `lume-js/addons`.
 - `options.element` — Tag name or factory for the wrapper element. Default: `'div'`. Ignored when `template` is set.
 - `options.preserveFocus` — Optional strategy for preserving focus during re-renders. Default: `defaultFocusPreservation`.
 - `options.preserveScroll` — Optional strategy for preserving scroll position during re-renders. Default: `defaultScrollPreservation`.
+- `options.select` — Keeps one row marked as selected. See [Selection](#selection).
 
 Use `render` alone for simple read-only lists. Use `create + update` for lists with event listeners — `create` runs once when the element is created, `update` runs on every data change.
 
@@ -194,6 +196,26 @@ repeat(listEl, filtered, 'value', {
   render: (t, el) => { el.textContent = t.text; }
 });
 ```
+
+## Selection
+
+`select` marks the row whose key equals a state value, and moves the mark when that value changes:
+
+```js
+const store = state({ items: [...], selected: null });
+
+repeat(list, store, 'items', {
+  key: item => item.id,
+  template: true,
+  select: { key: 'selected', className: 'active' }, // className defaults to 'selected'
+  create: (item, el) => el.addEventListener('click', () => { store.selected = item.id; }),
+});
+```
+
+- A selection change touches exactly two rows (`classList.remove` on the old one, `classList.add` on the new one) through `repeat`'s key-to-element map, whether the list has 10 rows or 10,000. Doing the same with `update` or an effect checks every row.
+- `store.selected` must hold the same value `key(item)` returns (`5`, not `'5'`). A value that matches no row clears the mark.
+- Rows created later with the selected key get the class, and the selected row keeps it even if `render` assigns `el.className`.
+- When the list comes from a `computed()`, pass the store that holds the selection: `select: { key: 'selected', store }`. Without it `repeat()` throws, because a computed has no keys to watch.
 
 ## Caveats
 

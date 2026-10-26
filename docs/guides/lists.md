@@ -36,6 +36,7 @@ The `render` function receives `(item, el, index)` and should mutate `el` direct
 | `create` | One of | `(item, el, index) => void` — called once when an element is created. Set DOM structure and event listeners here. |
 | `update` | One of | `(item, el, index, { isFirstRender }) => void` — called on every data change. Bind data here. |
 | `element` | — | Tag name or factory for the wrapper element. Default: `'div'`. |
+| `select` | — | `{ key, className?, store? }` — marks the row whose key equals `store[key]`; a selection change costs two class writes, however long the list. See [Selection](../api/addons/repeat.md#selection). |
 
 Use `render` alone for simple, read-only lists. Use `create` + `update` for lists that have interactive elements (buttons, checkboxes) — `create` runs once per DOM element so you only attach listeners once, and `update` runs on every data change to keep the display in sync.
 

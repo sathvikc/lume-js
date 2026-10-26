@@ -168,6 +168,8 @@ repeat(listEl, store, 'items', {
 
 `repeat` diffs by `key` against the previous array — which is why rule #1 (immutable array updates) is non-negotiable.
 
+To highlight a selected row, use the `select` option instead of comparing `item.id === store.selected` in `update` (which re-checks every row): `repeat(el, store, 'items', { key: it => it.id, select: { key: 'selected', className: 'active' } })`. The selection value must have the same type as `key(item)`; for a list from `computed()`, add `store` to `select`.
+
 ## Canonical app skeleton
 
 ```html

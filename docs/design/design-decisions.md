@@ -442,6 +442,24 @@ repeat('#list', store, 'people', { key: p => p.id, template: true });
 **Tradeoff:** `data-bind` inside a repeat template resolves against the item rather than the store — context-dependent meaning for one attribute, consistent with `data-bind`'s existing context-awareness (input vs span).
 
 
+### Why Selection Is a `repeat()` Option (2026-10)
+
+**Decision:** `repeat(..., { select: { key, className?, store? } })` subscribes once to a state key holding the selected item's key, and on change removes the class from the previously selected row and adds it to the new one, looked up through `repeat()`'s key-to-element map.
+
+**Reasoning:**
+- "Highlight the selected row" is the canonical single-row update, and VISION.md lists "List update (1 in 1000)" as Lume's largest performance gap. Without help it is O(n): every row re-checks `selected === item.id` in `update`, or the user writes the bookkeeping by hand. With the option it is two `classList` calls regardless of list size (asserted in tests with a MutationObserver over 1,000 rows).
+- The key-to-element map lives inside `repeat()`, and addons cannot import addons, so a separate `selection()` addon would have to rebuild that map from the DOM.
+- It is a class toggle, which is how lists already express state in CSS, not a new rendering concept.
+
+**Alternatives considered:**
+- ❌ A standalone `selection()` addon → cannot reach the map without an addon-to-addon import or a DOM scan per change.
+- ❌ Synchronous "direct observers" bypassing batching (Gea's approach) → special-cases the benchmark and breaks the flush guarantees.
+- ❌ A generic `relational: [{ key, className }]` list → more API for a pattern that appears once per list in practice.
+
+**Tradeoff:** One option on an already large function, and one `===` per rendered row so the selected row survives a `render` that rewrites `className`. +0.09 KB gz on the global bundle, which leaves it ~0.07 KB under its 8 KB budget.
+
+---
+
 ### Why `create` + `update` Instead of Just `render`?
 
 **Problem:** A single `render` function forces users to guard one-time setup:
