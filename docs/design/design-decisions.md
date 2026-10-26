@@ -1004,6 +1004,20 @@ bindDom(root, store, {
 
 ---
 
+## Security Hardening
+
+Short notes on defensive changes. Each records what is covered and why; none changes documented behavior for safe values.
+
+### `stringAttr()` URL filtering covers `<object data>` (2026-10)
+
+**Decision:** `data` joins the URL attributes whose values pass the scheme filter (`javascript:`, `vbscript:`, `data:text/html` remove the attribute).
+
+**Reasoning:** `<object data>` loads a URL into a nested context, the same class as `src` and `href`. It is not in the `htmlAttrs()` preset, so it only matters for code calling `stringAttr('data')` explicitly. This is defense in depth: whether a given browser still executes a `javascript:` URL in `<object data>` was not re-verified, and the filter does not depend on the answer.
+
+**Tradeoff:** None for real content; `<object data>` URLs pointing at media or documents are unaffected. `xlink:href` was considered and left out because `data-xlink:href` is not usable as a CSS attribute selector, so bindDom could never match it.
+
+---
+
 ## Future Considerations
 
 **Features We Might Add Later:**

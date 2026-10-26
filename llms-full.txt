@@ -269,7 +269,7 @@ FILE: README.md
     &nbsp;
 <a href="package.json"><img src="https://img.shields.io/badge/version-2.4.0-orange.svg" alt="v2.4.0"></a>
     &nbsp;
-<a href="tests/"><img src="https://img.shields.io/badge/tests-481%20passing-brightgreen.svg" alt="481 tests"></a>
+<a href="tests/"><img src="https://img.shields.io/badge/tests-482%20passing-brightgreen.svg" alt="482 tests"></a>
     &nbsp;
 <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/universal%20core-1.49KB-blue.svg" alt="universal core 1.49KB"></a>
     &nbsp;
@@ -4675,6 +4675,14 @@ When the value is `null` or `undefined`, the attribute is **removed** (`el.remov
 store.profileUrl = null; // <a> loses its href attribute entirely
 ```
 
+## URL safety
+
+For URL attributes (`href`, `src`, `action`, `srcset`, `poster`, `formaction`, and `data` for `<object data>`), a value whose scheme is `javascript:`, `vbscript:`, or `data:text/html` removes the attribute instead of setting it. The check normalizes the value the way the browser's URL parser does first, so `"\tjavascript:..."` and `" JaVaScRiPt:..."` are caught too, while a relative URL like `javascript-tutorial.html` is not blocked. Other attributes (`title`, `alt`, ...) are set as-is; they are never parsed as URLs or HTML.
+
+```js
+store.profileUrl = 'javascript:alert(1)'; // <a> loses its href instead
+```
+
 ## Common use cases
 
 ```js
@@ -6826,6 +6834,20 @@ bindDom(root, store, {
 
 ---
 
+## Security Hardening
+
+Short notes on defensive changes. Each records what is covered and why; none changes documented behavior for safe values.
+
+### `stringAttr()` URL filtering covers `<object data>` (2026-10)
+
+**Decision:** `data` joins the URL attributes whose values pass the scheme filter (`javascript:`, `vbscript:`, `data:text/html` remove the attribute).
+
+**Reasoning:** `<object data>` loads a URL into a nested context, the same class as `src` and `href`. It is not in the `htmlAttrs()` preset, so it only matters for code calling `stringAttr('data')` explicitly. This is defense in depth: whether a given browser still executes a `javascript:` URL in `<object data>` was not re-verified, and the filter does not depend on the answer.
+
+**Tradeoff:** None for real content; `<object data>` URLs pointing at media or documents are unaffected. `xlink:href` was considered and left out because `data-xlink:href` is not usable as a CSS attribute selector, so bindDom could never match it.
+
+---
+
 ## Future Considerations
 
 **Features We Might Add Later:**
@@ -6928,7 +6950,7 @@ FILE: docs/guides/faq.md
 
 ## Is Lume.js production-ready?
 
-Yes. Lume 2.x is stable — the current release on npm is v2.4.0 (`npm install lume-js`), backed by 481 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
+Yes. Lume 2.x is stable — the current release on npm is v2.4.0 (`npm install lume-js`), backed by 482 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
 
 ## Does Lume work without a build step?
 
