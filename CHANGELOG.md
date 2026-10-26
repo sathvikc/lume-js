@@ -12,7 +12,7 @@
 
 ### Changed
 
-- **Nested path bindings follow object replacement:** `data-bind="user.name"` (and every handler attribute with a dotted path) now subscribes along the whole path. Replacing `store.user = state({...})`, or assigning it after it started as `null`, re-links the binding: the element shows the new object's value, typing writes into the new object, and the old object no longer drives the element. Previously the path was resolved once at bind time, so all of these silently kept using the original object, and a path that started at `null` never activated. A `null` intermediate now renders empty and waits without a console warning; plain (unwrapped) objects and missing keys still warn.
+- **Nested path bindings follow object replacement:** `data-bind="user.name"` (and every handler attribute with a dotted path) now subscribes along the whole path. Replacing `store.user = state({...})`, or assigning it after it started as `null`, re-links the binding: the element shows the new object's value, typing writes into the new object, and the old object no longer drives the element. Previously the path was resolved once at bind time, so all of these silently kept using the original object, and a path that started at `null` never activated. A `null` intermediate now renders empty and waits without a console warning; plain (unwrapped) objects and missing keys still warn. Server-rendered placeholder text under such a binding (`<span data-bind="user.name">Loading…</span>` with `user: null`) is therefore cleared at bind time, matching how a flat `undefined` value already behaved; previously the dead binding left it in place.
 
 ### Fixed
 

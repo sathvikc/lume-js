@@ -6,6 +6,8 @@ Lume has no compiler, no virtual DOM, and no server-side rendering framework. Bu
 
 `bindDom()` calls `$subscribe()` immediately with the current value. If the server-rendered text already matches the store, there is no visible flash.
 
+The converse also holds: a binding whose value is `undefined` replaces the server-rendered text with an empty string at bind time. That includes a nested path under a `null` parent, so `<span data-bind="user.name">Loading…</span>` with `user: null` renders empty until `store.user` is assigned. To keep a placeholder visible, put it in the store (`state({ user: state({ name: 'Loading…' }) })`) or show it with a separate element bound to a loading flag.
+
 ```html
 <!-- Server renders static HTML with data-* attributes -->
 <div id="app">
