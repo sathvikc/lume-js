@@ -115,6 +115,18 @@ const stop = watch(store, 'count', (val) => {
 
 By default `watch` fires immediately with the current value (same as `$subscribe`). Pass `{ immediate: false }` to skip the initial call and only react to future changes.
 
+### Previous value
+
+The callback's second argument is the value this watcher last received, so transition logic needs no extra bookkeeping:
+
+```js
+watch(store, 'status', (status, prev) => {
+  if (prev === 'loading' && status === 'done') toast('Saved');
+});
+```
+
+`prev` is `undefined` on the immediate call. With `{ immediate: false }`, the value at subscribe time becomes the baseline, so the first change reports it as `prev`. Writes are coalesced per flush, so `prev` is the last *delivered* value, not every intermediate assignment.
+
 ## `$subscribe` — low-level, when you need maximum control
 
 `store.$subscribe(key, fn)` is the primitive under `watch`. Prefer `watch` — it validates the store and will gain future options. Use `$subscribe` directly only when writing library code or a custom addon.
@@ -127,6 +139,7 @@ By default `watch` fires immediately with the current value (same as `$subscribe
 | Expose a derived value to external code | `computed()` |
 | Run a side effect when one key changes | `watch()` |
 | Skip the initial call | `watch(…, { immediate: false })` |
+| React to a transition (old → new) | `watch(store, key, (next, prev) => …)` |
 | React to multiple keys with auto-tracking | `effect()` |
 
 ---

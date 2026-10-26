@@ -1,6 +1,6 @@
 # watch(store, key, fn, options?)
 
-Subscribes to a single store key. More explicit than `effect` — no auto-tracking, and the callback always receives the new value directly.
+Subscribes to a single store key. More explicit than `effect` — no auto-tracking, and the callback receives the new value and the previous one directly.
 
 ## Signature
 
@@ -8,7 +8,7 @@ Subscribes to a single store key. More explicit than `effect` — no auto-tracki
 function watch(
   store: object,
   key: string,
-  fn: (newValue: any) => void,
+  fn: (newValue: any, previousValue: any) => void,
   options?: { immediate?: boolean }
 ): () => void
 ```
@@ -19,7 +19,7 @@ Imported from `lume-js/addons`.
 
 - `store` — A reactive store created by `state()`.
 - `key` — The property name to watch.
-- `fn` — Called with the new value on every change.
+- `fn` — Called with `(newValue, previousValue)` on every change. `previousValue` is the value this watcher last received: `undefined` on the immediate call, and the subscribe-time value on the first change when `immediate` is `false`. Writes are coalesced per flush (and per `batch()`), so it is the last *delivered* value, not every intermediate assignment.
 - `options.immediate` — Whether to call `fn` immediately with the current value (default: `true`).
 
 ## Returns
@@ -55,6 +55,16 @@ const stop = watch(store, 'count', (val) => {
 });
 ```
 
+### Transitions with the previous value
+
+```js
+watch(store, 'status', (status, prev) => {
+  if (prev === 'loading' && status === 'error') showRetry();
+});
+```
+
+`watch` fires only when the key itself is assigned. If the key holds a nested `state()` object, editing a field inside it (`store.user.name = 'B'`) does not fire a watcher on `'user'`; replacing it (`store.user = state({...})`) does, with the old object as `prev`.
+
 ### Side effects (localStorage, analytics)
 
 `watch` is the right tool for side effects that should react to exactly one key. Unlike auto-tracking `effect`, there is no risk of accidentally subscribing to extra keys.
@@ -88,7 +98,7 @@ watch(store, 'count', (val) => {
 | | `effect(fn)` | `watch(store, key, fn)` |
 |--|--------------|------------------------|
 | Dependency tracking | Auto — all reads inside fn | Explicit — one key only |
-| Callback args | none | `(newValue)` |
+| Callback args | none | `(newValue, previousValue)` |
 | Runs immediately | Yes (on first call) | Yes (always, on subscribe) |
 | Best for | UI bindings, rendering | Side effects, persistence |
 

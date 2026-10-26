@@ -102,7 +102,7 @@ CDN (no build): `https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs` (also 
 |---|---|
 | Derive a value **into the store** (for `data-bind`) | `effect(() => { store.full = store.a + store.b; })` |
 | Derive a read-only value consumed **outside** the store | `computed(() => store.a * 2)` → `.value`, `.subscribe(fn)`, `.dispose()` |
-| React to **one specific key** (analytics, localStorage, manual DOM) | `watch(store, 'key', fn)` — options `{ immediate: false }` to skip the initial call |
+| React to **one specific key** (analytics, localStorage, manual DOM) | `watch(store, 'key', (next, prev) => …)` — `prev` is the last value this watcher received; options `{ immediate: false }` to skip the initial call |
 | Run side effects when **anything read** changes | `effect(fn)` (auto-tracking) |
 | Side effect with **no magic tracking** | `effect(fn, [[store, 'key1', 'key2'], [other, 'k']])` (explicit deps, coalesced to one run per microtask) |
 | Render an **array** as DOM elements | `repeat(container, store, 'items', { key: it => it.id, … })` |
