@@ -2,6 +2,7 @@
 
 > **Purpose:** The execution plan — what to build next, in what order, and *why*. Every item says what it is, why it matters, where it lives in the code, how to approach it, what artifacts it needs, and when it counts as done. A new session should be able to pick up any item from this file alone.
 > **Created:** 2026-10-21 · **Baseline:** v2.4.0 · 475 tests · 100% coverage · sizes (gz): `state` 1.49 / 1.75 KB, `index` 2.77 / 3.00 KB, `handlers` 1.23 / 2.00 KB, `addons` 4.96 / 6.00 KB, `global` 7.75 KB
+> **Last execution pass:** 2026-10-26, see [Execution log](#execution-log-2026-10-26). Implementation lives on branch `feat/roadmap-backlog` (8 commits off `main` 4efcf41).  
 > **Status:** Living document. When an item ships, tick it here, mark it ✅ in `VISION.md` if it appears there, and add a dated note.
 
 ---
@@ -11,8 +12,42 @@
 1. Read `AGENTS.md` (process contract), then `docs/design/design-decisions.md` (ratified decisions), then this file. `VISION.md` owns direction and philosophy; this file owns the concrete backlog.
 2. Pick items **in phase order** unless there is a reason not to. Phase 1 items are verified bugs in shipped code.
 3. Each item lists the artifacts `AGENTS.md`'s matrix requires. Items marked **Decision gate** must land their `design-decisions.md` entry/amendment *before or with* the code — the ratified entry wins until it is amended.
-4. One item = one commit (or one proposal branch for the large ones), carrying all its artifacts. All five quality gates must pass.
+4. One item = one commit (or one proposal branch for the large ones), carrying all its artifacts. All five quality gates must pass. Implement on a branch other than the one holding this file, and never copy this file into it. Commit messages, decision entries and docs must describe each change in their own words, with no references to this file or to item IDs (`R5`), because this file will go stale. Record outcomes (shipped, closed, measurements, spec corrections) back **here**, on this file's own branch. *(Amended 2026-10-26.)*
 5. Headroom is tight on `index` (0.23 KB left) and `state` (0.26 KB left). Any item touching core must report its size delta in the commit body.
+
+---
+
+## Execution log (2026-10-26)
+
+Every item was attempted in phase order on a separate branch, `feat/roadmap-backlog`, cut from `main`. This file was read from this branch and never copied there. Each shipped item is one commit with all its `AGENTS.md` matrix artifacts. Every commit passes `npm run validate` on its own. Final state: 503 tests (was 475), 100% coverage.
+
+| ID | Result | Commit on `feat/roadmap-backlog` |
+|---|---|---|
+| R1 | Shipped, different approach than suggested | e2c5929 |
+| R2 | Shipped, two spec corrections | 5e31553 |
+| R3 | Shipped as `data-bind-scope`; one symptom did not reproduce | cc9a0a3 |
+| R4 | **Deferred**: +40% raw reads, breaks private-field getters | — |
+| R5 | Shipped; caveat in spec was wrong | dcc26c7 |
+| R6 | **Closed**: common updates already minimal | — |
+| R7 | Shipped; created missing Hardening section | e112445 |
+| R8 | Shipped, added `select.store` | ec0425b |
+| R9 | **Closed**: listener cost is noise | — |
+| R10 | **Closed**: precondition unmet | — |
+| R11-R15 | **Not started**: needs maintainer decision | — |
+| R16 | Shipped; fixed an unsafe `innerHTML` example | dc231e5 |
+| R17 | Partly done; tagline not adopted | bdba88d |
+| R18 | Blocked on Phase 4 | — |
+
+**Sizes after the pass (gz):** `state` 1.49 / 1.75 (unchanged), `index` 2.87 / 3.00, `handlers` 1.23 / 2.00, `addons` 5.03 / 6.00, **`global` 7.93 / 8.00**. The baseline line in the header omitted the global budget; at 99.1% it is now the binding constraint, ahead of the `index` headroom this file flagged.
+
+**Lessons for whoever updates this file:**
+
+1. **Measure before building perf items.** Two of the three perf items (R6, R9) and the kernel item R4 fell over on a five-minute measurement. Future perf items should carry a number showing today's cost, not just the technique.
+2. **Re-run repros in both call orders** where order can matter (R3's second symptom only appears in the reverse order).
+3. **State warning behavior as part of the spec.** R2's spec said what to render but not whether to warn on `null`; that became a user-visible decision.
+4. **Caveats need the same verification as bugs.** R5's caveat was asserted, not run, and was wrong.
+5. **Commits must not reference this file.** Implementation commits, decision entries and docs on `feat/roadmap-backlog` describe each change in their own words, with no roadmap or item-ID references, because this file will go stale or be deleted. Step 4 of "How to use this document" is amended accordingly. The pointers this branch's own commit added to `AGENTS.md`, `CLAUDE.md` and `VISION.md` were deliberately **not** carried over, for the same reason.
+6. **Local environment trap:** on Node 26, the built-in `localStorage` shadows jsdom's and 19 `persist` tests fail even on `main`. Run gates with `NODE_OPTIONS=--no-experimental-webstorage`. CI pins Node 22 and is unaffected.
 
 ---
 
@@ -53,26 +88,26 @@ What we learned:
 
 ## Overview
 
-| ID | Item | Phase | Type (AGENTS matrix) | Decision gate | Verified |
-|---|---|---|---|---|---|
-| R1 | Fix stale `computed()` after same-flush writes | 1 | Bug fix | No | ✅ reproduced |
-| R2 | Nested `data-*` paths follow object replacement | 1 | Behavior change | **Yes** | ✅ reproduced |
-| R3 | Boundary for nested `bindDom` roots | 1 | Behavior change / new attr | **Yes** | ✅ reproduced |
-| R4 | Getters on state objects become reactive | 2 | Behavior change (kernel) | **Yes** (amend) | ✅ reproduced |
-| R5 | `watch()` callback gets `(next, previous)` | 2 | Behavior change (addon) | No | ✅ reproduced |
-| R6 | `repeat()` head/tail trimming before LIS | 2 | Perf (no API change) | Amend note | n/a (perf) |
-| R7 | `stringAttr`: treat `data` as a URL attribute | 2 | Security hardening | Short note | Low priority |
-| R8 | `repeat()` O(1) selection option | 3 | New public API (option) | **Yes** | n/a (feature) |
-| R9 | Delegated `on()` handler | 3 | Behavior change | **Yes** | Needs design |
-| R10 | Lazy `computed()` | 3 | Behavior change | **Yes** | Low priority |
-| R11 | Decision amendments for optional JSX | 4 | Docs (decision) | **Is the gate** | — |
-| R12 | Owner scope for JSX-created effects | 4 | New public API | via R11 | — |
-| R13 | `lume-js/jsx-runtime` | 4 | New public API + entry | via R11 | — |
-| R14 | `lume-js/html` tagged template | 4 | New public API + entry | via R11 | — |
-| R15 | JSX/html docs, types, examples, budgets | 4 | Docs/tooling | — | — |
-| R16 | Security guide ("no expressions" posture) | 5 | Docs | No | — |
-| R17 | `VISION.md` cleanup + "HTML-first, JSX-optional" | 5 | Docs | No | — |
-| R18 | Re-measure the Code Verbosity challenge | 5 | Docs | No | — |
+| ID | Item | Phase | Type (AGENTS matrix) | Decision gate | Verified | Status (2026-10-26) |
+|---|---|---|---|---|---|---|
+| R1 | Fix stale `computed()` after same-flush writes | 1 | Bug fix | No | ✅ reproduced | ✅ shipped |
+| R2 | Nested `data-*` paths follow object replacement | 1 | Behavior change | **Yes** | ✅ reproduced | ✅ shipped |
+| R3 | Boundary for nested `bindDom` roots | 1 | Behavior change / new attr | **Yes** | ✅ reproduced | ✅ shipped |
+| R4 | Getters on state objects become reactive | 2 | Behavior change (kernel) | **Yes** (amend) | ✅ reproduced | ⏸ deferred |
+| R5 | `watch()` callback gets `(next, previous)` | 2 | Behavior change (addon) | No | ✅ reproduced | ✅ shipped |
+| R6 | `repeat()` head/tail trimming before LIS | 2 | Perf (no API change) | Amend note | n/a (perf) | ✖ closed |
+| R7 | `stringAttr`: treat `data` as a URL attribute | 2 | Security hardening | Short note | Low priority | ✅ shipped |
+| R8 | `repeat()` O(1) selection option | 3 | New public API (option) | **Yes** | n/a (feature) | ✅ shipped |
+| R9 | Delegated `on()` handler | 3 | Behavior change | **Yes** | Needs design | ✖ closed |
+| R10 | Lazy `computed()` | 3 | Behavior change | **Yes** | Low priority | ✖ closed |
+| R11 | Decision amendments for optional JSX | 4 | Docs (decision) | **Is the gate** | — | ⏳ needs decision |
+| R12 | Owner scope for JSX-created effects | 4 | New public API | via R11 | — | ⏳ needs decision |
+| R13 | `lume-js/jsx-runtime` | 4 | New public API + entry | via R11 | — | ⏳ needs decision |
+| R14 | `lume-js/html` tagged template | 4 | New public API + entry | via R11 | — | ⏳ needs decision |
+| R15 | JSX/html docs, types, examples, budgets | 4 | Docs/tooling | — | — | ⏳ needs decision |
+| R16 | Security guide ("no expressions" posture) | 5 | Docs | No | — | ✅ shipped |
+| R17 | `VISION.md` cleanup + "HTML-first, JSX-optional" | 5 | Docs | No | — | ◐ partial |
+| R18 | Re-measure the Code Verbosity challenge | 5 | Docs | No | — | ⏳ blocked |
 
 ---
 
@@ -82,7 +117,13 @@ These come first because they are wrong behavior today, not missing features. Ea
 
 ### R1. Fix stale `computed()` after a same-flush write
 
-- [ ] Status
+- [x] Status: **shipped** on `feat/roadmap-backlog` (e2c5929), 2026-10-26 · no decision gate needed per this item, but one was added because the self-mutation semantics changed
+
+  **Outcome:** the repro now yields `20`. Took the "remove the deferred guard" alternative, **not** the suggested `rerunRequested` direction.
+
+  **Why the suggested direction was rejected:** a retry-when-guard-clears cannot tell a self-triggered run from an external one. A computed that never converges (`s.count = s.count + 1`) would then re-arm the guard every microtask: an endless microtask loop that the flush cap never sees, because each run is a fresh flush. Running `fn()` inside `batch()` was also tried on paper and rejected: inside an outer batch flush `batch()` nests, the writes land in the next wave after the guard is cleared, and writes to unrelated stores would start flushing synchronously mid-computation.
+
+  **Semantics now:** `computed()` re-runs exactly like `effect()`. A converging self-write (clamp/normalize) settles after one extra run; a non-converging one hits the shared 100-iteration flush cap and logs the existing "Maximum flush iterations" error (it used to be silently cut off after one run). The old test "suppresses self-triggered flush" was replaced by convergent and capped-runaway tests; the clamp regression test fails on the old code. Decision entry: "Why `computed()` Has No Self-Mutation Guard". Addons bundle got smaller (4.96 -> 4.94 KB).
 
 **What:** `computed()` can permanently miss an update when one of its dependencies is written again later in the *same* flush.
 
@@ -110,7 +151,18 @@ s.a = 50;
 
 ### R2. Nested `data-*` paths follow object replacement
 
-- [ ] Status · **Decision gate**
+- [x] Status: **shipped** on `feat/roadmap-backlog` (5e31553), 2026-10-26 · decision entry "Why Path Bindings Follow Object Replacement"
+
+  **Outcome:** all four reproduced failures fixed, for `data-bind` and every handler attribute (shared `watchPath`/`follow` helpers in `src/core/bindDom.js`; `resolvePath`/`resolveProp` are gone). Tests assert the old object no longer drives the DOM, typing writes to the current leaf object, deep paths re-link when a middle object is replaced, and live subscription count returns to 0 after cleanup across every link (counted via a Proxy around `$subscribe`).
+
+  **Corrections to this item's spec:**
+  - "Single-segment paths take the current fast path unchanged, zero overhead" is not quite true: flat paths are still one `$subscribe`, but each update goes through one extra closure call, and two-way inputs do one WeakMap lookup per update to keep the write target current. Not measurable in `npm run bench` (`update 1k bound properties` unchanged within noise), but not literally zero.
+  - Warning behavior changed and should be stated as a decision, not a detail: a `null`/`undefined` intermediate now renders empty and waits **without** a warning (it is the normal async shape). A missing key (likely a typo) and a plain unwrapped object still warn. The previous test "warns and skips when intermediate path is null" was replaced.
+  - While the chain is broken, the delegated input listener writes nowhere (the binding's target is `null`); the old code would have thrown or written into a stale object.
+
+  **Docs touched:** `docs/api/core/bindDom.md` (new "Nested paths" section), `docs/guides/reactivity.md`, `docs/guides/two-way-binding.md`, `docs/ARCHITECTURE.md` (the "documented tradeoff" paragraph rewritten), `CLAUDE.md` gotcha (now "Paths are followed, elements are not"), `AGENT_GUIDE.md` rule 2. `examples/form-heavy` (heaviest user of nested paths) smoke-tested in Chrome: nested two-way binding works, zero console warnings.
+
+  **Size:** `index` 2.83 -> 2.87 KB gz (budget 3.00).
 
 **What:** A binding like `data-bind="user.name"` should keep working when `store.user` is replaced, and should activate when `user` starts as `null` and is assigned later.
 
@@ -140,7 +192,15 @@ s.a = 50;
 
 ### R3. Boundary for nested `bindDom` roots
 
-- [ ] Status · **Decision gate**
+- [x] Status: **shipped** on `feat/roadmap-backlog` (cc9a0a3), 2026-10-26 · decision entry "Why `data-bind-scope` Marks Nested Roots"
+
+  **Outcome:** attribute name chosen: **`data-bind-scope`**. An outer `bindDom()` skips any element whose nearest `[data-bind-scope]` ancestor lies inside its root and is not the root. The scope element's **own** attributes still bind to the outer store (so a page can hide/show a widget via its container); nothing binds twice because `bindDom()` never binds its own root element.
+
+  **Correction to the repro:** of the two listed symptoms, the cross-store write reproduced (typing in the island wrote `query` into **both** stores, giving `A` a stray key). "Input shows A's value" did **not** reproduce in the listed call order (outer first, then inner): the inner binding's subscription ran last and won. It would only show up in the reverse order. Tests cover both orders.
+
+  **Implementation note:** adding the check pushed `performBinding` over the sonarjs cognitive-complexity limit (18 > 15). Fixed by extracting `bindElement()` and `inNestedScope()`, not by suppressing the rule. The deep-nesting test initially passed on the old code too (later binds overwrote earlier ones); it binds outermost-last so it actually proves the boundary.
+
+  **Size:** `index` 2.77 -> 2.83 KB gz.
 
 **What:** A way to tell an outer `bindDom()` not to bind inside a region owned by another store.
 
@@ -160,7 +220,14 @@ s.a = 50;
 
 ### R4. Getters on state objects become reactive
 
-- [ ] Status · **Decision gate (amend "Why No Computed Properties in Core?")**
+- [ ] Status: **deferred, not shipped** (2026-10-26). Prototyped and measured; prototype reverted. Needs a design decision before anyone retries it.
+
+  **Findings (all verified):**
+  1. **Hot-path cost:** `Reflect.get(target, key, receiver)` in the get trap made raw proxy reads ~40% slower: `state-read (100k reads)` 1.04-1.09 ms -> 1.47-1.56 ms, three `npm run bench` runs each way on the same machine. Effect, computed and DOM benches were within noise. The "report the delta and judge it" criterion: judged not acceptable for the kernel's hottest path.
+  2. **Breaks working code:** class getters that read private fields (`get full() { return this.#first + ... }`) work today and throw `TypeError: Cannot read private member #first from an object whose class did not declare it` once `this` is the proxy. `docs/api/core/state.md` documents class instances as "partial" support, so this regresses a supported case.
+  3. **Half support is worse than none:** getters would track in `effect()`/`computed()` but stay silently dead in `data-bind`, `watch()` and `$subscribe` (nothing ever writes the getter key). This item already notes it; in practice it means Lume's primary APIs would not see getters, and the current simple rule ("getters are not reactive") becomes a confusing partial one.
+
+  **Viable shape for a retry:** detect accessor keys once in `state()` (`Object.getOwnPropertyDescriptors`) for plain object literals only, so getter-less stores pay nothing on reads and class instances are untouched; **plus** a getter-aware `bindDom` path (e.g. bind getter keys through `effect()`), costed together against the `index` entry, which has ~0.13 KB left after R2/R3.
 
 **What:** Make `get` accessors on state objects auto-tracked inside `effect()`/`computed()`.
 
@@ -186,7 +253,13 @@ The `get` trap reads `target[key]` (`src/core/state.js:283`), so the getter runs
 
 ### R5. `watch()` callback receives `(next, previous)`
 
-- [ ] Status
+- [x] Status: **shipped** on `feat/roadmap-backlog` (dcc26c7), 2026-10-26
+
+  **Outcome:** callbacks are called as `(newValue, previousValue)`; one closure variable per watcher, no extra subscriptions. Semantics exactly as specified (immediate call gets `undefined`; with `immediate: false` the subscribe-time value is the baseline; coalesced/batched writes never appear as `previous`). `index.d.ts` callback type is `(value: T[K], previous: T[K] | undefined) => void`; one-argument callbacks still type-check (verified with a scratch `tsc` file, since the repo has no type tests).
+
+  **Correction to this item's caveat:** "if the watched key holds a nested `state()` object mutated in place, `previous === next`" is wrong. An in-place edit (`store.user.name = 'B'`) writes the **nested** store, never the watched key `user`, so the watcher does not fire at all. Replacing the object fires with the old object as `previous`. Docs and a test state the real behavior.
+
+  **Compatibility note added to CHANGELOG:** a callback passed by reference that already declares an optional second parameter (e.g. `format(value, options)`) now receives the previous value there.
 
 **What:** Pass the previous delivered value as a second argument.
 
@@ -206,7 +279,9 @@ The `get` trap reads `target[key]` (`src/core/state.js:283`), so the getter runs
 
 ### R6. `repeat()` head/tail trimming before LIS
 
-- [ ] Status
+- [ ] Status: **closed without shipping** (2026-10-26). Measured first; the premise did not hold.
+
+  **Findings:** the item says the common updates "need no map at all", implying they are expensive today. They are not, in DOM terms: at 1,000 rows, append, prepend, remove-one and edit-one already make the minimum `insertBefore` calls (1, 1, 0, 0), because every survivor is already in the LIS. Trimming could only skip pure-JS work (the `prevIndex` Map, the positions array, the LIS), which costs 0.03 ms per update at 1,000 rows and 0.35 ms at 10,000 rows (Node, unthrottled), less than the per-row bookkeeping `updateList` does regardless (0.034 / 0.59 ms). It would spend roughly 0.1 KB of the global bundle, which now has 0.07 KB left. Reopen only with a profile of a real 10k+ row list showing this pass mattering.
 
 **What:** Before building the position map and running the LIS, skip the common prefix and suffix of rows that did not move; run the minimal-move plan only on the middle.
 
@@ -220,7 +295,11 @@ The `get` trap reads `target[key]` (`src/core/state.js:283`), so the getter runs
 
 ### R7. `stringAttr`: treat `data` as a URL attribute (low priority)
 
-- [ ] Status
+- [x] Status: **shipped** on `feat/roadmap-backlog` (e112445), 2026-10-26
+
+  **Outcome:** `data` added to `URI_ATTRS`; test, `@security` JSDoc, CHANGELOG `Security`. Browser execution of `javascript:` in `<object data>` was **not** re-verified (no reliable way in jsdom); the hardening note is written as defense in depth so it holds either way.
+
+  **Gaps found while doing it:** `docs/api/handlers/stringAttr.md` never described URL filtering at all (now has a "URL safety" section), and `design-decisions.md` had **no** "Hardening" section even though `AGENTS.md`'s matrix sends security notes there. Created "## Security Hardening" before "Future Considerations"; R7's note is its first entry.
 
 **What:** Add `data` (the `<object data>` URL) to `URI_ATTRS` in `src/handlers/stringAttr.js`.
 
@@ -234,7 +313,20 @@ The `get` trap reads `target[key]` (`src/core/state.js:283`), so the getter runs
 
 ### R8. `repeat()` O(1) selection option
 
-- [ ] Status · **Decision gate**
+- [x] Status: **shipped** on `feat/roadmap-backlog` (ec0425b), 2026-10-26 · decision entry "Why Selection Is a `repeat()` Option"
+
+  **Outcome:** `select: { key, className = 'selected', store? }`. A selection change touches exactly two rows (asserted over 1,000 rows with a MutationObserver counting class mutations). Rows created later with the selected key get the class.
+
+  **Additions beyond the spec, and why:**
+  - `select.store`: `repeat()` over a `computed()` (`repeat(el, visible, 'value', ...)`) is a documented pattern, and a computed has no keys to subscribe to, so the selection must come from the real store. Omitting it there throws at the call (the `$subscribe` TypeError); an explicit error message was written and then removed to save bytes.
+  - Re-marking on every render: a `render` that does `el.className = 'row'` wiped the class, so each rendered row re-applies it when its key is selected (one `===` per row per render).
+  - The two duplicated row-teardown blocks (reactive vs non-reactive cleanup) became one `teardown()`, which also releases the selection subscription. Selection logic lives in `trackSelection()` to stay under the complexity limit.
+
+  **Example:** `examples/template-list` now selects on row click; verified in Chrome, including that the selection survives Shuffle.
+
+  **Size warning:** addons 4.94 -> 5.03 KB, **global 7.84 -> 7.93 KB of 8.00**. The global bundle is now the binding constraint for every further item.
+
+  `VISION.md`'s performance table was not re-measured against Solid; only a dated note says the 1-in-1000 selection case is now O(1).
 
 **What:** An option such as `select: { key: 'selectedId', className: 'active' }` that keeps exactly one row marked as selected.
 
@@ -248,7 +340,9 @@ The `get` trap reads `target[key]` (`src/core/state.js:283`), so the getter runs
 
 ### R9. Delegated `on()` handler
 
-- [ ] Status · **Decision gate** · needs design
+- [ ] Status: **closed without shipping** (2026-10-26). Measured before designing.
+
+  **Findings (Chrome, via the vite dev server):** 10,000 raw `addEventListener` calls take 1.5 ms. `bindDom` over 10,000 `data-onclick` buttons costs 26.8 ms vs 26.0 ms over 10,000 `data-hidden` buttons, i.e. listener wiring is noise next to the bind scan. Delegation would change observable `event.currentTarget` / `stopPropagation()` behavior to save nothing measurable, with 0.07 KB left in the global budget. The cleanup caveat in `src/handlers/on.js` remains the only reason to revisit; judge it on that alone.
 
 **What:** Install one listener per event type instead of one per element, looking handlers up per element in a `WeakMap`.
 
@@ -264,7 +358,7 @@ The `get` trap reads `target[key]` (`src/core/state.js:283`), so the getter runs
 
 ### R10. Lazy `computed()` (low priority; after R1)
 
-- [ ] Status · **Decision gate**
+- [ ] Status: **closed without shipping** (2026-10-26). The item's own precondition ("only if profiling shows unused computeds costing real time") is unmet: no such profile exists. R1's fix did not change this analysis.
 
 **What:** Skip recomputation while nobody is subscribed; recompute on `.value` read when a dependency changed.
 
@@ -288,7 +382,7 @@ JSX is what most developers already write. Lume's biggest adoption barrier is th
 
 ### R11. Decision amendments (the gate — do this first)
 
-- [ ] Status
+- [ ] Status: **not started; awaiting a maintainer decision** (2026-10-26). Phase 4 contradicts two ratified positions as written (`design-decisions.md` "Why Standards-Only?" rejects JSX/template literals; `VISION.md` "Will NOT Add" lists a component system). R11 is where that would change, and it is a product-direction call for the maintainer, not an implementation step an agent should take on its own.
 
 **What:** Amend the ratified documents so the JSX layer is legal before any code lands:
 
@@ -301,7 +395,7 @@ JSX is what most developers already write. Lume's biggest adoption barrier is th
 
 ### R12. Owner scope for JSX-created reactivity
 
-- [ ] Status
+- [ ] Status: **not started; awaiting a maintainer decision** (2026-10-26). Phase 4 contradicts two ratified positions as written (`design-decisions.md` "Why Standards-Only?" rejects JSX/template literals; `VISION.md` "Will NOT Add" lists a component system). R11 is where that would change, and it is a product-direction call for the maintainer, not an implementation step an agent should take on its own.
 
 **What:** A cleanup scope so a rendered JSX tree can be disposed with one call, e.g. `const dispose = render(() => <App />, el)`.
 
@@ -313,7 +407,7 @@ JSX is what most developers already write. Lume's biggest adoption barrier is th
 
 ### R13. `lume-js/jsx-runtime`
 
-- [ ] Status
+- [ ] Status: **not started; awaiting a maintainer decision** (2026-10-26). Phase 4 contradicts two ratified positions as written (`design-decisions.md` "Why Standards-Only?" rejects JSX/template literals; `VISION.md` "Will NOT Add" lists a component system). R11 is where that would change, and it is a product-direction call for the maintainer, not an implementation step an agent should take on its own.
 
 **What:** `jsx`, `jsxs`, `Fragment` (+ `jsx-dev-runtime` re-export), used via `"jsx": "react-jsx", "jsxImportSource": "lume-js"`.
 
@@ -338,7 +432,7 @@ JSX is what most developers already write. Lume's biggest adoption barrier is th
 
 ### R14. `lume-js/html` tagged template
 
-- [ ] Status
+- [ ] Status: **not started; awaiting a maintainer decision** (2026-10-26). Phase 4 contradicts two ratified positions as written (`design-decisions.md` "Why Standards-Only?" rejects JSX/template literals; `VISION.md` "Will NOT Add" lists a component system). R11 is where that would change, and it is a product-direction call for the maintainer, not an implementation step an agent should take on its own.
 
 **What:** `` html`<button onclick=${inc}>${() => store.count}</button>` `` — the **no-build twin** of JSX, built on the same `h()` core as R13.
 
@@ -350,7 +444,7 @@ JSX is what most developers already write. Lume's biggest adoption barrier is th
 
 ### R15. Docs, types, examples, budgets for the JSX layer
 
-- [ ] Status
+- [ ] Status: **not started; awaiting a maintainer decision** (2026-10-26). Phase 4 contradicts two ratified positions as written (`design-decisions.md` "Why Standards-Only?" rejects JSX/template literals; `VISION.md` "Will NOT Add" lists a component system). R11 is where that would change, and it is a product-direction call for the maintainer, not an implementation step an agent should take on its own.
 
 - Guides: `docs/guides/jsx.md` (setup for Vite/esbuild/TS, the run-once rule, reactivity via functions, cleanup) and `docs/guides/html-templates.md`; register both in `docs/manifest.json`, then `npm run docs:sync`.
 - Examples: `examples/jsx-todo/` (Vite) and `examples/html-todo/` (no build, plain `<script type="module">`), cards in `examples/index.html`.
@@ -369,7 +463,11 @@ JSX is what most developers already write. Lume's biggest adoption barrier is th
 
 ### R16. Security guide
 
-- [ ] Status
+- [x] Status: **shipped** on `feat/roadmap-backlog` (dc231e5), 2026-10-26 as `docs/guides/security.md`, registered in `docs/manifest.json` (needs an empty `<!-- lume:nav -->` marker pair for `docs:sync` to add the footer).
+
+  **Verified before writing:** `src/` has no `eval`, `new Function`, `innerHTML`, `insertAdjacentHTML` or `outerHTML`; writes to `__proto__`/`constructor`/`prototype` are dropped; `state(JSON.parse('{"__proto__": {...}}'))` keeps `__proto__` as an own key and does not touch the prototype; subscriber cap returns a no-op with a logged error; `persist()` writes plain JSON to localStorage/sessionStorage and only assigns listed keys.
+
+  **Found while writing:** the `repeat()` JSDoc example in `src/addons/index.d.ts` interpolated item text into `innerHTML` (the exact anti-pattern the guide warns about); fixed in the same commit. The guide also states the limit precisely: injected `data-*` can read any reachable key, two-way inputs can write to one, and `data-on*` can attach functions already in state.
 
 **What:** `docs/guides/security.md` stating Lume's guarantees: attributes hold state **paths, never expressions** (so markup an attacker controls cannot execute code — unlike expression-evaluating template libraries); URL scheme filtering on bound URL attributes (including control-character evasion); `textContent` only; prototype-key write guard; subscriber cap; the trust model of `data-*` injection (can only reach existing state).
 
@@ -377,7 +475,10 @@ JSX is what most developers already write. Lume's biggest adoption barrier is th
 
 ### R17. `VISION.md` cleanup and tagline
 
-- [ ] Status
+- [ ] Status: **partly done** on `feat/roadmap-backlog` (bdba88d), 2026-10-26
+
+  - Done: the stale "Do Now" rows 3-6 were each checked against `src/` and marked done (repeat `create`/`update` types + `WeakMap` binding map; `show`; `classToggle`/`className`; `createDebugPlugin`). "Optional Build Step" marked superseded, with the reasoning given here.
+  - **Not done:** the "HTML-first, JSX-optional" tagline. It describes a layer that does not exist and that Phase 4 has not ratified; adopt it only when R13/R14 ship.
 
 - Mark "Optional Build Step (Future Idea)" (the Babel pass turning auto-tracked effects into explicit deps) as **superseded**: since v2.3, effects reuse their subscriptions and allocate nothing on stable re-runs (decision "Why Effects Reuse Their Subscriptions Across Runs"), so the pass would buy almost nothing. Point to Phase 4 instead.
 - Refresh the stale "Do Now" table (several items are long done).
@@ -385,7 +486,7 @@ JSX is what most developers already write. Lume's biggest adoption barrier is th
 
 ### R18. Re-measure the Code Verbosity challenge
 
-- [ ] Status
+- [ ] Status: blocked on Phase 4 (2026-10-26).
 
 After Phase 4, rebuild the debug-demo comparison (vanilla vs Lume HTML vs Lume JSX vs Lume `html`) and update the table in `VISION.md`. Close the challenge only if Lume's line count beats vanilla.
 
