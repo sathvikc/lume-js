@@ -699,6 +699,23 @@ store.$subscribe('text', (value) => {
 
 ---
 
+### Why `computed()` Has No Self-Mutation Guard (2026-10)
+
+**Decision:** `computed()` re-runs on every dependency change, exactly like `effect()`. It has no guard against its own writes. A computed that writes a converging value to a key it reads settles after one extra run; one that never converges is stopped by the shared flush iteration cap (100) with a logged error.
+
+**Reasoning:**
+- The old guard set a flag around `fn()` and cleared it on the next microtask, to drop the flush triggered by the computed's own writes. A time window cannot tell whose write it is dropping: when another effect in the same flush rewrote a dependency (any clamp or normalize effect), the computed's re-run landed inside the window and was skipped. The computed then held a wrong value until some unrelated later change. Reproduced: `s.a = 50` with a clamp to 10 left `computed(() => s.a * 2)` at 100 instead of 20.
+- Silent wrong values are worse than a loud loop. The flush cap already stops runaway effects with an error naming "an effect or computed mutating state it depends on", so a self-mutating computed gets the same treatment as a self-mutating effect.
+- Removing the guard removes code; there is nothing to tune.
+
+**Alternatives considered:**
+- ❌ Record skipped re-runs and retry when the guard clears → cannot tell a self-triggered run from an external one, so a never-converging computed becomes an endless microtask loop that the flush cap never sees.
+- ❌ Run `fn()` inside `batch()` so its own writes flush while the guard is still set → only works at top level. Inside an outer batch flush, `batch()` nests, the writes land in the next wave after the guard is cleared, and writes to unrelated stores start flushing synchronously mid-computation.
+
+**Tradeoff:** A computed that writes a dependency without converging used to be silently stopped after one run; it now runs to the cap (101 runs) and logs an error. That code was already broken (a computed should be pure), and now it is visible.
+
+---
+
 ## TypeScript Decisions
 
 ### Why Include Type Definitions But No TypeScript Source?

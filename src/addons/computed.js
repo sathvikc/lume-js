@@ -29,14 +29,10 @@ import { logError } from '../utils/log.js';
  * properties are accessed. When any dependency changes, the value
  * is automatically recomputed.
  *
- * ⚠️ Circular self-mutations are automatically suppressed. If a computed
- * mutates a state property it depends on, the flush triggered by that
- * mutation is skipped to prevent an infinite microtask loop.
- *
- * @security After each computation, a re-entry guard stays active until the
- * next microtask. If a dependency changes synchronously during this window,
- * the computed will not recompute until a subsequent microtask. This is
- * intentional — it prevents infinite loops from self-mutating computeds.
+ * A computed should be pure. If it writes to a state key it depends on, it
+ * re-runs like any effect: a write that converges (clamping, normalizing)
+ * settles after one extra run, and one that never converges is stopped by
+ * the flush iteration cap with a logged error.
  *
  * @param {function} fn - Function that computes the value
  * @returns {object} Object with .value property and methods
@@ -68,18 +64,13 @@ export function computed(fn) {
 
   let cachedValue;
   let isInitialized = false;
-  let isInComputation = false;
   let disposed = false;
   const subscribers = [];
 
   // Use effect to automatically track dependencies
   const cleanupEffect = effect(() => {
-    // Skip re-entry from a flush triggered by our own synchronous mutation.
-    // The mutation inside fn() queues a microtask flush; we stay flagged
-    // until a subsequent microtask clears it, so that flush is dropped.
-    if (isInComputation || disposed) return;
-
-    isInComputation = true;
+    // A flush that collected this effect before dispose() may still call it
+    if (disposed) return;
 
     try {
       const newValue = fn();
@@ -102,14 +93,6 @@ export function computed(fn) {
         // Notify subscribers of error state
         subscribers.forEach(callback => callback(cachedValue));
       }
-    } finally {
-      // Defer clearing the flag so any flush microtask queued by fn()
-      // sees it still set and skips re-entry.
-      queueMicrotask(() => {
-        if (!disposed) {
-          isInComputation = false;
-        }
-      });
     }
   });
 
@@ -159,7 +142,6 @@ export function computed(fn) {
       cleanupEffect();
       subscribers.length = 0;
       isInitialized = false;
-      isInComputation = false;
     }
   };
 }

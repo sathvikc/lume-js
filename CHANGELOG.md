@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`computed()` no longer goes stale when another effect rewrites a dependency in the same flush:** with `computed(() => s.a * 2)` and a clamp effect (`if (s.a > 10) s.a = 10`), writing `s.a = 50` left the computed at 100 instead of 20 until an unrelated later change. The re-entry guard that caused it is gone, so a computed now behaves like `effect()` when it writes its own dependencies: a converging write settles after one extra run, and a never-converging one is stopped by the flush cap with a logged error instead of being silently cut off after one run.
+
 ## [2.4.0] - 2026-07-20
 
 ### Changed
