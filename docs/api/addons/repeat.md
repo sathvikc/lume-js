@@ -213,7 +213,7 @@ repeat(list, store, 'items', {
 ```
 
 - A selection change touches exactly two rows (`classList.remove` on the old one, `classList.add` on the new one) through `repeat`'s key-to-element map, whether the list has 10 rows or 10,000. Doing the same with `update` or an effect checks every row.
-- `store.selected` must hold the same value `key(item)` returns (`5`, not `'5'`). A value that matches no row clears the mark.
+- Matching is strict (`===`): `store.selected` must hold the same value **and type** `key(item)` returns (`5`, not `'5'`). Values read from the DOM (`el.dataset.id`, input values) are strings, so convert them (`Number(el.dataset.id)`) when keys are numbers. A value that matches no row clears the mark silently.
 - Rows created later with the selected key get the class, and the selected row keeps it even if `render` assigns `el.className`.
 - When the list comes from a `computed()`, pass the store that holds the selection: `select: { key: 'selected', store }`. Without it `repeat()` throws, because a computed has no keys to watch.
 

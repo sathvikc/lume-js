@@ -216,7 +216,8 @@ export interface RepeatOptions<T> {
    * Keep exactly one row marked as selected: the row whose key(item) equals
    * the value of store[select.key]. A selection change costs two classList
    * writes (old row off, new row on), regardless of list size.
-   * - key: state key holding the selected item's key (same type as key(item))
+   * - key: state key holding the selected item's key, compared with === to key(item)
+   *   (same type: '5' does not match 5; convert values read from dataset or inputs)
    * - className: class to toggle (default: 'selected')
    * - store: state() store holding the selection (default: the list's store;
    *   required when the list comes from computed())
