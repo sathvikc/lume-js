@@ -72,7 +72,9 @@ export interface WatchOptions {
  *
  * @param store - Reactive state object created with state().
  * @param key - Property key to observe.
- * @param callback - Called with new value on change (and immediately unless immediate=false).
+ * @param callback - Called with (newValue, previousValue) on change (and immediately unless immediate=false).
+ *   previousValue is the value this watcher last received: undefined on the immediate call; with
+ *   immediate=false the subscribe-time value is the baseline for the first change.
  * @param options - Watch options
  * @returns Unsubscribe function for cleanup
  * @throws {Error} If store is not a reactive state object
@@ -94,6 +96,11 @@ export interface WatchOptions {
  *   console.log('Count changed to:', value);
  * }, { immediate: false });
  *
+ * // Transition logic with the previous value
+ * watch(store, 'count', (next, prev) => {
+ *   if (prev !== undefined && next < prev) console.log('went down');
+ * });
+ *
  * // Cleanup
  * unwatch();
  * ```
@@ -101,7 +108,7 @@ export interface WatchOptions {
 export function watch<T extends object, K extends keyof T>(
   store: ReactiveState<T>,
   key: K,
-  callback: Subscriber<T[K]>,
+  callback: (value: T[K], previous: T[K] | undefined) => void,
   options?: WatchOptions
 ): Unsubscribe;
 

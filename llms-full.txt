@@ -129,7 +129,7 @@ CDN (no build): `https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs` (also 
 |---|---|
 | Derive a value **into the store** (for `data-bind`) | `effect(() => { store.full = store.a + store.b; })` |
 | Derive a read-only value consumed **outside** the store | `computed(() => store.a * 2)` → `.value`, `.subscribe(fn)`, `.dispose()` |
-| React to **one specific key** (analytics, localStorage, manual DOM) | `watch(store, 'key', fn)` — options `{ immediate: false }` to skip the initial call |
+| React to **one specific key** (analytics, localStorage, manual DOM) | `watch(store, 'key', (next, prev) => …)` — `prev` is the last value this watcher received; options `{ immediate: false }` to skip the initial call |
 | Run side effects when **anything read** changes | `effect(fn)` (auto-tracking) |
 | Side effect with **no magic tracking** | `effect(fn, [[store, 'key1', 'key2'], [other, 'k']])` (explicit deps, coalesced to one run per microtask) |
 | Render an **array** as DOM elements | `repeat(container, store, 'items', { key: it => it.id, … })` |
@@ -269,7 +269,7 @@ FILE: README.md
     &nbsp;
 <a href="package.json"><img src="https://img.shields.io/badge/version-2.4.0-orange.svg" alt="v2.4.0"></a>
     &nbsp;
-<a href="tests/"><img src="https://img.shields.io/badge/tests-477%20passing-brightgreen.svg" alt="477 tests"></a>
+<a href="tests/"><img src="https://img.shields.io/badge/tests-481%20passing-brightgreen.svg" alt="481 tests"></a>
     &nbsp;
 <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/universal%20core-1.49KB-blue.svg" alt="universal core 1.49KB"></a>
     &nbsp;
@@ -1263,6 +1263,18 @@ const stop = watch(store, 'count', (val) => {
 
 By default `watch` fires immediately with the current value (same as `$subscribe`). Pass `{ immediate: false }` to skip the initial call and only react to future changes.
 
+### Previous value
+
+The callback's second argument is the value this watcher last received, so transition logic needs no extra bookkeeping:
+
+```js
+watch(store, 'status', (status, prev) => {
+  if (prev === 'loading' && status === 'done') toast('Saved');
+});
+```
+
+`prev` is `undefined` on the immediate call. With `{ immediate: false }`, the value at subscribe time becomes the baseline, so the first change reports it as `prev`. Writes are coalesced per flush, so `prev` is the last *delivered* value, not every intermediate assignment.
+
 ## `$subscribe` — low-level, when you need maximum control
 
 `store.$subscribe(key, fn)` is the primitive under `watch`. Prefer `watch` — it validates the store and will gain future options. Use `$subscribe` directly only when writing library code or a custom addon.
@@ -1275,6 +1287,7 @@ By default `watch` fires immediately with the current value (same as `$subscribe
 | Expose a derived value to external code | `computed()` |
 | Run a side effect when one key changes | `watch()` |
 | Skip the initial call | `watch(…, { immediate: false })` |
+| React to a transition (old → new) | `watch(store, key, (next, prev) => …)` |
 | React to multiple keys with auto-tracking | `effect()` |
 
 ---
@@ -2659,7 +2672,7 @@ FILE: docs/api/addons/watch.md
 
 # watch(store, key, fn, options?)
 
-Subscribes to a single store key. More explicit than `effect` — no auto-tracking, and the callback always receives the new value directly.
+Subscribes to a single store key. More explicit than `effect` — no auto-tracking, and the callback receives the new value and the previous one directly.
 
 ## Signature
 
@@ -2667,7 +2680,7 @@ Subscribes to a single store key. More explicit than `effect` — no auto-tracki
 function watch(
   store: object,
   key: string,
-  fn: (newValue: any) => void,
+  fn: (newValue: any, previousValue: any) => void,
   options?: { immediate?: boolean }
 ): () => void
 ```
@@ -2678,7 +2691,7 @@ Imported from `lume-js/addons`.
 
 - `store` — A reactive store created by `state()`.
 - `key` — The property name to watch.
-- `fn` — Called with the new value on every change.
+- `fn` — Called with `(newValue, previousValue)` on every change. `previousValue` is the value this watcher last received: `undefined` on the immediate call, and the subscribe-time value on the first change when `immediate` is `false`. Writes are coalesced per flush (and per `batch()`), so it is the last *delivered* value, not every intermediate assignment.
 - `options.immediate` — Whether to call `fn` immediately with the current value (default: `true`).
 
 ## Returns
@@ -2714,6 +2727,16 @@ const stop = watch(store, 'count', (val) => {
 });
 ```
 
+### Transitions with the previous value
+
+```js
+watch(store, 'status', (status, prev) => {
+  if (prev === 'loading' && status === 'error') showRetry();
+});
+```
+
+`watch` fires only when the key itself is assigned. If the key holds a nested `state()` object, editing a field inside it (`store.user.name = 'B'`) does not fire a watcher on `'user'`; replacing it (`store.user = state({...})`) does, with the old object as `prev`.
+
 ### Side effects (localStorage, analytics)
 
 `watch` is the right tool for side effects that should react to exactly one key. Unlike auto-tracking `effect`, there is no risk of accidentally subscribing to extra keys.
@@ -2747,7 +2770,7 @@ watch(store, 'count', (val) => {
 | | `effect(fn)` | `watch(store, key, fn)` |
 |--|--------------|------------------------|
 | Dependency tracking | Auto — all reads inside fn | Explicit — one key only |
-| Callback args | none | `(newValue)` |
+| Callback args | none | `(newValue, previousValue)` |
 | Runs immediately | Yes (on first call) | Yes (always, on subscribe) |
 | Best for | UI bindings, rendering | Side effects, persistence |
 
@@ -6905,7 +6928,7 @@ FILE: docs/guides/faq.md
 
 ## Is Lume.js production-ready?
 
-Yes. Lume 2.x is stable — the current release on npm is v2.4.0 (`npm install lume-js`), backed by 477 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
+Yes. Lume 2.x is stable — the current release on npm is v2.4.0 (`npm install lume-js`), backed by 481 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
 
 ## Does Lume work without a build step?
 
