@@ -65,7 +65,7 @@ npm run bench         # core micro-benchmarks
 
 ## Gotchas & invariants (learned the hard way — see design-decisions.md)
 
-- **Bind-time path resolution:** `data-bind="user.address.city"` resolves when `bindDom` runs. If an intermediate object is null then, the binding is *permanently dead* (a console warning is logged). It does not self-heal.
+- **Paths are followed, elements are not:** `data-bind="user.address.city"` subscribes along the whole path, so replacing or late-assigning `user` re-links the binding (a null intermediate renders empty and waits). But elements are matched once when `bindDom` runs; elements added to the DOM later are not bound.
 - **Nested state must be explicitly wrapped** in `state()` — no automatic deep reactivity.
 - **Per-state batching:** an effect reading two stores runs once *per store* that changed in a tick — unless writes are wrapped in `batch()`, which guarantees exactly once.
 - **`$subscribe` fires immediately** with the current value (by design), then on changes.

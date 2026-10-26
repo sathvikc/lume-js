@@ -67,6 +67,8 @@ const good = state({ user: state({ name: 'Ada' }) });
 good.user.name = 'Z'; // notifies subscribers of 'name'
 ```
 
+A binding such as `data-bind="user.name"` watches every link of its path, so it also follows replacement: `good.user = state({ name: 'Sam' })`, or assigning `user` after it started as `null`, moves the binding to the new object.
+
 Arrays stored on the store are reactive at the top level — replacing the array key triggers subscribers. Mutations *inside* the array (such as `push`) do **not** trigger, because the proxy only watches the key on the parent object, not the contents of the value:
 
 ```js
