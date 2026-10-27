@@ -22,7 +22,7 @@ Lume.js is a minimal reactive state library using only standard JavaScript and H
 - [Todo app](https://sathvikc.github.io/lume-js/examples/todo/index.html)
 - [Tic-Tac-Toe](https://sathvikc.github.io/lume-js/examples/tic-tac-toe/index.html)
 - [Form handling](https://sathvikc.github.io/lume-js/examples/form-heavy/index.html)
-- [List rendering](https://sathvikc.github.io/lume-js/examples/repeat-test/index.html)
+- [repeat() playground](https://sathvikc.github.io/lume-js/examples/repeat-playground/index.html)
 - [Template-driven lists](https://sathvikc.github.io/lume-js/examples/template-list/index.html)
 - [Handler system](https://sathvikc.github.io/lume-js/examples/handler-demo/index.html)
 - [Plugin system](https://sathvikc.github.io/lume-js/examples/plugin-demo/index.html)

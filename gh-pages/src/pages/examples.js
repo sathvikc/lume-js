@@ -4,7 +4,7 @@ const EXAMPLES = [
   { id: 'todo',          title: 'Todo app',            desc: 'Classic to-do list with add, complete, remove, and a computed remaining-count.', tag: 'tutorial' },
   { id: 'tic-tac-toe',   title: 'Tic-Tac-Toe',         desc: 'Turn logic, win detection, and a keyed repeat over the board.', tag: 'tutorial' },
   { id: 'form-heavy',    title: 'Form handling',       desc: 'Checkboxes, radios, textareas, selects — two-way bound with zero boilerplate.', tag: 'forms' },
-  { id: 'repeat-test',   title: 'List rendering',      desc: 'Benchmark-friendly demo of the repeat addon.', tag: 'addon' },
+  { id: 'repeat-playground', title: 'repeat() playground', desc: 'Drag, shuffle and sort up to 2,400 tiles while a live counter shows the DOM moves each update costs. One drag is 1 move.', tag: 'addon' },
   { id: 'template-list', title: 'Template-driven lists', desc: 'Keyed rows straight from a standard template tag — no createElement, no innerHTML, no manual DOM code.', tag: 'addon' },
   { id: 'handler-demo',  title: 'Handler system',      desc: 'Build a custom data-tooltip handler in five lines.', tag: 'handlers' },
   { id: 'plugin-demo',   title: 'Plugin system',       desc: 'Logging, validation, and undo/redo — three real plugins built on withPlugins() hooks.', tag: 'addon' },
