@@ -31,7 +31,7 @@ el.querySelector('span').textContent = item.text;
 
 ## URL attributes are scheme-filtered
 
-`stringAttr()` (and the `htmlAttrs()` preset) remove the attribute instead of setting it when a URL attribute (`href`, `src`, `action`, `srcset`, `poster`, `formaction`, `data`) would get a `javascript:`, `vbscript:` or `data:text/html` value. The check first strips the characters the browser's URL parser ignores, so `"\tjava\nscript:..."` and `" JaVaScRiPt:..."` are caught, while relative URLs like `javascript-tutorial.html` are not blocked.
+`stringAttr()` (and the `htmlAttrs()` preset) remove the attribute instead of setting it when a URL attribute (`href`, `src`, `action`, `srcset`, `poster`, `formaction`, `data`) would get a `javascript:`, `vbscript:` or `data:text/html` value. The check first strips the characters the browser's URL parser ignores, so `"\tjava\nscript:..."` and `" JaVaScRiPt:..."` are caught, while relative URLs like `javascript-tutorial.html` are not blocked. Other `data:` URLs (images, `data:image/svg+xml`) are allowed: browsers load them in an opaque origin, isolated from your page, so treat a user-supplied `data:` URL in `<object data>` like any untrusted embed rather than relying on this filter.
 
 `data-bind` sets properties, not URL attributes, so it never produces a navigable `href`. Other attributes set through `stringAttr()` (`title`, `alt`, ...) are plain strings and are never parsed as URLs or HTML.
 

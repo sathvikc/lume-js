@@ -56,7 +56,7 @@ store.count++;                          // DOM + title update on next microtask
 
 | Import | Size (gz) | Gives you | Use in |
 |---|---|---|---|
-| `lume-js` | 2.87 KB | `state`, `effect`, `bindDom`, `batch`, `withReadObserver` | browsers |
+| `lume-js` | 2.90 KB | `state`, `effect`, `bindDom`, `batch`, `withReadObserver` | browsers |
 | `lume-js/state` | 1.49 KB | `state`, `batch`, `withReadObserver` (no DOM code) | Node, workers, CLI, SSR |
 | `lume-js/addons` | pay per import | `computed`, `watch`, `repeat`, `persist`, `hydrateState`, `createCleanupGroup`, `debug` | optional patterns |
 | `lume-js/handlers` | pay per import | `show`, `classToggle`, `boolAttr`, `ariaAttr`, `stringAttr`, `className`, `on`, `htmlAttrs`, presets | extra `data-*` attributes |
@@ -83,7 +83,7 @@ CDN (no build): `https://cdn.jsdelivr.net/npm/lume-js/dist/index.min.mjs` (also 
    // or replace the whole object:
    s.user = { ...s.user, name: 'Z' };          // ✅ notifies subscribers of 'user'
    ```
-   Path bindings (`data-bind="user.name"`) need the wrapped form: they watch each link, so `s2.user = state({...})` (or assigning it after `user: null`) re-links them, while a plain nested object only logs a warning.
+   Path bindings (`data-bind="user.name"`) need the wrapped form: they watch every `state()` along the path, so `s2.user = state({...})` (or assigning it after `user: null`) re-links them, while a plain nested object only logs a warning.
 
 3. **Updates are asynchronous (microtask-batched per store).** After a write, the DOM updates on the next microtask, not synchronously. In tests, flush before asserting:
    ```javascript
@@ -268,18 +268,18 @@ FILE: README.md
   <p>
     Minimal reactive state management using only standard JavaScript and HTML.<br>
     No custom syntax &nbsp;·&nbsp; No build step &nbsp;·&nbsp; No framework lock-in.<br>
-    <strong>1.49 KB universal core</strong> &nbsp;·&nbsp; <strong>2.87 KB with DOM</strong>
+    <strong>1.49 KB universal core</strong> &nbsp;·&nbsp; <strong>2.90 KB with DOM</strong>
   </p>
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
     &nbsp;
 <a href="package.json"><img src="https://img.shields.io/badge/version-2.4.0-orange.svg" alt="v2.4.0"></a>
     &nbsp;
-<a href="tests/"><img src="https://img.shields.io/badge/tests-503%20passing-brightgreen.svg" alt="503 tests"></a>
+<a href="tests/"><img src="https://img.shields.io/badge/tests-506%20passing-brightgreen.svg" alt="506 tests"></a>
     &nbsp;
 <a href="scripts/check-size.js"><img src="https://img.shields.io/badge/universal%20core-1.49KB-blue.svg" alt="universal core 1.49KB"></a>
     &nbsp;
-<a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core%20%2B%20DOM-2.87KB-blue.svg" alt="core + DOM 2.87KB"></a>
+<a href="scripts/check-size.js"><img src="https://img.shields.io/badge/core%20%2B%20DOM-2.90KB-blue.svg" alt="core + DOM 2.90KB"></a>
   </p>
   <p><code>npm install lume-js</code></p>
   <p><a href="https://sathvikc.github.io/lume-js/"><strong>Docs & live examples →</strong></a></p>
@@ -293,7 +293,7 @@ FILE: README.md
 |---------|---------|-----------|-----|-------|
 | Custom Syntax | ❌ No | ✅ `x-data` | ✅ `v-bind` | ✅ JSX |
 | Build Step | ❌ Optional | ❌ Optional | ⚠️ Recommended | ✅ Required |
-| Bundle Size | 1.49–2.87KB | ~15KB | ~35KB | ~45KB |
+| Bundle Size | 1.49–2.90KB | ~15KB | ~35KB | ~45KB |
 | HTML Validation | ✅ Pass | ⚠️ Warnings | ⚠️ Warnings | ❌ JSX |
 | Extensible Handlers | ✅ | ❌ Built-in only | ❌ Built-in only | N/A |
 
@@ -308,7 +308,7 @@ FILE: README.md
 | Entry | Size (gz) | Contents | For |
 |-------|-----------|----------|-----|
 | `lume-js/state` | **1.49 KB** | `state`, `batch`, `withReadObserver` | Node, Deno, Bun, workers, CLI — anywhere without a DOM |
-| `lume-js` | **2.87 KB** | + `bindDom`, `effect` | Browsers |
+| `lume-js` | **2.90 KB** | + `bindDom`, `effect` | Browsers |
 | `lume-js/addons` | pay per import | `computed`, `watch`, `repeat`, `persist`, … | Optional patterns |
 | `lume-js/handlers` | pay per import | `show`, `classToggle`, `on`, … | Extra reactive attributes |
 
@@ -1028,7 +1028,7 @@ import { state, batch } from 'lume-js/state';
 If you're building for the browser and want DOM binding, use the full core instead — same `state`, plus `bindDom` and `effect`:
 
 ```js
-import { state, bindDom, effect, batch } from 'lume-js';   // 2.87 KB
+import { state, bindDom, effect, batch } from 'lume-js';   // 2.90 KB
 ```
 
 Both entries share one implementation — `lume-js/state` is not a fork, it's a smaller slice of the same modules.
@@ -1137,7 +1137,7 @@ console.log(sum, deps);   // 3, ['a', 'b']
 | Entry | Gzipped | CI budget |
 |-------|---------|-----------|
 | `lume-js/state` (`dist/state.min.mjs`) | 1.49 KB | ≤ 1.75 KB |
-| `lume-js` (`dist/index.min.mjs`) | 2.87 KB | ≤ 3.00 KB |
+| `lume-js` (`dist/index.min.mjs`) | 2.90 KB | ≤ 3.00 KB |
 
 Both numbers are enforced by `scripts/check-size.js` on every CI run — they can't silently drift.
 
@@ -1716,7 +1716,7 @@ el.querySelector('span').textContent = item.text;
 
 ## URL attributes are scheme-filtered
 
-`stringAttr()` (and the `htmlAttrs()` preset) remove the attribute instead of setting it when a URL attribute (`href`, `src`, `action`, `srcset`, `poster`, `formaction`, `data`) would get a `javascript:`, `vbscript:` or `data:text/html` value. The check first strips the characters the browser's URL parser ignores, so `"\tjava\nscript:..."` and `" JaVaScRiPt:..."` are caught, while relative URLs like `javascript-tutorial.html` are not blocked.
+`stringAttr()` (and the `htmlAttrs()` preset) remove the attribute instead of setting it when a URL attribute (`href`, `src`, `action`, `srcset`, `poster`, `formaction`, `data`) would get a `javascript:`, `vbscript:` or `data:text/html` value. The check first strips the characters the browser's URL parser ignores, so `"\tjava\nscript:..."` and `" JaVaScRiPt:..."` are caught, while relative URLs like `javascript-tutorial.html` are not blocked. Other `data:` URLs (images, `data:image/svg+xml`) are allowed: browsers load them in an opaque origin, isolated from your page, so treat a user-supplied `data:` URL in `<object data>` like any untrusted embed rather than relying on this filter.
 
 `data-bind` sets properties, not URL attributes, so it never produces a navigable `href`. Other attributes set through `stringAttr()` (`title`, `alt`, ...) are plain strings and are never parsed as URLs or HTML.
 
@@ -2473,7 +2473,8 @@ bindDom(root, store);
 
 - The binding follows the path, not the object that was there at bind time. Assigning `store.user = state({...})` (after `null`, or replacing a previous user) re-links the binding to the new object; the old object no longer drives the element, and typing writes to the new one.
 - A `null`/`undefined` intermediate renders as empty (like a missing value) and waits quietly; this is the normal shape of data that is still loading.
-- A plain (unwrapped) object or a key that does not exist logs a `[Lume.js]` warning, since nested objects are only reactive when wrapped in `state()`.
+- Plain objects and arrays along the path are stepped through once, without being watched, so `list.0.name` works with an array of `state()` objects and `cfg.user.name` works through a plain `cfg`. Replacing a plain step in place is not seen; replacing the reactive key above it is.
+- The last key must sit on a `state()` object. A key that does not exist, a primitive in the middle of the path, or a last key on a plain object logs a `[Lume.js]` warning.
 
 ### Nested roots: `data-bind-scope`
 
@@ -6601,7 +6602,7 @@ store.$subscribe('text', (value) => {
 
 ### Why Path Bindings Follow Object Replacement (2026-10)
 
-**Decision:** A binding with a dotted path (`data-bind="user.name"`, and every handler attribute) subscribes along the whole path. Each intermediate key gets its own `$subscribe`; when it changes, everything below it is unsubscribed and re-linked to the new value. A null/undefined intermediate renders `undefined` and waits without a warning; a plain object or a missing key warns. Single-key paths stay one `$subscribe`. Elements are still matched once when `bindDom()` runs.
+**Decision:** A binding with a dotted path (`data-bind="user.name"`, and every handler attribute) subscribes along the whole path. Each intermediate key gets its own `$subscribe`; when it changes, everything below it is unsubscribed and re-linked to the new value. Plain objects and arrays in the middle of a path are stepped through once without subscribing (they cannot notify), exactly as before; only the object holding the last key must be a `state()`. A null/undefined intermediate renders `undefined` and waits without a warning; a missing key, a primitive, or a last key on a plain object warns. Single-key paths stay one `$subscribe`. Elements are still matched once when `bindDom()` runs.
 
 **Reasoning:**
 - Async data is the normal case: `user: null` at bind time, then `store.user = state({...})` after a fetch. Resolving the path once at bind time attached the binding to whatever object existed then. Reproduced four failures: a replaced user kept showing the old name, typing wrote into the old object, mutating the old object still updated the DOM, and a path that started at `null` never activated.
@@ -6613,7 +6614,7 @@ store.$subscribe('text', (value) => {
 - ❌ Re-scan or MutationObserver on change → global machinery for a problem that is local to one path, and still blind to which object a write should go to.
 - ❌ Auto-wrap nested objects so paths always resolve → contradicts "Why Nested State Must Be Explicitly Wrapped?".
 
-**Tradeoff:** Nested paths hold one extra subscription per intermediate key per element. Flat paths gain one closure call per update, and two-way inputs a WeakMap lookup. A `null` intermediate no longer warns at bind time; a missing key still does, so typos stay visible. +0.04 KB gz on the `index` entry.
+**Tradeoff:** Nested paths hold one extra subscription per reactive intermediate key per element. A plain object in the middle of a path is still a static step, so replacing *its* contents in place is not seen (unchanged from bind-time resolution). Flat paths gain one closure call per update, and two-way inputs a WeakMap lookup. A `null` intermediate no longer warns at bind time; a missing key still does, so typos stay visible. +0.04 KB gz on the `index` entry.
 
 ---
 
@@ -7148,7 +7149,7 @@ FILE: docs/guides/faq.md
 
 ## Is Lume.js production-ready?
 
-Yes. Lume 2.x is stable — the current release on npm is v2.4.0 (`npm install lume-js`), backed by 503 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
+Yes. Lume 2.x is stable — the current release on npm is v2.4.0 (`npm install lume-js`), backed by 506 tests at 100% coverage and CI-enforced size budgets. The core API (`state`, `bindDom`, `effect`, `batch`) and all addons (`watch`, `computed`, `repeat`, `persist`, `withPlugins`, …) are stable. The 1.x series is legacy — see [Migrating from 1.x](migration.md).
 
 ## Does Lume work without a build step?
 
@@ -7177,7 +7178,7 @@ bindDom(document.getElementById('nav'), store);
 
 ## How does Lume compare to Alpine.js?
 
-Both work inline with server-rendered HTML. Lume uses standard `data-*` attributes; Alpine uses `x-*` directives with a custom expression syntax. Lume is smaller (2.87 KB vs ~15 KB gzipped — 1.49 KB for the DOM-free kernel) and has no custom expression evaluator — logic lives in plain JS, not attribute strings.
+Both work inline with server-rendered HTML. Lume uses standard `data-*` attributes; Alpine uses `x-*` directives with a custom expression syntax. Lume is smaller (2.90 KB vs ~15 KB gzipped — 1.49 KB for the DOM-free kernel) and has no custom expression evaluator — logic lives in plain JS, not attribute strings.
 
 ## How does Lume compare to Vue 3's reactivity?
 

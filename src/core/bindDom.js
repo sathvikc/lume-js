@@ -171,21 +171,33 @@ function handleDataBind(el, store, path, bindingMap) {
  * null when there is nothing to bind.
  */
 function watchPath(store, path, onValue) {
-  if (!path) return null;
-  if (!store.$subscribe) {
-    logWarn(`[Lume.js] Target for "${path}" is not reactive`);
-    return null;
-  }
-  return follow(store, path.split('.'), 0, path, onValue);
+  return path ? link(store, path.split('.'), 0, path, onValue) : null;
 }
 
 /**
- * Subscribe to keys[i] on obj. The leaf key calls onValue directly (a flat
- * path is exactly one $subscribe). An intermediate key re-links everything
- * below it whenever it changes, so replacing user (or assigning it after
- * null) moves the binding to the new object. A null/undefined intermediate
- * renders undefined until a reactive state is assigned; a missing key or a
- * plain object is warned about (nested state must be wrapped in state()).
+ * Bind keys[i..] starting from obj. Plain objects and arrays are stepped
+ * through once, without subscribing (they cannot notify), so list.0.name
+ * works with an array of states. The first reactive object takes over in
+ * follow(). The leaf key must sit on a reactive object, else it warns.
+ * Returns null when nothing was bound (follow() then renders undefined;
+ * a null/undefined step is quiet, since that is how async data starts).
+ */
+function link(obj, keys, i, path, onValue) {
+  while (obj != null && !obj.$subscribe) {
+    if (typeof obj !== 'object' || i === keys.length - 1 || !(keys[i] in obj)) {
+      logWarn(`[Lume.js] Path "${path}" is not reactive at "${keys[i]}"`);
+      return null;
+    }
+    obj = obj[keys[i++]];
+  }
+  return obj == null ? null : follow(obj, keys, i, path, onValue);
+}
+
+/**
+ * Subscribe to keys[i] on reactive obj. The leaf key calls onValue directly
+ * (a flat path is exactly one $subscribe). An intermediate key re-links
+ * everything below it whenever it changes, so replacing user (or assigning
+ * it after null) moves the binding to the new object.
  */
 function follow(obj, keys, i, path, onValue) {
   const key = keys[i];
@@ -193,13 +205,10 @@ function follow(obj, keys, i, path, onValue) {
   let unlinkInner = null;
   const unsub = obj.$subscribe(key, next => {
     if (unlinkInner) unlinkInner();
-    unlinkInner = null;
-    if (next?.$subscribe) {
-      unlinkInner = follow(next, keys, i + 1, path, onValue);
-      return;
-    }
-    if (next != null || !(key in obj)) logWarn(`[Lume.js] Path "${path}" is not reactive at "${key}"`);
-    onValue(undefined, null, keys[keys.length - 1]);
+    unlinkInner = !(key in obj)
+      ? logWarn(`[Lume.js] Path "${path}" is not reactive at "${key}"`)
+      : link(next, keys, i + 1, path, onValue);
+    if (!unlinkInner) onValue(undefined, null, keys[keys.length - 1]);
   });
   return () => {
     unsub();

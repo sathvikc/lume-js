@@ -76,7 +76,8 @@ bindDom(root, store);
 
 - The binding follows the path, not the object that was there at bind time. Assigning `store.user = state({...})` (after `null`, or replacing a previous user) re-links the binding to the new object; the old object no longer drives the element, and typing writes to the new one.
 - A `null`/`undefined` intermediate renders as empty (like a missing value) and waits quietly; this is the normal shape of data that is still loading.
-- A plain (unwrapped) object or a key that does not exist logs a `[Lume.js]` warning, since nested objects are only reactive when wrapped in `state()`.
+- Plain objects and arrays along the path are stepped through once, without being watched, so `list.0.name` works with an array of `state()` objects and `cfg.user.name` works through a plain `cfg`. Replacing a plain step in place is not seen; replacing the reactive key above it is.
+- The last key must sit on a `state()` object. A key that does not exist, a primitive in the middle of the path, or a last key on a plain object logs a `[Lume.js]` warning.
 
 ### Nested roots: `data-bind-scope`
 
