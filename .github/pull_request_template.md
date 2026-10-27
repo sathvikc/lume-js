@@ -47,7 +47,7 @@
 - [ ] `npm run typecheck` passes — zero TypeScript errors
 - [ ] `npm run lint` passes — cognitive complexity ≤ 15 per function
 - [ ] `node scripts/complexity.js` passes — max CC ≤ 10, MI ≥ 50
-- [ ] `npm run size` within budget — core ≤ 3 KB, addons ≤ 6 KB, handlers ≤ 2 KB
+- [ ] `npm run size` within budget — state ≤ 1.75 KB, index ≤ 3 KB, addons ≤ 6 KB, handlers ≤ 2 KB, global ≤ 8 KB
 - [ ] Commit messages follow Conventional Commits (`type(scope): subject`)
 - [ ] Docs updated if API changed (`docs/api/`, `README.md`, `CONTRIBUTING.md`)
 - [ ] `src/index.d.ts` updated if public API changed

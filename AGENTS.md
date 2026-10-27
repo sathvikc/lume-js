@@ -75,6 +75,10 @@ npm run typecheck           # tsc --noEmit against handwritten .d.ts
 - A change is **done** when: matrix artifacts complete → all five gates green → decision entry ratified (when required) → commit message tells the story.
 - Don't create PRs, push to other branches, or touch `gh-pages` unless asked.
 
+## Pull requests
+
+- PR title: conventional-commit form like the commits (`feat(core): …`); a multi-commit PR takes the type of its most significant change.
+
 ## Where truth lives (avoid doc drift)
 
 | Document | Owns | Update when |
