@@ -10,9 +10,9 @@ Modern reactivity typically costs a build step, custom template syntax, and 15�
 
 | Entry | Contents | Size (gz) | Budget |
 |---|---|---|---|
-| `lume-js/state` | `state`, `batch`, `withReadObserver` — DOM-free kernel | 1.46 KB | ≤ 1.75 KB |
-| `lume-js` | kernel + `bindDom`, `effect` | 2.66 KB | ≤ 3 KB |
-| `lume-js/handlers` | opt-in attribute handlers | 1.19 KB | ≤ 2 KB |
+| `lume-js/state` | `state`, `batch`, `withReadObserver` — DOM-free kernel | <!-- lume:size-state -->1.49<!-- /lume:size-state --> KB | ≤ 1.75 KB |
+| `lume-js` | kernel + `bindDom`, `effect` | <!-- lume:size-index -->2.90<!-- /lume:size-index --> KB | ≤ 3 KB |
+| `lume-js/handlers` | opt-in attribute handlers | <!-- lume:size-handlers -->1.23<!-- /lume:size-handlers --> KB | ≤ 2 KB |
 | `lume-js/addons` | opt-in pattern helpers | pay-per-import | ≤ 6 KB |
 | CDN `lume.global.js` | IIFE all-in-one | 7.40 KB | ≤ 8 KB |
 

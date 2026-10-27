@@ -172,7 +172,11 @@ export function createEngine(metrics, manifest, { root, readFileSync = fs.readFi
     ...new Set([
       'README.md',
       'AGENT_GUIDE.md',
+      'AGENTS.md',
+      'CLAUDE.md',
       'docs/README.md',
+      'docs/ARCHITECTURE.md',
+      'docs/design/VISION.md',
       ...flatEntries.map(e => e.path),
     ]),
   ];

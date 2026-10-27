@@ -41,10 +41,11 @@ beforeEach(() => {
     path.join(dir, 'docs', 'guides', 'a.md'),
     'version is <!-- lume:version -->9.9.9<!-- /lume:version -->\n'
   );
-  // MANAGED_FILES always includes these three regardless of manifest contents.
-  fs.writeFileSync(path.join(dir, 'README.md'), 'no markers here\n');
-  fs.writeFileSync(path.join(dir, 'AGENT_GUIDE.md'), 'no markers here\n');
-  fs.writeFileSync(path.join(dir, 'docs', 'README.md'), 'no markers here\n');
+  // MANAGED_FILES always includes these regardless of manifest contents.
+  for (const file of ['README.md', 'AGENT_GUIDE.md', 'AGENTS.md', 'CLAUDE.md', 'docs/README.md', 'docs/ARCHITECTURE.md', 'docs/design/VISION.md']) {
+    fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+    fs.writeFileSync(path.join(dir, file), 'no markers here\n');
+  }
 });
 
 afterEach(() => {

@@ -4,7 +4,7 @@ Process contract for AI agents and humans. Follow it for **every** change. (Most
 
 ## What this library is
 
-Standards-only reactivity: `data-*` attributes, plain JavaScript, no build step, no custom syntax. The product is **trust in a tiny core** — 1.46 KB universal kernel (`lume-js/state`), 2.66 KB with DOM (`lume-js`), everything else opt-in.
+Standards-only reactivity: `data-*` attributes, plain JavaScript, no build step, no custom syntax. The product is **trust in a tiny core** — <!-- lume:size-state -->1.49<!-- /lume:size-state --> KB universal kernel (`lume-js/state`), <!-- lume:size-index -->2.90<!-- /lume:size-index --> KB with DOM (`lume-js`), everything else opt-in.
 
 Two documents are the source of truth — read them **before** designing anything:
 
