@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+const { sizes } = JSON.parse(fs.readFileSync(path.join(root, 'docs', 'metrics.json'), 'utf8'));
 const RAW_BASE = 'https://raw.githubusercontent.com/sathvikc/lume-js/main';
 
 // docs/*.md carry `<!-- lume:key -->value<!-- /lume:key -->` markers so
@@ -43,8 +44,8 @@ const SECTIONS = JSON.parse(fs.readFileSync(path.join(root, 'docs', 'manifest.js
 const HEADER = `# Lume.js
 
 > Minimal reactive state management using only standard JavaScript and HTML —
-> no custom syntax, no build step, no framework lock-in. 1.46 KB universal
-> core (state/batch), 2.66 KB with DOM binding (bindDom/effect). Reactivity
+> no custom syntax, no build step, no framework lock-in. ${sizes.state} KB universal
+> core (state/batch), ${sizes.index} KB with DOM binding (bindDom/effect). Reactivity
 > that follows web standards: stores are Proxies over plain objects, DOM
 > binding is declarative via valid data-* attributes, updates are
 > microtask-batched per store with an explicit batch() escape hatch for

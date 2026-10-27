@@ -442,7 +442,7 @@ Babel/SWC plugin that analyzes reactive reads.
 
 | Library | Size (gzipped) | Build Required |
 |---------|----------------|----------------|
-| **Lume.js** | 1.45KB (state) / 2.66KB (with DOM) | No |
+| **Lume.js** | <!-- lume:size-state -->1.49<!-- /lume:size-state -->KB (state) / <!-- lume:size-index -->2.90<!-- /lume:size-index -->KB (with DOM) | No |
 | Alpine.js | ~15KB | No |
 | Preact | ~4KB | Yes |
 | Solid | ~7KB | Yes |
