@@ -167,6 +167,18 @@ repeat('#todo-list', store, 'todos', {
 });
 ```
 
+> **⚠ `create` sees the row's first item only.** `create` runs once per DOM element, so a listener that reads `item.name` keeps reading the object from the row's first render. If you later replace the array with a new object for the same key, `update` shows the new data but the listener still returns the old. Inside `create`, read only the key (stable by definition) and look the current item up from the store when the event fires, as the delete and toggle handlers above do. Anything that must follow the data belongs in `update`.
+
+```js
+// ❌ Stale: `todo` is the object from the first render
+create: (todo, el) => { el.onclick = () => select(todo.text); }
+
+// ✅ Current: resolve the item by key when the event fires
+create: (todo, el) => {
+  el.onclick = () => select(store.todos.find(t => t.id === todo.id).text);
+}
+```
+
 ## Array operations
 
 | Array change | DOM effect |

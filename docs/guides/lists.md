@@ -40,6 +40,8 @@ The `render` function receives `(item, el, index)` and should mutate `el` direct
 
 Use `render` alone for simple, read-only lists. Use `create` + `update` for lists that have interactive elements (buttons, checkboxes) — `create` runs once per DOM element so you only attach listeners once, and `update` runs on every data change to keep the display in sync.
 
+A listener added in `create` sees the row's **first** item, not later replacements for the same key. In `create`, read only the key and look the current item up from the store when the event fires (`store.todos.find(t => t.id === todo.id)`), or set the handler in `update`. See [the pitfall](../api/addons/repeat.md#pattern-2--create--update-recommended).
+
 ## Updating the list
 
 `repeat` subscribes to the array key on the store. To trigger a re-render, **replace the array** with a new reference — in-place mutations like `push` or `splice` are invisible to Lume because the array reference does not change:

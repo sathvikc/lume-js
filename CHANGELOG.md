@@ -14,6 +14,10 @@
 
 - **Nested path bindings follow object replacement:** `data-bind="user.name"` (and every handler attribute with a dotted path) now subscribes along the whole path. Replacing `store.user = state({...})`, or assigning it after it started as `null`, re-links the binding: the element shows the new object's value, typing writes into the new object, and the old object no longer drives the element. Previously the path was resolved once at bind time, so all of these silently kept using the original object, and a path that started at `null` never activated. A `null` intermediate now renders empty and waits without a console warning. Plain objects and arrays in the middle of a path are still stepped through as before (`list.0.name` over an array of states keeps working); missing keys and a last key on a plain object still warn. Server-rendered placeholder text under such a binding (`<span data-bind="user.name">Loading…</span>` with `user: null`) is therefore cleared at bind time, matching how a flat `undefined` value already behaved; previously the dead binding left it in place.
 
+### Documentation
+
+- **`repeat()` `create` stale-item pitfall:** a listener added in `create` sees the row's first item, not later replacements for the same key. The `repeat` API page, lists guide and agent guide now say so and show the safe pattern (look up the current item by key when the event fires).
+
 ### Fixed
 
 - **`computed()` no longer goes stale when another effect rewrites a dependency in the same flush:** with `computed(() => s.a * 2)` and a clamp effect (`if (s.a > 10) s.a = 10`), writing `s.a = 50` left the computed at 100 instead of 20 until an unrelated later change. The re-entry guard that caused it is gone, so a computed now behaves like `effect()` when it writes its own dependencies: a converging write settles after one extra run, and a never-converging one is stopped by the flush cap with a logged error instead of being silently cut off after one run.
