@@ -3,6 +3,7 @@
 > **Purpose:** The execution plan — what to build next, in what order, and *why*. Every item says what it is, why it matters, where it lives in the code, how to approach it, what artifacts it needs, and when it counts as done. A new session should be able to pick up any item from this file alone.
 > **Created:** 2026-10-21 · **Baseline:** v2.4.0 · 475 tests · 100% coverage · sizes (gz): `state` 1.49 / 1.75 KB, `index` 2.77 / 3.00 KB, `handlers` 1.23 / 2.00 KB, `addons` 4.96 / 6.00 KB, `global` 7.75 KB
 > **Last execution pass:** 2026-10-26, see [Execution log](#execution-log-2026-10-26). Implementation lives on branch `feat/roadmap-backlog` (8 commits off `main` 4efcf41). Independently verified the same day, with three documentation gaps to close before merging; see [Independent verification](#independent-verification-of-featroadmap-backlog-2026-10-26).  
+> **Latest review:** 2026-10-27, Velotype comparison added (section 4 of "Where this roadmap came from", Phase 6 candidates R19–R22, notes on R12/R13); the three documentation gaps from the 2026-10-26 verification are now tracked as R23–R25.  
 > **Status:** Living document. When an item ships, tick it here, mark it ✅ in `VISION.md` if it appears there, and add a dated note.
 
 ---
@@ -114,7 +115,7 @@ The spec was written on 2026-10-21. The execution pass and the verification abov
 
 ## Where this roadmap came from
 
-The items below were derived from three code-level reviews done on 2026-10-20/21. Nothing here was taken from a README; every claim about Lume was reproduced by running Lume's own source, and every claim about another library was traced through its source code.
+The items below were derived from code-level reviews done on 2026-10-20/21, plus a fourth (Velotype) on 2026-10-27. Nothing here was taken from a README; every claim about Lume was reproduced by running Lume's own source, and every claim about another library was traced through its source code.
 
 ### 1. Comparison with Gea (`dashersw/gea` @ `51da237`)
 
@@ -145,6 +146,30 @@ What we learned:
 | `watch()` passes previous value | Valid — callbacks receive one argument today (verified). | **R5** |
 | Nested bindings survive object replacement | Valid — four failures reproduced. Its example used a plain nested object, which never renders in Lume by design; its "data-bind only" scope was wrong. | **R2** |
 
+### 4. Comparison with Velotype (`Velotype/velotype` @ `49c54ff`, v0.3.2, 2026-10-27)
+
+Claims are tagged per the rules above: **[executed]** was run against Lume's source (or, for the setter premise, a re-implementation in jsdom); **[traced]** was followed through Velotype's source, which could not be executed in the review environment.
+
+Velotype is a Deno/JSR TypeScript `jsx-runtime` for the standard `react-jsx` transform: real DOM, no virtual DOM, no compiler of its own, TSX build required. About 4.4k lines of source plus 2.8k lines of JSX type declarations. Overlap with Lume is ~15% (real DOM, keyed lists with LIS minimal moves, template-cloned rows, no expressions in markup). Its value to this roadmap is that it is a **shipped example of the Phase 4 layer**, showing what that layer costs.
+
+How it works [traced]:
+
+- **No automatic reactivity.** Each reactive value is wrapped in a `RenderObject`; `set()` re-renders **synchronously, with no batching**, by **replacing the element**, unless the author writes a manual `handleUpdate` for in-place updates.
+- Class components with `render`/`mount`/`unmount` and `refresh()`, which unmounts and rebuilds the whole subtree. Function components have no lifecycle.
+- Cleanup runs through a **global numeric-key registry** (`domReferences`) plus an event bus. Roughly a quarter of the source (~1k lines across `component.ts`, `mounting.ts`, `dom-references.ts`, `event-bus.ts`, `with-component.ts`, `error-boundary.ts`) is lifecycle and ownership bookkeeping.
+- Lists are imperative (`RenderObjectArray.push`/`insertAt`/`swap`/`move`/`sort`/`filter`, LIS-based `moveIntoOrder`); `RenderTemplateArray` clones a template per row and takes an `on` option that delegates row events from the wrapper with `(event, row, data, index)`.
+- Tests run in headless Chrome (Astral), 20 test modules, not jsdom.
+
+What we learned:
+
+- **Spec gap for R13 (security):** attributes are set as DOM *properties* whenever a setter exists on the element's prototype chain [traced]. Re-implementing that check in jsdom finds setters for `innerHTML`, `outerHTML`, `srcdoc` and `href`, and assigning through that path creates an `<img>` from a string [executed]. So `<div {...untrustedProps}>` is HTML injection, and `href` gets no scheme filter [traced]. → added to **R13**.
+- **Confirms the R13 reactivity model:** without auto-tracking, every reactive value needs a wrapper object and updates fall back to element replacement, which loses input state and focus below the root [traced]. Lume's `{() => store.x}` + `effect()` avoids both.
+- **Confirms R12 is the hard part, and argues against a global registry:** registry entries are released only through Velotype's own insert/remove functions; an element removed with plain `el.remove()` appears to leave its entry behind [traced, not proven]. → added to **R12**.
+- **Worth copying into Phase 4:** rollback when a render throws (keep the current DOM, release what the failed render created) → **R13**; an `unmountSignal` (`AbortSignal`) as the standard cleanup handle → **R12**, with a browser-floor caveat.
+- **For today's Lume:** the `repeat()` `create()` stale-item footgun → **R19** (found by testing the pattern Velotype's row `on` option avoids); real-browser tests → **R20**; a row `on` option → **R21**; an async-data helper → **R22**.
+- **Not taken (rule 3, measure first):** hiding filtered rows without unmounting (nobody has measured Lume's row re-creation cost); imperative list operations (Lume's immutable-array + LIS model already makes the minimum DOM moves).
+- **Mistakes to avoid** → added to the Rejected table.
+
 ---
 
 ## Overview
@@ -169,6 +194,13 @@ What we learned:
 | R16 | Security guide ("no expressions" posture) | 5 | Docs | No | — | ✅ shipped |
 | R17 | `VISION.md` cleanup + "HTML-first, JSX-optional" | 5 | Docs | No | — | ◐ partial |
 | R18 | Re-measure the Code Verbosity challenge | 5 | Docs | No | — | ⏳ blocked |
+| R19 | Document the `repeat()` `create()` stale-item closure | 6 | Docs only | No | ✅ reproduced | ☐ open |
+| R20 | Real-browser smoke tests in CI | 6 | Build / CI / tooling | No | ✅ gap confirmed | ☐ open |
+| R21 | `repeat()` delegated row `on` option | 6 | New public API (option) | **Yes** | ✅ footgun reproduced | ⏸ blocked on budget |
+| R22 | Async-data helper (pending/resolved/rejected) | 6 | New public API | **Yes** | Gap confirmed, no demand data | ⏸ candidate only |
+| R23 | Docs: `repeat()` `select` uses strict equality | 6 | Docs only | No | ✅ reproduced | ☐ open, before merging `feat/roadmap-backlog` |
+| R24 | Docs: server-rendered placeholder under a `null` parent is now cleared | 6 | Docs + CHANGELOG | No | ✅ reproduced | ☐ open, before merging `feat/roadmap-backlog` |
+| R25 | Docs: `select` over a `computed()` list needs `select.store` | 6 | Docs only | No | ✅ reproduced | ☐ open, before merging `feat/roadmap-backlog` |
 
 ---
 
@@ -466,6 +498,11 @@ JSX is what most developers already write. Lume's biggest adoption barrier is th
 
 **Done when:** rendering and disposing a tree 100 times returns subscriber counts to baseline (assert via a counting store or spies).
 
+**Input from the Velotype review (2026-10-27):**
+
+- **Own scopes through closures, not a global id registry.** Velotype's registry is only correct when every removal goes through the library; an element removed with plain `el.remove()` appears to leave its entry behind [traced, not proven]. Scope objects held by the closures that need them can be garbage-collected with the subtree.
+- **Consider exposing an `AbortSignal` per scope** (Velotype's `unmountSignal`) as the standard cleanup handle, e.g. `fetch(url, { signal })`. Browser-floor caveat [reasoned from MDN, verify before relying on it]: `AbortController` and `fetch` signals fit the Chrome 80 / Safari 13.1 floor, but `addEventListener`'s `{ signal }` option needs Chrome 90 / Safari 15, so docs must not recommend it while the floor stays where it is.
+
 ### R13. `lume-js/jsx-runtime`
 
 - [ ] Status: **not started; awaiting a maintainer decision** (2026-10-26). Phase 4 contradicts two ratified positions as written (`design-decisions.md` "Why Standards-Only?" rejects JSX/template literals; `VISION.md` "Will NOT Add" lists a component system). R11 is where that would change, and it is a product-direction call for the maintainer, not an implementation step an agent should take on its own.
@@ -482,6 +519,8 @@ JSX is what most developers already write. Lume's biggest adoption barrier is th
 - `data-*` string props pass through untouched, so `bindDom` can bind JSX output and mixed authoring works.
 - `ref={el => ...}` callback for imperative access.
 - URL attributes go through the shared scheme filter; text always via `textContent`/text nodes.
+- **Property-vs-attribute policy (added 2026-10-27, from the Velotype review):** decide explicitly which props are set as DOM properties. Never set HTML-injecting properties from props: deny at least `innerHTML`, `outerHTML`, `srcdoc` (and treat any future `dangerouslySetInnerHTML`-style escape hatch as out of scope for v1). Apply the URL scheme filter on the **property** path too (`el.href = ...`), not only on `setAttribute`. Rationale: Velotype sets any prop whose name has a setter on the prototype chain, which turns `<div {...untrustedProps}>` into HTML injection [setter premise executed in jsdom; Velotype path traced]. Tests must cover spread props carrying these names.
+- **Rollback on a throwing render (added 2026-10-27):** when a reactive region's function child throws, keep the region's current nodes and dispose whatever the failed run created, then report the error. Velotype does this for components and render objects [traced].
 
 **Biggest footgun to document loudly:** components run once. `{store.count}` is a static snapshot; `{() => store.count}` is reactive. React developers will hit this first (Solid has the same rule).
 
@@ -553,6 +592,64 @@ After Phase 4, rebuild the debug-demo comparison (vanilla vs Lume HTML vs Lume J
 
 ---
 
+## Phase 6 — Candidates from the Velotype review and the verification pass (2026-10-27)
+
+Budget context for every item here: the all-in-one `lume.global.js` bundle is at **7.93 / 8.00 KB** on `feat/roadmap-backlog`, and every addon byte also lands in it. Items that add bytes are blocked until the global budget question (see Phase 4 / R11) is decided.
+
+### R19. Document the `repeat()` `create()` stale-item closure
+
+- [ ] Status: open. Zero bytes; can ship any time.
+
+**What:** Warn in the docs that a listener set up in `create()` closes over the item from the row's **first** render, and show the safe pattern.
+
+**Why (executed 2026-10-27):** with `create: (item, el) => el.addEventListener('click', () => clicked = item.name)` and `update` writing `item.name`, replacing the array immutably with a new object for the same key makes the row **show** `new` while the click handler **reads** `old`. Nothing in `docs/api/addons/repeat.md`, `docs/guides/lists.md` or `AGENT_GUIDE.md` mentions it. The recommended "create + update" example in `repeat.md` is only correct because it reads `todo.id` (the stable key) and looks the current item up from the store.
+
+**How:** one paragraph plus a corrected snippet in `docs/api/addons/repeat.md` ("in `create()`, read only the key; look up the current item from the store when the event fires"), a line in `docs/guides/lists.md`, and a rule in `AGENT_GUIDE.md` (agents will write the stale version). Regenerate `llms.txt`/`llms-full.txt`.
+
+**Artifacts:** docs only (CHANGELOG optional).
+
+### R20. Real-browser smoke tests in CI
+
+- [ ] Status: open. Zero bundle bytes; CI time only.
+
+**What:** A small Playwright suite that loads a few `examples/` pages in headless Chromium and asserts the core flows: `bindDom` text and two-way input, `repeat()` keyed updates and `select`, `stringAttr` URL filtering, `persist` round-trip.
+
+**Why:** Lume's CI is jsdom-only (executed: no browser in `.github/workflows/ci.yml`), and `CLAUDE.md` already lists "jsdom-only tests" as a gotcha. The `stringAttr('data')` hardening shipped without its browser behavior verified because jsdom cannot show it (see R7's outcome). Velotype runs its whole suite in headless Chrome [traced].
+
+**Limits to state in the decision/README:** Chromium alone does not prove the Chrome 80 / Firefox 74 / Safari 13.1 floor; that stays "by discipline and review". Keep the suite small so CI stays fast.
+
+**Artifacts:** Build/CI row of the matrix (tests, workflow job); no `src/` change. `@playwright/test` as a dev dependency only.
+
+### R21. `repeat()` delegated row `on` option
+
+- [ ] Status: **blocked on the global bundle budget**; do R19 first.
+
+**What:** `on: { click: (event, item, index, el) => ... }`: one listener per event type on the container, resolving the row from `event.target` and passing the **current** item and index.
+
+**Why:** fixes the R19 footgun structurally (handlers always see the current item) and removes per-row `create()` wiring in template mode. Modeled on Velotype's `RenderTemplateArray` `on` option [traced]. This is a correctness/DX item, **not** a performance one: R9 measured per-element listener cost as noise.
+
+**Open design points:** bubbling events only (document it); which element counts as the row when rows are nested; interaction with `stopPropagation()` inside rows; byte cost against the global budget, measured before building.
+
+**Artifacts:** full "new public API" row, including a decision entry.
+
+### R22. Async-data helper (candidate only)
+
+- [ ] Status: **candidate; do not build without demand evidence and a budget decision.**
+
+**What:** A helper that drives a store through `pending` / `resolved` / `rejected` for a `fetch`-style source, where only the newest load wins and older loads are aborted, so markup can bind `data-show="status"` etc.
+
+**Why it is here:** Lume has nothing like it (executed: no `AbortController`/`AbortSignal` anywhere in `src/`); Velotype's `AsyncRenderObject` covers exactly this [traced]. **Why it is not scheduled:** no evidence users need it in the library rather than in a few lines of app code, and any addon bytes also land in the 7.93 / 8.00 KB global bundle. Reopen with concrete demand (issues, examples that hand-roll it) and a measured byte cost.
+
+### R23–R25. Documentation gaps found while verifying `feat/roadmap-backlog`
+
+- [ ] Status: open. All three are docs-only, zero bytes, and belong on `feat/roadmap-backlog` **before** it merges, because they describe behavior that branch introduces. Full repros and file targets: [Open documentation gaps](#open-documentation-gaps-fix-before-merging-featroadmap-backlog).
+
+- **R23:** `select` compares with `===`, so `selectedId: '2'` against item key `2` selects nothing, silently (executed). Keys read from the DOM are strings. Add one line to `docs/api/addons/repeat.md` and the `select` JSDoc.
+- **R24:** `<span data-bind="user.name">Loading…</span>` with `user: null` used to keep "Loading…" (dead binding plus a warning) and now renders empty at bind time (executed). Consistent with flat `undefined` values, but visible for server-rendered pages. Add one line to `docs/guides/ssr-hydration.md` and to the nested-path entry under `### Changed` in `CHANGELOG.md`.
+- **R25:** `select` on a `computed()` list without `select.store` throws `source.$subscribe is not a function` (executed). The clearer message was dropped to save bytes, which is acceptable at 7.93 / 8.00 KB; document that `select.store` is required for `computed()` sources in `docs/api/addons/repeat.md`.
+
+---
+
 ## Rejected — do not re-propose without new evidence
 
 | Idea | Seen in | Why rejected |
@@ -561,12 +658,16 @@ After Phase 4, rebuild the debug-demo comparison (vanilla vs Lume HTML vs Lume J
 | Virtual DOM / re-rendering components | — | Contradicts "Why No Virtual DOM?"; components run once |
 | Expressions in attributes (`{{ }}`, `:attr="a + b"`) | Regor | Template-injection class of bugs; `AGENTS.md` hard constraint |
 | Automatic deep reactivity / intercepted array methods | Gea, Regor | Ratified "nested state must be explicit"; Gea stamps symbols on user objects, Regor rewrites them in place |
-| Synchronous flushing | Regor | Exposes intermediate states; microtask coalescing is ratified |
+| Synchronous flushing / re-render on every write | Regor, Velotype | Exposes intermediate states and re-renders once per write; microtask coalescing is ratified |
 | "Lock" tracking after stable runs | Gea | Unsound — conditional deps go stale; Lume's run-generation sweep already gives zero-alloc steady state safely |
 | Synchronous "direct observers" bypassing batching | Gea | Benchmark-specific special case; R8 gets the O(1) result without breaking batching |
 | Global scheduler | Gea | Ratified against ("Why Per-State Batching"); Gea's shared flush loop shows the freeze hazard |
 | Non-escaping `html` tag | Regor | R14 must be safe by construction |
 | MutationObserver-based auto-cleanup | external suggestion | Global machinery, fuzzy ownership; Lume cleans what it owns |
+| Setting any prop that has a DOM setter (incl. `innerHTML`), unfiltered `href` | Velotype | Spread props become HTML injection and `javascript:` URLs pass through; R13 must use an explicit policy, a denylist, and the URL filter on the property path |
+| Re-rendering by replacing elements / rebuilding subtrees (`refresh()`) | Velotype | Loses input state and focus, unmounts every child; Lume updates in place through fine-grained effects |
+| Explicit per-value reactive wrappers instead of auto-tracking | Velotype | Pushes complexity into components; `state()` + `effect()` already exist |
+| Global id registry for ownership | Velotype | Only correct when every DOM removal goes through the library; R12 should own scopes through closures |
 
 ## Already done — don't rebuild
 
