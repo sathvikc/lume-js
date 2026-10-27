@@ -627,7 +627,7 @@ store.$subscribe('text', (value) => {
 
 ### Why Path Bindings Follow Object Replacement (2026-10)
 
-**Decision:** A binding with a dotted path (`data-bind="user.name"`, and every handler attribute) subscribes along the whole path. Each intermediate key gets its own `$subscribe`; when it changes, everything below it is unsubscribed and re-linked to the new value. A null/undefined intermediate renders `undefined` and waits without a warning; a plain object or a missing key warns. Single-key paths stay one `$subscribe`. Elements are still matched once when `bindDom()` runs.
+**Decision:** A binding with a dotted path (`data-bind="user.name"`, and every handler attribute) subscribes along the whole path. Each intermediate key gets its own `$subscribe`; when it changes, everything below it is unsubscribed and re-linked to the new value. Plain objects and arrays in the middle of a path are stepped through once without subscribing (they cannot notify), exactly as before; only the object holding the last key must be a `state()`. A null/undefined intermediate renders `undefined` and waits without a warning; a missing key, a primitive, or a last key on a plain object warns. Single-key paths stay one `$subscribe`. Elements are still matched once when `bindDom()` runs.
 
 **Reasoning:**
 - Async data is the normal case: `user: null` at bind time, then `store.user = state({...})` after a fetch. Resolving the path once at bind time attached the binding to whatever object existed then. Reproduced four failures: a replaced user kept showing the old name, typing wrote into the old object, mutating the old object still updated the DOM, and a path that started at `null` never activated.
@@ -639,7 +639,7 @@ store.$subscribe('text', (value) => {
 - ❌ Re-scan or MutationObserver on change → global machinery for a problem that is local to one path, and still blind to which object a write should go to.
 - ❌ Auto-wrap nested objects so paths always resolve → contradicts "Why Nested State Must Be Explicitly Wrapped?".
 
-**Tradeoff:** Nested paths hold one extra subscription per intermediate key per element. Flat paths gain one closure call per update, and two-way inputs a WeakMap lookup. A `null` intermediate no longer warns at bind time; a missing key still does, so typos stay visible. +0.04 KB gz on the `index` entry.
+**Tradeoff:** Nested paths hold one extra subscription per reactive intermediate key per element. A plain object in the middle of a path is still a static step, so replacing *its* contents in place is not seen (unchanged from bind-time resolution). Flat paths gain one closure call per update, and two-way inputs a WeakMap lookup. A `null` intermediate no longer warns at bind time; a missing key still does, so typos stay visible. +0.04 KB gz on the `index` entry.
 
 ---
 

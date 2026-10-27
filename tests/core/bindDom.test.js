@@ -1037,7 +1037,52 @@ describe('bindDom', () => {
       store.user = { name: 'plain' };
       await Promise.resolve();
       expect(root.querySelector('span').textContent).toBe('');
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('not reactive at "user"'));
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('"user.name" is not reactive at "name"'));
+      cleanup();
+    });
+
+    it('steps through plain objects and arrays to reactive state, as before', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const root = setupDOM(`<div><span data-bind="list.0.name"></span><input data-bind="cfg.user.name" /></div>`);
+      const item = state({ name: 'zero' });
+      const user = state({ name: 'x' });
+      const store = state({ list: [item], cfg: { user } });
+      const cleanup = bindDom(root, store);
+      const [span, input] = [root.querySelector('span'), root.querySelector('input')];
+      expect([span.textContent, input.value]).toEqual(['zero', 'x']);
+
+      item.name = 'one';
+      user.name = 'y';
+      await Promise.resolve();
+      expect([span.textContent, input.value]).toEqual(['one', 'y']);
+
+      input.value = 'typed';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(user.name).toBe('typed');
+
+      // Replacing the reactive key above a plain step still re-links
+      const next = state({ name: 'z' });
+      store.cfg = { user: next };
+      await Promise.resolve();
+      expect(input.value).toBe('z');
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      cleanup();
+    });
+
+    it('leaves a null reached through a plain object quiet and unbound, as before', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const root = setupDOM(`<div><span data-bind="cfg.user.name">Loading</span></div>`);
+      const cleanup = bindDom(root, state({ cfg: { user: null } }));
+      expect(warnSpy).not.toHaveBeenCalled();
+      cleanup();
+    });
+
+    it('warns when a path steps into a primitive', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const root = setupDOM(`<div><span data-bind="count.value"></span></div>`);
+      const cleanup = bindDom(root, state({ count: 5 }));
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('not reactive at "value"'));
       cleanup();
     });
 
