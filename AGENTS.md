@@ -49,6 +49,7 @@ npm run lint                # eslint incl. sonarjs cognitive-complexity ≤ 15
 node scripts/complexity.js  # per-function CC ≤ 10, per-file MI ≥ 50
 npm run size                # build + per-entry gzip budgets (table below)
 npm run typecheck           # tsc --noEmit against handwritten .d.ts
+npm run test:e2e            # Playwright smoke tests in headless Chromium over examples/ pages
 ```
 
 | dist entry | Budget (gz) | Note |

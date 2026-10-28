@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>stringAttr fixture</title>
+</head>
+<body>
+  <a id="link" data-href="url">link</a>
+  <img id="img" data-src="url" alt="">
+  <object id="obj" data-data="url"></object>
+
+  <script type="module">
+    import { state, bindDom } from 'lume-js';
+    import { stringAttr } from 'lume-js/handlers';
+
+    window.store = state({ url: '/safe.html' });
+    bindDom(document.body, window.store, {
+      handlers: [stringAttr('href'), stringAttr('src'), stringAttr('data')],
+    });
+    window.ready = true;
+  </script>
+</body>
+</html>

@@ -33,6 +33,7 @@ src/
   utils/log.js       # logError/logWarn (the only module handlers may import)
   *.d.ts             # HANDWRITTEN type declarations — update in the same commit as signature changes
 tests/               # vitest + jsdom; mirrors src/ layout; 100% coverage enforced
+e2e/                 # Playwright smoke tests (headless Chromium) over examples/ pages + fixtures
 docs/api/            # one reference page per public export
 docs/guides/         # universal-core, choosing-reactive-primitives, cleanup, SSR
 docs/design/         # design-decisions.md (contract) + VISION.md (roadmap)
@@ -54,6 +55,7 @@ node scripts/complexity.js   # per-function CC ≤ 10, per-file MI ≥ 50
 npm run size          # build + per-entry gzip budgets (see AGENTS.md table)
 npm run typecheck     # tsc --noEmit against handwritten .d.ts
 npm run validate      # all of the above — run before any commit
+npm run test:e2e      # not in validate; CI runs it. Playwright smoke tests in headless Chromium (first run: npx playwright install chromium)
 npm run dev           # vite dev server for examples/
 npm run dev:site      # docs site locally
 npm run bench         # core micro-benchmarks
@@ -76,7 +78,7 @@ npm run bench         # core micro-benchmarks
 - **`sideEffects: false` is load-bearing** — module top-levels must stay pure. This killed a previous pluggable-scheduler branch.
 - **ES2020 ceiling** in `src/` (browser floor Chrome 80/FF 74/Safari 13.1): no `Object.hasOwn`, `.at()`, `??=`, `structuredClone`, `replaceAll`.
 - **`textContent`, never `innerHTML`** in the render path — this is the XSS posture. Don't introduce HTML injection in a handler.
-- **jsdom-only tests:** browser floor compliance is by discipline + review, not by CI running real old browsers.
+- **Unit tests are jsdom; real-browser coverage is a Chromium smoke suite** (`e2e/`). Neither proves the browser floor (Chrome 80/FF 74/Safari 13.1): that stays discipline + review. An example change that breaks an `e2e/` selector fails CI.
 
 ## What NOT to touch
 

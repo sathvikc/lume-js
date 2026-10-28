@@ -202,6 +202,27 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
+  # ── Browser Smoke Tests ─────────────────────────────────────────────────────
+  e2e:
+    name: Browser Smoke Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright
+        run: npm run test:e2e
+
   agent-docs:
     name: Agent Docs Freshness
     runs-on: ubuntu-latest
@@ -228,7 +249,7 @@ jobs:
     name: PR Report
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'pull_request'
-    needs: [test, lint, complexity, size, typecheck, agent-docs]
+    needs: [test, lint, complexity, size, typecheck, e2e, agent-docs]
     permissions:
       pull-requests: write
     steps:
@@ -272,6 +293,7 @@ jobs:
               complexity: '${{ needs.complexity.result }}',
               size:       '${{ needs.size.result }}',
               typecheck:  '${{ needs.typecheck.result }}',
+              e2e:        '${{ needs.e2e.result }}',
               agentDocs:  '${{ needs.agent-docs.result }}',
             };
 
@@ -428,6 +450,11 @@ jobs:
             // ── TypeScript ─────────────────────────────────────────────────
             body += `### ${icon(results.typecheck)} TypeScript\n\n`;
             body += ok(results.typecheck) ? 'No type errors found.' : '❌ Type errors found — see job logs for details.';
+            body += '\n\n';
+
+            // ── Browser Smoke Tests ────────────────────────────────────────
+            body += `### ${icon(results.e2e)} Browser Smoke Tests\n\n`;
+            body += ok(results.e2e) ? 'Example pages pass in headless Chromium.' : '❌ Browser smoke tests failed — see job logs for details.';
             body += '\n\n';
 
             // ── Agent Docs Freshness ───────────────────────────────────────

@@ -97,7 +97,7 @@ Each handler is a plain `{attr, apply}` object or a factory returning one: `show
 
 ## Dependency rationale
 
-**Runtime dependencies: zero.** Everything in `package.json` is dev tooling: vitest+jsdom (tests), eslint+sonarjs (lint/complexity), terser (minify), typescript (checks the handwritten `.d.ts`), vite/tailwind/marked/highlight.js (docs site only).
+**Runtime dependencies: zero.** Everything in `package.json` is dev tooling: vitest+jsdom (unit tests), Playwright (Chromium smoke tests over `examples/`), eslint+sonarjs (lint/complexity), terser (minify), typescript (checks the handwritten `.d.ts`), vite/tailwind/marked/highlight.js (docs site only).
 
 ## Extension points
 
