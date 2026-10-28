@@ -1,23 +1,23 @@
 import { bindDom, effect, state } from 'lume-js';
-import { computed, repeat } from 'lume-js/addons';
-
-const persisted = JSON.parse(localStorage.getItem('lume_todos') || 'null');
-
-// Simple id generator - start after highest existing ID
-const nextId = (() => {
-  const maxId = persisted?.todos?.reduce((max, todo) => Math.max(max, todo.id || 0), 0) || 0;
-  let i = maxId;
-  return () => ++i;
-})();
+import { computed, persist, repeat } from 'lume-js/addons';
 
 const store = state({
-  todos: persisted?.todos ?? [], // plain array, we replace it on changes
-  filter: persisted?.filter ?? 'all',
+  todos: [], // plain array, we replace it on changes
+  filter: 'all',
   newTodoTitle: '',
   // derived metrics will be bound via computed
   remaining: 0,
   completed: 0,
 });
+
+// Loads saved todos/filter now, then saves them on every change
+const stopPersist = persist(store, 'lume_todos', { keys: ['todos', 'filter'] });
+
+// Simple id generator - start after highest existing ID
+const nextId = (() => {
+  let i = store.todos.reduce((max, todo) => Math.max(max, todo.id || 0), 0);
+  return () => ++i;
+})();
 
 // Bind static fields
 const cleanup = bindDom(document.body, store);
@@ -82,7 +82,7 @@ const repeatCleanup = repeat(listEl, filteredTodos, 'value', {
 });
 
 // Show empty state when no todos match filter
-effect(() => {
+const emptyStateCleanup = effect(() => {
   const items = filteredTodos.value || [];
   const isEmpty = items.length === 0;
 
@@ -96,10 +96,6 @@ effect(() => {
     if (emptyEl) emptyEl.remove();
   }
 });
-
-function persist() {
-  localStorage.setItem('lume_todos', JSON.stringify({ todos: store.todos, filter: store.filter }));
-}
 
 // Mutations — replace array to trigger notifications
 function addTodo(title) {
@@ -159,12 +155,7 @@ filterButtons.forEach(btn => {
 document.getElementById('clear-completed').addEventListener('click', clearCompleted);
 
 // Subscriptions
-const unsubscribeFilter = store.$subscribe('filter', () => {
-  updateFilterUI();
-  persist();
-});
-
-const unsubscribeTodos = store.$subscribe('todos', persist);
+const unsubscribeFilter = store.$subscribe('filter', updateFilterUI);
 
 // Initial paint
 updateFilterUI();
@@ -172,8 +163,8 @@ updateFilterUI();
 // Cleanup
 window.addEventListener('beforeunload', () => {
   cleanup();
-  effectCleanup();
+  emptyStateCleanup();
   repeatCleanup();
-  unsubscribeTodos();
   unsubscribeFilter();
+  stopPersist();
 });
