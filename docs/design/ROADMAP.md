@@ -1,14 +1,14 @@
 # Lume.js Roadmap
 
-> **Purpose:** The open backlog — what is left to build or decide, in what order, and *why*. Every item says what it is, why it matters, where it lives in the code, how to approach it, what artifacts it needs, and when it counts as done. A new session should be able to pick up any item from this file alone.
-> **Updated:** 2026-10-28 · **Baseline:** `main` @ 762bbe3 · v2.4.0 · 506 tests · 100% coverage
+> **Purpose:** The open backlog — what is left to build or decide, in what order, and *why*. Every item says what it is, why it matters, where it lives in the code, how to approach it, what artifacts it needs, and when it counts as done. A new session should be able to pick up any item from this file alone.  
+> **Updated:** 2026-10-28 · **Baseline:** `main` @ 762bbe3 · v2.4.0 · 506 tests · 100% coverage  
 > **Status:** Living document that holds **only open work**. Shipped work lives in git history and `CHANGELOG.md`; ideas that were measured away or rejected are one-liners in [Don't propose again](#dont-propose-again-without-new-evidence). When an item ships, delete its section and its overview row.
 
 ---
 
 ## How to use this document
 
-1. Read `AGENTS.md` (process contract), then `docs/design/design-decisions.md` (ratified decisions), then this file. `VISION.md` owns direction and philosophy; this file owns the concrete backlog.
+1. Read `AGENTS.md` (process contract), then `docs/design/design-decisions.md` (ratified decisions), then this file. `VISION.md` owns direction and philosophy; this file owns the concrete backlog. `VISION.md` still lists longer-term ideas ("Do Later": spaMode for `bindDom`, framework adapters, a form validation addon); they become items here only once someone verifies a concrete need.
 2. Start with [Decisions needed](#decisions-needed-from-the-maintainer): several items are blocked on them, and R27 (the global bundle budget) blocks every item that adds bytes.
 3. Each item lists the artifacts `AGENTS.md`'s matrix requires. Items marked **Decision gate** must land their `design-decisions.md` entry or amendment *before or with* the code — the ratified entry wins until it is amended.
 4. One item = one commit (or one proposal branch for large ones), carrying all its artifacts; all five quality gates must pass. Implement on a branch other than the one holding this file, and never copy this file into it. Commit messages, decision entries and docs describe each change in their own words, with no references to this file or to item IDs, because this file changes. When an item ships, remove it from this file on this file's own branch.
@@ -31,15 +31,15 @@ These come from mistakes made while building the first version of this roadmap (
 
 ## Size budgets: the binding constraint
 
-Executed 2026-10-28 on `main` (`npm run size`):
+Executed 2026-10-28 on `main` (`npm run size`; percentages are from exact bytes, not the rounded KB):
 
 | Entry | Size (gz) | Budget | Used | Headroom |
 |---|---|---|---|---|
 | `lume.global.js` (CDN all-in-one) | 7.96 KB | 8.00 KB | **99.5%** | **0.04 KB** |
 | `index.min.mjs` (core) | 2.90 KB | 3.00 KB | 96.6% | 0.10 KB |
 | `state.min.mjs` (kernel) | 1.49 KB | 1.75 KB | 85.0% | 0.26 KB |
-| `addons.min.mjs` | 5.03 KB | 6.00 KB | 83.8% | 0.97 KB |
-| `handlers.min.mjs` | 1.23 KB | 2.00 KB | 61.5% | 0.77 KB |
+| `addons.min.mjs` | 5.03 KB | 6.00 KB | 83.9% | 0.97 KB |
+| `handlers.min.mjs` | 1.23 KB | 2.00 KB | 61.4% | 0.77 KB |
 
 Every byte added to core, addons or handlers also lands in `lume.global.js`, which re-exports everything. With 0.04 KB left, **no feature that adds code can ship until R27 is decided**. Budgets live in `scripts/check-size.js` (`BUDGETS`); `docs/metrics.json` deliberately omits the global budget in code, with no stated reason (R28).
 
@@ -50,12 +50,12 @@ Every byte added to core, addons or handlers also lands in `lume.global.js`, whi
 | ID | Item | Type (AGENTS matrix) | Decision gate | Blocked by | Status |
 |---|---|---|---|---|---|
 | R27 | Decide the global bundle budget policy | Decision + tooling | **Is the gate** | — | ⏳ needs maintainer decision |
-| R26 | Decide whether `list.0.name` index paths are supported | Decision (+ docs) | **Yes** | — | ⏳ needs maintainer decision |
+| R26 | Decide whether `list.0.name` index paths are supported | Decision (+ docs) | **Yes** | R27, only for the warning-text fix | ⏳ needs maintainer decision |
 | R11 | Decision amendments for the optional JSX layer | Docs (decision) | **Is the gate** | R27 (where new entries live) | ⏳ needs maintainer decision |
 | R28 | Put the global budget in `docs/metrics.json` | Build / tooling | No | — | ☐ ready |
 | R21 | `repeat()` delegated row `on` option | New public API (option) | **Yes** | R27 | ⏸ blocked on budget |
-| R4 | Reactive getters on state objects | Behavior change (kernel) | **Yes** | a viable design | ⏸ deferred |
-| R22 | Async-data helper | New public API | **Yes** | demand evidence, R27 | ⏸ candidate only |
+| R4 | Reactive getters on state objects | Behavior change (kernel) | **Yes** | a viable design, R27 | ⏸ deferred |
+| R22 | Async-data helper | New public API | **Yes** | demand evidence, R27, a `VISION.md` amendment | ⏸ candidate only |
 | R12 | Owner scope for JSX-created reactivity | New public API | via R11 | R11 | ⏳ waiting on R11 |
 | R13 | `lume-js/jsx-runtime` | New public API + entry | via R11 | R11, R12 | ⏳ waiting on R11 |
 | R14 | `lume-js/html` tagged template | New public API + entry | via R11 | R13 | ⏳ waiting on R11 |
@@ -93,7 +93,7 @@ These are product calls, not implementation steps. An agent should prepare the o
 
 **What:** `data-bind="list.0.name"` (an array index inside a path) works on `main`, but no decision entry ever weighed it.
 
-**History (executed 2026-10-28 with full git history):** it worked by accident from the first path resolver (2025-10-03, 91d7815: a generic `acc[key]` walk; arrays are objects whose indexes are keys). No test, doc or CHANGELOG entry mentioned a numeric path segment until 942863a (2026-10-26), which restored the behavior after the nested-path rewrite had broken it, added regression tests, and documented `list.0.name` in `docs/api/core/bindDom.md` and the nested-path decision entry. "Why Nested State for Multiple Checkboxes Instead of Arrays?" rejects binding checkboxes to an *array value* (two-way array membership), not reading through an index; its spirit and the lists guide's "never array index" for keys both lean against positional bindings.
+**History (executed 2026-10-28 with full git history):** it has worked by accident since the very first commit (74fffef, 2025-10-03: `bindDom` already walked a path with `for (const key of path) target = target[key]`; arrays are objects whose indexes are keys; 91d7815 the same evening moved the walk into `resolvePath`). No test, doc or CHANGELOG entry mentioned a numeric path segment until 942863a (2026-10-26), which restored the behavior after the nested-path rewrite (8d93add) had broken it, added regression tests, and documented `list.0.name` by name in `docs/api/core/bindDom.md` and `CHANGELOG.md`. The nested-path decision entry covers it only generically ("plain objects and arrays in the middle of a path are stepped through"); `list.0.name` appears nowhere in `design-decisions.md`. "Why Nested State for Multiple Checkboxes Instead of Arrays?" rejects binding checkboxes to an *array value* (two-way array membership), not reading through an index; its spirit and the lists guide's "never array index" for keys both lean against positional bindings.
 
 **Behavior on `main` (executed; `state({ list: [state({ name: 'A' }), state({ name: 'B' })] })`, `<span data-bind="list.0.name">`):**
 
@@ -107,7 +107,7 @@ These are product calls, not implementation steps. An agent should prepare the o
 **Options:**
 
 1. **Support it, with the limits written down:** the binding follows the index, not the item; in-place array changes are not seen; replace the array to re-link; prefer `repeat()` for lists. Fix the missing-index warning text.
-2. **Keep it but discourage it:** document "works, not recommended" and point to `repeat()` or a keyed nested `state()`. Removing it is not an option: it breaks working pages (the nested-path regression showed people rely on it).
+2. **Keep it but discourage it:** document "works, not recommended" and point to `repeat()` or a keyed nested `state()`. Removing it is not recommended: it has worked since the first commit and is now documented, so removing it would be a breaking change. (Note: the regression and its fix landed on `main` together, after the v2.4.0 tag, so no released version ever broke it; there is no evidence yet of how many users rely on it.)
 
 **Recommendation:** option 1, as a dated amendment to the nested-path decision entry plus one paragraph in `docs/api/core/bindDom.md`. The warning-text fix needs a byte check against the global budget (R27).
 
@@ -117,14 +117,17 @@ These are product calls, not implementation steps. An agent should prepare the o
 
 - [ ] Status: **needs a decision.** This is the gate for R12–R15, R17 and R18.
 
-**What:** Amend the ratified documents so an optional JSX layer is legal before any code lands. As of `main` @ 762bbe3, `design-decisions.md` "Why Standards-Only?" still lists "❌ JSX/Template literals → Requires build step, breaks progressive enhancement", and `VISION.md` "Will NOT Add" still lists a component system.
+**What:** Amend the ratified documents so an optional JSX layer is legal before any code lands. As of `main` @ 762bbe3, `design-decisions.md` `Why "Standards-Only"?` still lists "❌ JSX/Template literals → Requires build step, breaks progressive enhancement", and `VISION.md` "Will NOT Add" still lists a component system.
 
 **Why:** JSX is what most developers already write. Lume's adoption barrier is that its authoring model (HTML + `data-*` + `bindDom`/`repeat` wiring) feels unfamiliar and, per `VISION.md`'s open "Code Verbosity" challenge, can be more code than vanilla. An optional JSX entry lets React-trained developers start immediately while keeping what makes Lume trustworthy.
 
 **What the amendment must say:**
 
-- `design-decisions.md` "Why Standards-Only?": a dated amendment. Tagged template literals need no build at all (standard ES2015); JSX is acceptable as an **optional, separate entry** because core never requires it.
-- `VISION.md` "Will NOT Add": "Build step requirement" stays banned (JSX is opt-in). Clarify "Component system": functions returning DOM are not a component system (no instances, no lifecycle, no re-render).
+- `design-decisions.md` `Why "Standards-Only"?`: a dated amendment. Tagged template literals need no build at all (standard ES2015); JSX is acceptable as an **optional, separate entry** because core never requires it.
+- `VISION.md`, everywhere the JSX layer conflicts with it (verified on `main` @ 762bbe3):
+  - "Will NOT Add": "Build step requirement" stays banned (JSX is opt-in). Clarify "Component system": functions returning DOM are not a component system (no instances, no lifecycle, no re-render). Clarify "Lifecycle hooks": R12's cleanup scope and `onCleanup` are disposal, not mount/update hooks.
+  - "❌ Skip Entirely" also lists "Component system" ("Scope creep. HTML + web components exist."); amend it the same way.
+  - The Code Verbosity challenge's "The Constraint" block says "We cannot: ❌ Add build step / ❌ Add custom syntax beyond `data-*`"; amend it to say optional entries for build users are allowed and core stays build-free.
 - `AGENTS.md` hard constraints: scope "No custom syntax beyond `data-*`" to HTML markup; add the dependency direction for the new layer (proposed: JSX/html modules may import core and `utils/`, not addons or handlers). To share the URL filter, move it from `src/handlers/stringAttr.js` to `src/utils/` and widen "handlers import nothing (or `utils/log.js`)" to "(or `utils/*`)".
 - Budgets: new entries in `scripts/check-size.js` and the `AGENTS.md` table (proposal: `jsx-runtime` + `html` combined ≤ 1.5 KB gz), and, per R27, a statement that they are **not** part of `lume.global.js`.
 
@@ -176,7 +179,7 @@ s.first = 'Z';   // seen stays "a b"
 
 The `get` trap reads `target[key]` (`src/core/state.js`), so the getter runs with `this` = the raw object and its reads bypass the Proxy.
 
-**Why the simple fix was rejected (all executed):** `Reflect.get(target, key, proxy)` made raw proxy reads ~40% slower (`state-read (100k reads)` 1.04–1.09 ms → 1.47–1.56 ms, three `npm run bench` runs each way); it breaks class getters that read `#private` fields (`TypeError: Cannot read private member`) once `this` is the proxy, a case `docs/api/core/state.md` lists as supported; and getters would still be dead in `data-bind`, `watch()` and `$subscribe`, because nothing ever writes the getter key.
+**Why the simple fix was rejected (all executed):** `Reflect.get(target, key, proxy)` made raw proxy reads ~40% slower (`state-read (100k reads)` 1.04–1.09 ms → 1.47–1.56 ms, three `npm run bench` runs each way); it breaks class getters that read `#private` fields (`TypeError: Cannot read private member`) once `this` is the proxy. Class instances work with `state()` today (executed), and `docs/api/core/state.md`'s "What's not reactive" table marks them "Partial", though line 13 of the same page says the initial value must not be a class instance; the page contradicts itself, but breaking a pattern that works today is a regression either way; and getters would still be dead in `data-bind`, `watch()` and `$subscribe`, because nothing ever writes the getter key.
 
 **Viable shape for a retry:** detect accessor keys once in `state()` (`Object.getOwnPropertyDescriptors`) for plain object literals only, so getter-less stores pay nothing on reads and class instances are untouched; **plus** a getter-aware `bindDom` path (for example, binding getter keys through `effect()`), costed together against the `index` budget (0.10 KB left) and R27.
 
@@ -186,7 +189,7 @@ The `get` trap reads `target[key]` (`src/core/state.js`), so the getter runs wit
 
 **What:** A helper that drives a store through `pending` / `resolved` / `rejected` for a `fetch`-style source, where only the newest load wins and older loads are aborted, so markup can bind `data-show="status"` and similar.
 
-**Why it is here:** Lume has nothing like it (executed: no `AbortController`/`AbortSignal` anywhere in `src/`); Velotype's `AsyncRenderObject` covers exactly this [traced]. **Why it is not scheduled:** no evidence users need it in the library rather than in a few lines of app code, and its bytes would land in the global bundle. Reopen with concrete demand (issues, examples that hand-roll it) and a measured byte cost.
+**Why it is here:** Lume has nothing like it (executed: no `AbortController`/`AbortSignal` anywhere in `src/`); Velotype's `AsyncRenderObject` covers exactly this [traced]. **Why it is not scheduled:** no evidence users need it in the library rather than in a few lines of app code, and its bytes would land in the global bundle. It also conflicts with ratified direction: `VISION.md` "❌ Skip Entirely" lists "Built-in HTTP/fetch — Not related to reactivity". Building it needs a `VISION.md` amendment arguing it is about async **state**, not HTTP. Reopen with concrete demand (issues, examples that hand-roll it) and a measured byte cost.
 
 ---
 
