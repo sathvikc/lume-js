@@ -3,7 +3,7 @@
 > **Purpose:** The execution plan — what to build next, in what order, and *why*. Every item says what it is, why it matters, where it lives in the code, how to approach it, what artifacts it needs, and when it counts as done. A new session should be able to pick up any item from this file alone.
 > **Created:** 2026-10-21 · **Baseline:** v2.4.0 · 475 tests · 100% coverage · sizes (gz): `state` 1.49 / 1.75 KB, `index` 2.77 / 3.00 KB, `handlers` 1.23 / 2.00 KB, `addons` 4.96 / 6.00 KB, `global` 7.75 KB
 > **Last execution pass:** 2026-10-26, see [Execution log](#execution-log-2026-10-26). Implementation lives on branch `feat/roadmap-backlog` (8 commits off `main` 4efcf41). Independently verified the same day, with three documentation gaps to close before merging; see [Independent verification](#independent-verification-of-featroadmap-backlog-2026-10-26).  
-> **Latest review:** 2026-10-27, Velotype comparison added (section 4 of "Where this roadmap came from", Phase 6 candidates R19–R22, notes on R12/R13); the three documentation gaps from the 2026-10-26 verification are now tracked as R23–R25.  
+> **Latest update:** 2026-10-28. `feat/roadmap-backlog` is merged into `main` (rebased, new commit IDs) and the branch is deleted; R19, R20, R23 and R24 shipped on `main`, R25 turned out to be already documented, and a regression in the R2 change was found and fixed on `main`. See [Merged to main](#merged-to-main-2026-10-28). Earlier: 2026-10-27 Velotype comparison (section 4 of "Where this roadmap came from", Phase 6 candidates, notes on R12/R13).
 > **Status:** Living document. When an item ships, tick it here, mark it ✅ in `VISION.md` if it appears there, and add a dated note.
 
 ---
@@ -52,6 +52,43 @@ Every item was attempted in phase order on a separate branch, `feat/roadmap-back
 
 ---
 
+## Merged to main (2026-10-28)
+
+`feat/roadmap-backlog` was merged into `main` by rebasing, so every commit got a new ID, and the branch was then deleted. Verified 2026-10-28: the rebased tip (`bbf4889`) has a tree identical to the original tip (`bdba88d`), so nothing was lost or changed in the merge.
+
+| Item | Original commit (deleted branch) | Commit on `main` |
+|---|---|---|
+| R1 | e2c5929 | e0bf948 |
+| R7 | e112445 | 1543697 |
+| R5 | dcc26c7 | d10f5d2 |
+| R3 | cc9a0a3 | 1e77c2b |
+| R2 | 5e31553 | 8d93add |
+| R8 | ec0425b | bec390e |
+| R16 | dc231e5 | 39606fa |
+| R17 (partial) | bdba88d | bbf4889 |
+
+Follow-up commits on `main` after the merge:
+
+| Commit | What | Roadmap effect |
+|---|---|---|
+| d5f964c | docs: placeholder clearing under `null` parents (SSR guide, CHANGELOG) and strict `select` matching made explicit | Closes R24 and R23 |
+| 942863a | fix(core): step through plain objects and arrays in nested binding paths again | Fixes a regression introduced by R2 (see below) |
+| df5ecf4 | docs(repeat): warn that `create()` listeners see the row's first item | Closes R19 |
+| fe9afca, 762bbe3 | ci: browser smoke tests in headless Chromium; warn on console errors across every example page | Closes R20 |
+
+**The R2 regression (fixed by 942863a):** the subscription-chain rewrite required every intermediate in a path to be a `state()` store. Before it, `bindDom` walked plain objects and arrays and only the object holding the last key had to be reactive. So `data-bind="list.0.name"` over an array of states and `data-bind="cfg.user.name"` through a plain `cfg` both rendered empty and never updated, and the second warned. Arrays cannot be `state()`, so the array-of-states pattern became impossible. Neither the execution pass nor the independent verification caught it: both tested replacement, `null`, restore and cleanup, but no path with a plain object or array in the middle, and both accepted "plain objects warn" as the intended behavior without checking what `main` did before. 942863a steps through plain objects and arrays once without subscribing, as before, with regression tests; `index` 2.87 → 2.90 KB, `global` 7.93 → 7.96 KB.
+
+**Sizes on `main` after the follow-ups (gz, executed 2026-10-28):** `index` 2.90 / 3.00, **`global` 7.96 / 8.00 (99.5%)**. The global bundle has 0.04 KB left.
+
+### `data-bind="list.0.name"`: supported, but never decided (executed 2026-10-28)
+
+- **History:** index paths were never designed or documented as a feature. They worked incidentally from the first path resolver (2025-10-03, 91d7815: a generic `acc[key]` walk, and arrays are objects whose indexes are keys). No test, doc or CHANGELOG entry mentioned a numeric path segment until 942863a (2026-10-26), which added regression tests and, for the first time, documented `list.0.name` in `docs/api/core/bindDom.md` and the nested-path decision entry.
+- **Not contradicted by a decision, but close to one:** "Why Nested State for Multiple Checkboxes Instead of Arrays?" rejects binding checkboxes to an *array value* (two-way array membership), not reading through an index in a path. Its spirit (prefer nested `state()` objects over array bindings) and the lists guide's "use a database ID, never array index" both lean against positional bindings.
+- **Behavior on `main` (probe: `state({ list: [state({ name: 'A' }), state({ name: 'B' })] })`, `<span data-bind="list.0.name">`):** renders `A`; editing `list[0].name` updates; **reversing the array in place leaves the span on the old object** (shows `A2` while `list[0]` is `B`), because the array is a plain step and is not watched; replacing the array (`store.list = [...]`) re-links; an empty array renders empty but warns `Path "list.0.name" is not reactive at "0"`, which misdescribes a missing index.
+- → tracked as **R26**: decide whether index paths are a supported pattern.
+
+---
+
 ## Independent verification of `feat/roadmap-backlog` (2026-10-26)
 
 A second session re-checked the execution pass instead of trusting the log above. Branch state at the time: 8 commits ahead of `main` (4efcf41), 0 behind, so it merges cleanly.
@@ -76,6 +113,8 @@ No console warnings during the run. A code review of every `src/` diff (`bindDom
 
 ### Open documentation gaps (fix before merging `feat/roadmap-backlog`)
 
+> **Resolved 2026-10-28:** gaps 1 and 2 shipped on `main` in d5f964c; gap 3 was already documented (see R23–R25). Kept below as the original record.
+
 All three were found by running edge cases against the branch. None is a code bug.
 
 1. **`select` uses strict equality, undocumented.** `selectedId: '2'` against item key `2` selects nothing, silently. Keys read from the DOM (`dataset`, input values) are strings, so this will be hit. Add one line to `docs/api/addons/repeat.md` (and the `select` JSDoc): the selected value must be `===` the row key, same type.
@@ -99,6 +138,8 @@ The spec was written on 2026-10-21. The execution pass and the verification abov
 | R2 "zero overhead for flat paths" | Not testable before code | A design goal phrased as a requirement; the result costs one extra closure call per update. Should have been written as a goal. |
 | R2 behavior for a `null` intermediate | Not specified | The spec said what to render but not whether to warn, which became a user-visible decision during implementation. |
 | R3 symptom "input shows A's value" | Yes, observed | Correct but under-specified: it depends on typing first, which the repro did not state. |
+| R2 verification: "no correctness bugs" (2026-10-26) | Partly: replacement, `null`, restore and cleanup were run | Missed a regression: paths through a plain object or array (`list.0.name`, `cfg.user.name`) stopped working. Never probed, and "plain objects warn" was accepted as intended without checking what `main` did before. Fixed on `main` by 942863a. |
+| R25 "select over `computed()` needs `select.store`, undocumented" and R23 "strict equality, undocumented" | No: decided by a literal grep | R25 was documented in the original commit (written as `select: { key: 'selected', store }`, so a grep for `select.store` missed it); R23 was half-documented. Absence claims need the section read, not a keyword search. |
 
 **Genuinely only discoverable while building** (normal, not spec errors): the cognitive-complexity limit forcing `bindElement()`/`inNestedScope()` out of `performBinding`; the flat-path closure cost; `select.store` being needed for `computed()` lists; a `render` that rewrites `className` wiping the selection class.
 
@@ -110,6 +151,8 @@ The spec was written on 2026-10-21. The execution pass and the verification abov
 4. **Report every size budget** and name the one closest to its limit.
 5. **Specify warning and error behavior** for every edge state an item introduces (null, missing key, wrong type).
 6. **Re-run repros in every call order and input sequence** where ordering can matter, and write the exact sequence into the repro.
+7. **When a change replaces existing behavior, probe what the old code accepted, not just what the new spec lists.** For path handling that means at least: a flat key, a nested `state()`, a plain object mid-path, an array index mid-path, `null`, and a missing key, each on `main` before and on the branch after. (Added 2026-10-28 after the R2 regression.)
+8. **"Not documented" is a claim like any other:** read the relevant section before asserting it; a keyword search proves presence, never absence. (Added 2026-10-28 after the false R25 gap.)
 
 ---
 
@@ -174,7 +217,7 @@ What we learned:
 
 ## Overview
 
-| ID | Item | Phase | Type (AGENTS matrix) | Decision gate | Verified | Status (2026-10-26) |
+| ID | Item | Phase | Type (AGENTS matrix) | Decision gate | Verified | Status (updated 2026-10-28; everything marked shipped is on `main`) |
 |---|---|---|---|---|---|---|
 | R1 | Fix stale `computed()` after same-flush writes | 1 | Bug fix | No | ✅ reproduced | ✅ shipped |
 | R2 | Nested `data-*` paths follow object replacement | 1 | Behavior change | **Yes** | ✅ reproduced | ✅ shipped |
@@ -194,13 +237,14 @@ What we learned:
 | R16 | Security guide ("no expressions" posture) | 5 | Docs | No | — | ✅ shipped |
 | R17 | `VISION.md` cleanup + "HTML-first, JSX-optional" | 5 | Docs | No | — | ◐ partial |
 | R18 | Re-measure the Code Verbosity challenge | 5 | Docs | No | — | ⏳ blocked |
-| R19 | Document the `repeat()` `create()` stale-item closure | 6 | Docs only | No | ✅ reproduced | ☐ open |
-| R20 | Real-browser smoke tests in CI | 6 | Build / CI / tooling | No | ✅ gap confirmed | ☐ open |
+| R19 | Document the `repeat()` `create()` stale-item closure | 6 | Docs only | No | ✅ reproduced | ✅ shipped on `main` (df5ecf4) |
+| R20 | Real-browser smoke tests in CI | 6 | Build / CI / tooling | No | ✅ gap confirmed | ✅ shipped on `main` (fe9afca, 762bbe3) |
 | R21 | `repeat()` delegated row `on` option | 6 | New public API (option) | **Yes** | ✅ footgun reproduced | ⏸ blocked on budget |
 | R22 | Async-data helper (pending/resolved/rejected) | 6 | New public API | **Yes** | Gap confirmed, no demand data | ⏸ candidate only |
-| R23 | Docs: `repeat()` `select` uses strict equality | 6 | Docs only | No | ✅ reproduced | ☐ open, before merging `feat/roadmap-backlog` |
-| R24 | Docs: server-rendered placeholder under a `null` parent is now cleared | 6 | Docs + CHANGELOG | No | ✅ reproduced | ☐ open, before merging `feat/roadmap-backlog` |
-| R25 | Docs: `select` over a `computed()` list needs `select.store` | 6 | Docs only | No | ✅ reproduced | ☐ open, before merging `feat/roadmap-backlog` |
+| R23 | Docs: `repeat()` `select` uses strict equality | 6 | Docs only | No | ✅ reproduced; was half-documented already | ✅ shipped on `main` (d5f964c) |
+| R24 | Docs: server-rendered placeholder under a `null` parent is now cleared | 6 | Docs + CHANGELOG | No | ✅ reproduced | ✅ shipped on `main` (d5f964c) |
+| R25 | Docs: `select` over a `computed()` list needs `select.store` | 6 | Docs only | No | Behavior reproduced; **gap was false** | ✖ not needed: documented since the original `select` commit |
+| R26 | Decide whether `list.0.name` index paths are a supported pattern | 6 | Decision (+ docs or warning text) | **Yes** | ✅ behavior probed | ⏳ needs maintainer decision |
 
 ---
 
@@ -594,11 +638,11 @@ After Phase 4, rebuild the debug-demo comparison (vanilla vs Lume HTML vs Lume J
 
 ## Phase 6 — Candidates from the Velotype review and the verification pass (2026-10-27)
 
-Budget context for every item here: the all-in-one `lume.global.js` bundle is at **7.93 / 8.00 KB** on `feat/roadmap-backlog`, and every addon byte also lands in it. Items that add bytes are blocked until the global budget question (see Phase 4 / R11) is decided.
+Budget context for every item here: the all-in-one `lume.global.js` bundle is at **7.96 / 8.00 KB** on `main` (2026-10-28; it was 7.93 on `feat/roadmap-backlog` before 942863a), and every addon byte also lands in it. Items that add bytes are blocked until the global budget question (see Phase 4 / R11) is decided.
 
 ### R19. Document the `repeat()` `create()` stale-item closure
 
-- [ ] Status: open. Zero bytes; can ship any time.
+- [x] Status: **shipped on `main`** (df5ecf4, 2026-10-28): `docs(repeat): warn that create() listeners see the row's first item`.
 
 **What:** Warn in the docs that a listener set up in `create()` closes over the item from the row's **first** render, and show the safe pattern.
 
@@ -610,7 +654,7 @@ Budget context for every item here: the all-in-one `lume.global.js` bundle is at
 
 ### R20. Real-browser smoke tests in CI
 
-- [ ] Status: open. Zero bundle bytes; CI time only.
+- [x] Status: **shipped on `main`** (fe9afca `ci: run browser smoke tests in headless Chromium`, 762bbe3 `test(e2e): warn on console errors across every example page`), 2026-10-28.
 
 **What:** A small Playwright suite that loads a few `examples/` pages in headless Chromium and asserts the core flows: `bindDom` text and two-way input, `repeat()` keyed updates and `select`, `stringAttr` URL filtering, `persist` round-trip.
 
@@ -638,15 +682,28 @@ Budget context for every item here: the all-in-one `lume.global.js` bundle is at
 
 **What:** A helper that drives a store through `pending` / `resolved` / `rejected` for a `fetch`-style source, where only the newest load wins and older loads are aborted, so markup can bind `data-show="status"` etc.
 
-**Why it is here:** Lume has nothing like it (executed: no `AbortController`/`AbortSignal` anywhere in `src/`); Velotype's `AsyncRenderObject` covers exactly this [traced]. **Why it is not scheduled:** no evidence users need it in the library rather than in a few lines of app code, and any addon bytes also land in the 7.93 / 8.00 KB global bundle. Reopen with concrete demand (issues, examples that hand-roll it) and a measured byte cost.
+**Why it is here:** Lume has nothing like it (executed: no `AbortController`/`AbortSignal` anywhere in `src/`); Velotype's `AsyncRenderObject` covers exactly this [traced]. **Why it is not scheduled:** no evidence users need it in the library rather than in a few lines of app code, and any addon bytes also land in the 7.96 / 8.00 KB global bundle. Reopen with concrete demand (issues, examples that hand-roll it) and a measured byte cost.
 
 ### R23–R25. Documentation gaps found while verifying `feat/roadmap-backlog`
 
-- [ ] Status: open. All three are docs-only, zero bytes, and belong on `feat/roadmap-backlog` **before** it merges, because they describe behavior that branch introduces. Full repros and file targets: [Open documentation gaps](#open-documentation-gaps-fix-before-merging-featroadmap-backlog).
+- [x] Status (2026-10-28): **R23 and R24 shipped on `main`** in d5f964c. **R25 was not a real gap**: `docs/api/addons/repeat.md` has said "When the list comes from a `computed()`, pass the store that holds the selection ... Without it `repeat()` throws" since the original `select` commit (ec0425b, now bec390e). R23 was half-documented too (the `5` vs `'5'` example existed; d5f964c added the type and DOM-string explanation). Both mistakes came from grepping for a literal (`select.store`, `strict`) instead of reading the section; see the retrospective.
 
 - **R23:** `select` compares with `===`, so `selectedId: '2'` against item key `2` selects nothing, silently (executed). Keys read from the DOM are strings. Add one line to `docs/api/addons/repeat.md` and the `select` JSDoc.
 - **R24:** `<span data-bind="user.name">Loading…</span>` with `user: null` used to keep "Loading…" (dead binding plus a warning) and now renders empty at bind time (executed). Consistent with flat `undefined` values, but visible for server-rendered pages. Add one line to `docs/guides/ssr-hydration.md` and to the nested-path entry under `### Changed` in `CHANGELOG.md`.
 - **R25:** `select` on a `computed()` list without `select.store` throws `source.$subscribe is not a function` (executed). The clearer message was dropped to save bytes, which is acceptable at 7.93 / 8.00 KB; document that `select.store` is required for `computed()` sources in `docs/api/addons/repeat.md`.
+
+### R26. Decide whether `list.0.name` index paths are a supported pattern
+
+- [ ] Status: **needs a maintainer decision** (2026-10-28). Evidence: [`data-bind="list.0.name"`: supported, but never decided](#data-bindlist0name-supported-but-never-decided-executed-2026-10-28).
+
+**What:** Index paths have worked since 2025-10-03 by accident and became documented and tested only in 942863a. No decision entry ever weighed them. Pick one:
+
+1. **Support them, with the caveats written down:** a positional binding follows the index, not the item; in-place array changes (`reverse`, `sort`, `splice`) are not seen; replace the array to re-link; prefer `repeat()` for lists. Fix the warning for a missing index (today: "not reactive at \"0\""). Zero or near-zero bytes.
+2. **Discourage them:** keep the behavior (removing it breaks working pages, as the R2 regression showed), but document index paths as "works, not recommended" and point to `repeat()` or a keyed nested `state()`.
+
+**Recommendation:** option 1, as a short dated amendment to the nested-path decision entry plus one paragraph in `docs/api/core/bindDom.md`. The behavior already exists, people evidently use it (942863a was written because its absence broke real patterns), and stating its limits costs nothing; pretending it is unsupported does not make it go away. Byte check needed for any warning-text change: `global` has 0.04 KB left.
+
+**Artifacts:** decision amendment, API doc paragraph, a test asserting the in-place-reorder limit, CHANGELOG only if the warning text changes.
 
 ---
 
